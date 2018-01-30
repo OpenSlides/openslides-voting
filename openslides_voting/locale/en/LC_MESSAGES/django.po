@@ -1,0 +1,154 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-03-20 18:24+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: openslides_voting/config_variables.py:23
+msgid "Please vote now!"
+msgstr ""
+
+#: openslides_voting/models.py:58
+#, python-format
+msgid "Keypad %(kp)d (%(user)s)"
+msgstr ""
+
+#: openslides_voting/models.py:60
+#, python-format
+msgid "Keypad %d"
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:12
+msgid "Unknown voting mode."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:13
+msgid "Invalid keypad range."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:14
+msgid "Invalid keypad list."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:15
+msgid "No keypads authorized for voting."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:16
+msgid "License not sufficient."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:17
+msgid "No voting device connected."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:18
+msgid "Failed to set up voting device."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:19
+msgid "Voting device not ready."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:49
+msgid "Server not found."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:60
+msgid "No keypads selected."
+msgstr ""
+
+#: openslides_voting/votecollector/rpc.py:70
+#: openslides_voting/votecollector/rpc.py:81
+#: openslides_voting/votecollector/rpc.py:87
+#: openslides_voting/votecollector/rpc.py:94
+#: openslides_voting/votecollector/rpc.py:106
+#: openslides_voting/votecollector/rpc.py:118
+#: openslides_voting/votecollector/rpc.py:130
+msgid "No connection to VoteCollector."
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:99
+msgid "Unknown id."
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:219
+msgid "Yes"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:220
+msgid "No"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:221
+#: openslides_voting/votecollector/views.py:262
+msgid "Abstain"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:232
+msgid "Poll is open"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:377
+msgid "Another voting is active."
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:459
+#: openslides_voting/votecollector/views.py:472
+#: openslides_voting/votecollector/views.py:477
+#: openslides_voting/votecollector/views.py:539
+#: openslides_voting/votecollector/views.py:545
+msgid "Vote rejected"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:464
+#: openslides_voting/votecollector/views.py:551
+#: openslides_voting/votecollector/views.py:553
+msgid "Vote invalid"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:484
+#: openslides_voting/votecollector/views.py:568
+msgid "Vote submitted"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:576
+msgid "Keypad not registered"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:580
+msgid "User unknown"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:586
+msgid "No agenda item selected"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:597
+msgid "Added to        speakers list"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:608
+msgid "Does not exist  on speakers list"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:611
+msgid "Removed from    speakers list"
+msgstr ""
+
+#: openslides_voting/votecollector/views.py:613
+msgid "Invalid entry"
+msgstr ""

@@ -1,0 +1,124 @@
+<style type="text/css">
+  #resultTable {
+    width: auto;
+  }
+  #resultTable img {
+    width: 30px;
+  }
+  #resultTable td.bold{
+    font-weight: bold;
+    text-align: right;
+  }
+</style>
+
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <!-- Back to motion -->
+      <a ui-sref="motions.motion.detail({id: motion.id})" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to motion</translate>
+      </a>
+      <!-- pdf -->
+      <a ng-click="pdfExport()" class="btn btn-default btn-sm">
+        <i class="fa fa-file-pdf-o fa-lg"></i>
+        <translate>PDF</translate>
+      </a>
+    </div>
+    <h1>{{ motion.agenda_item.getTitle() || motion.getTitle() }}</h1>
+    <h2><translate>Motion</translate> {{ motion.identifier }} |
+      <translate>Voting result</translate></h2>
+  </div>
+</div>
+
+<div class="details">
+  <!-- Result table -->
+  <table class="table table-bordered" id="resultTable">
+    <!-- yes -->
+    <tr>
+      <td><img src='/static/img/button-yes.png'> <translate>Yes</translate>
+      <td class="bold">
+        {{ poll.getVote(poll.yes, 'yes').value }}
+        {{ poll.getVote(poll.yes, 'yes').percentStr }}
+    <!-- no -->
+    <tr>
+      <td><img src='/static/img/button-no.png'> <translate>No</translate>
+      <td class="bold">
+        {{ poll.getVote(poll.no, 'no').value }}
+        {{ poll.getVote(poll.yes, 'no').percentStr }}
+
+    <!-- abstain -->
+    <tr>
+      <td><img src='/static/img/button-abstain.png'> <translate>Abstain</translate>
+      <td class="bold">
+        {{ poll.getVote(poll.abstain, 'abstain').value }}
+        {{ poll.getVote(poll.abstain, 'abstain').percentStr }}
+
+    <!-- valid votes -->
+    <tr>
+      <td><translate>Valid votes</translate>
+      <td class="bold">
+        {{ poll.getVote(poll.votesvalid, 'votesvalid').value }}
+        {{ poll.getVote(poll.votesvalid, 'votesvalid').percentStr }}
+  </table>
+
+  <!-- Single votes -->
+  <div class="row">
+    <div class="col-sm-6"> <h3 translate>Single votes</h3></div>
+    <div class="col-sm-4 pull-right">
+      <!-- Search/filter -->
+      <input type="text" ng-model="filter.search" class="form-control"
+          placeholder="{{ 'Search' | translate }}">
+    </div>
+  </div>
+
+  <div class="italic">
+    <div ng-repeat="b in ballotsFiltered = (ballots | osFilter:filter.search:getFilterString |
+        orderBy:sortColumn:reverse)"></div>
+    {{ ballotsFiltered.length }} / {{ ballots.length }} {{ "ballots" | translate }}
+  </div>
+
+  <table class="table table-striped table-bordered table-hover">
+    <thead>
+      <tr>
+        <!-- Delegate column -->
+        <th ng-click="toggleSort('user.full_name')" class="sortable">
+          <translate>Delegate</translate>
+          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
+              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+
+        <!-- Vote column -->
+        <th ng-click="toggleSort('vote')" class="sortable">
+          <translate>Casted vote</translate>
+          <i class="pull-right fa" ng-show="sortColumn === 'vote' && header.sortable != false"
+              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+
+    <tbody>
+      <tr ng-repeat="ballot in ballotsFiltered | limitTo:pg.itemsPerPage:pg.firstItem"
+        class="animate-item" ng-class="{'selected':ballot.selected}">
+
+        <!-- Delegate -->
+        <td>
+            <a href="" ui-sref="users.user.detail({id: ballot.user.id})">{{ ballot.user.full_name }}</a>
+
+        <!-- Vote -->
+        <td>
+          <i class="fa fa-{{ ballot.getVoteIcon() }}"></i>
+          <span style="margin-left: 5px">{{ ballot.getVote() | translate }}</span>
+  </table>
+  <ul uib-pagination
+      ng-show="ballotsFiltered.length > pg.itemsPerPage"
+      total-items="ballotsFiltered.length"
+      items-per-page="pg.itemsPerPage"
+      ng-model="pg.currentPage"
+      ng-change="pg.pageChanged()"
+      class="pagination-sm"
+      direction-links="false"
+      boundary-links="true"
+      first-text="&laquo;"
+      last-text="&raquo;">
+  </ul>
+
+</div>

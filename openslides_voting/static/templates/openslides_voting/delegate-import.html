@@ -1,0 +1,114 @@
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <a ui-sref="openslides_voting.delegate.list" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to overview</translate>
+      </a>
+    </div>
+    <h1 translate>Import voting rights</h1>
+  </div>
+</div>
+
+<div class="details">
+  <h3 translate>Select a CSV file</h3>
+  <csv-import change="onCsvChange(csv)" config="csvConfig"></csv-import>
+
+  <h4 translate>Please note:</h4>
+  <ul class="indentation">
+      <li><translate>Required comma or semicolon separated values with these column header names in the first row</translate>:<br>
+        <code>
+          <translate>Given name</translate>,
+          <translate>Surname</translate>,
+          <translate>Participant number</translate>,
+          <translate>Voting principles</translate>
+        </code>
+      <li translate>Only double quotes are accepted as text delimiter (no single quotes).
+  </ul>
+
+  <div ng-if="delegateShares.length">
+    <h3 translate>Preview</h3>
+    <div class="scroll-x-container">
+      <table class="table table-striped table-bordered table-condensed">
+        <thead>
+          <tr>
+            <th>
+            <th>#
+            <th translate>Delegate
+            <th ng-repeat="cat in categories">{{ cat }}
+        <tbody>
+          <tr ng-repeat="delegateShare in delegateShares | limitTo:pg.itemsPerPage:pg.firstItem">
+            <td class="minimum"
+                ng-class="{ 'text-danger': delegateShare.importerror, 'text-success': delegateShare.imported }">
+              <span ng-if="delegateShare.importerror">
+                <i class="fa fa-exclamation-triangle fa-lg"></i>
+              </span>
+                <span ng-if="!delegateShare.importerror && !delegateShare.imported" class="pointer">
+                  <i class="fa fa-check-circle-o fa-lg" ng-if="delegateShare.selected" ng-click="delegateShare.selected=false; calcStats();"></i>
+                  <i class="fa fa-circle-o fa-lg" ng-if="!delegateShare.selected" ng-click="delegateShare.selected=true; calcStats();"></i>
+                </span>
+              <span ng-if="delegateShare.imported">
+                <i class="fa fa-check-circle fa-lg"></i>
+              </span>
+            <td class="nobr">
+              {{ (pg.currentPage - 1) * pg.itemsPerPage + $index + 1 }}
+            <td ng-class="{ 'text-danger': delegateShare.error.user }">
+              <span ng-if="delegateShare.error.user" title="{{ delegateShare.error.user | translate }}">
+                <i class="fa fa-exclamation-triangle"></i>
+              </span>
+              {{ delegateShare.fullname }}
+            <td ng-repeat="cat in categories"
+                ng-class="{ 'text-danger': delegateShare.error[cat] }">
+              <span ng-if="delegateShare.error[cat]" title="{{ delegateShare.error[cat] | translate }}">
+                <i class="fa fa-exclamation-triangle"></i>
+              </span>
+              {{ delegateShare[cat] }}
+      </table>
+    </div>
+    <ul uib-pagination
+        ng-show="delegateShares.length > pg.itemsPerPage"
+        total-items="delegateShares.length"
+        items-per-page="pg.itemsPerPage"
+        ng-model="pg.currentPage"
+        ng-change="pg.pageChanged()"
+        class="pagination-sm"
+        direction-links="false"
+        boundary-links="true"
+        first-text="&laquo;"
+        last-text="&raquo;">
+    </ul>
+
+    <div class="text-danger">
+      <i class="fa fa-exclamation-triangle"></i>
+      {{ sharesWillNotBeImported }}
+      <translate>voting rights will not be imported.</translate>
+    </div>
+    <div>
+      <i class="fa fa-check-circle-o fa-lg"></i>
+      {{ sharesWillBeImported }}
+      <translate>voting rights will be imported.</translate>
+    </div>
+    <div ng-repeat="share in delegateSharesImported = (delegateShares | filter:{imported:true})"></div>
+    <div ng-if="delegateSharesImported.length" class="text-success">
+      <hr class="smallhr">
+      <i class="fa fa-check-circle fa-lg"></i>
+      {{ delegateSharesImported.length }}
+      <translate>voting rights were successfully imported.</translate>
+    </div>
+
+    <div class="spacer">
+      <button ng-click="clear()" class="btn btn-default" translate>
+        Clear preview
+      </button>
+      <button ng-if="!csvImporting && sharesWillBeImported > 0" ng-click="import()" class="btn btn-primary" translate>
+        Import {{ sharesWillBeImported }} voting shares
+      </button>
+    </div>
+    <div class="spacer">
+      <a ng-if="csvImported" ui-sref="openslides_voting.delegate.list" class="btn btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to delegates overview</translate>
+      </a>
+    </div>
+  </div>
+</div>

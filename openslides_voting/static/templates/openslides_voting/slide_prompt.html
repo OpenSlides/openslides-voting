@@ -1,0 +1,49 @@
+<div ng-controller="SlidePromptCtrl">
+
+  <style type="text/css">
+    #voting_slide_message {
+        border-radius: 0 0 0.2em 0.2em;
+        font-size: 1.5em;
+        font-weight: bold;
+        text-align: center;
+        position: fixed;
+        padding: 0 0 5px 0;
+        margin: 0;
+        top: 0;
+        right: 50px;
+        left: 50px;
+        min-height: 70px;  /* to cover up header */
+        line-height: 160%;
+        opacity: 0.95;
+        z-index: 100;
+    }
+    #voting_slide_message img {
+        width: 50px;
+    }
+    #voting_slide_message .candidate {
+      font-weight: normal;
+    }
+    #voting_slide_message .key {
+      width: 45px;
+      height: 45px;
+      -webkit-border-radius: 7px;
+      -moz-border-radius: 7px;
+      border-radius: 7px;
+      background-color:#100A4A;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2em;
+      display: inline-block;
+      text-align: center;
+    }
+    #voting_slide_message .columns {
+      text-align: left;
+      list-style: none;
+      columns: 2;
+      -webkit-columns: 2;
+      -moz-columns: 2;
+    }
+  </style>
+
+  <div ng-if="visible" id="voting_slide_message" class="well" ng-bind-html="message"></div>
+</div>

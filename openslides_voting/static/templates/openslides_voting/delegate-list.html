@@ -1,0 +1,153 @@
+<style type="text/css">
+  td.name {
+    min-width: 200px;
+  }
+</style>
+
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <a ui-sref="openslides_voting.delegate.attendance" class="btn btn-default btn-sm">
+        <i class="fa fa-check-square-o fa-lg"></i>
+        <translate>Attendance</translate>
+      </a>
+      <a ui-sref="openslides_voting.absenteeVote.list" class="btn btn-default btn-sm">
+        <i class="fa fa-file-text-o fa-lg"></i>
+        <translate>Absentee votes</translate>
+      </a>
+      <a ui-sref="openslides_voting.keypad.list" class="btn btn-default btn-sm">
+        <i class="fa fa-wifi fa-lg"></i>
+        <translate>Keypads</translate>
+      </a>
+      <a ui-sref="openslides_voting.delegate.import" class="btn btn-default btn-sm">
+        <i class="fa fa-download fa-lg"></i>
+        <translate>Import voting rights</translate>
+      </a>
+    </div>
+    <h1 translate>Delegates</h1>
+  </div>
+</div>
+
+<div class="details">
+  <div class="row">
+
+    <!-- Search/filter -->
+    <div class="col-sm-6 col-sm-offset-6">
+      <div class="form-inline text-right">
+        <div class="form-group">
+          <div class="input-group">
+            <div class="input-group-addon"><i class="fa fa-search"></i></div>
+            <input type="text" ng-model="filter.search" class="form-control"
+               placeholder="{{ 'Search' | translate}}">
+          </div>
+        </div>
+        <button class="btn btn-default" ng-click="isFilterOpen = !isFilterOpen"
+            ng-class="isFilterOpen ? 'btn-primary' : 'btn-default'">
+          <i class="fa fa-filter"></i>
+          <translate>Filter ...</translate>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter options -->
+  <div uib-collapse="!isFilterOpen" class="row spacer">
+    <div class="col-sm-6 text-right"></div>
+    <div class="col-sm-6 text-right form-inline">
+      <!-- Status filter -->
+      <select ng-model="statusFilter" class="form-control" id="statusFilter">
+        <option value="" translate>All</option>
+        <option value="can_vote" translate>Registered</option>
+        <option value="has_proxy" translate>Represented</option>
+        <option value="inactive" translate>Absent</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="spacer-top-lg italic">
+    <div ng-repeat="d in delegatesFiltered = (delegates | osFilter:filter.search:getFilterString |
+        filter:{status: statusFilter} | orderBy:sortColumn:reverse)"></div>
+    {{ delegatesFiltered.length }} / {{ delegates.length }} {{ "delegates" | translate }},
+    {{ attendingCount }} {{ "present" | translate }},
+    {{ representedCount }} {{ "represented" | translate }},
+    {{ absentCount }} {{ "absent" | translate }}
+  </div>
+
+  <div class="scroll-x-container">
+    <table class="table table-striped table-bordered table-hover">
+      <thead>
+        <tr>
+          <!-- Delegate column -->
+          <th ng-click="toggleSort('user.full_name')" class="sortable">
+            <translate>Delegate</translate>
+            <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
+                ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+            </i>
+
+          <!-- Present column -->
+          <th ng-click="toggleSort('user.is_present')" class="sortable">
+            <translate>Present</translate>
+            <i class="pull-right fa" ng-show="sortColumn === 'user.is_present' && header.sortable != false"
+                ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+            </i>
+
+          <!-- Keypad column -->
+          <th ng-click="toggleSort('keypad.number')" class="text-center sortable">
+            <translate>Keypad</translate>
+            <i class="pull-right fa" ng-show="sortColumn === 'keypad.number' && header.sortable != false"
+                ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+            </i>
+
+          <!-- Proxy column -->
+          <th ng-click="toggleSort('proxy.rep.full_name')" class="sortable">
+            <translate>Proxy</translate>
+            <i class="pull-right fa" ng-show="sortColumn === 'proxy.rep.full_name' && header.sortable != false"
+                ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+            </i>
+
+          <!-- Shares columns -->
+          <!-- TODO: Sort shares columns. -->
+          <th ng-repeat="category in (categories | orderBy:'id')" class="text-right">
+            {{ category.name }}
+
+      <tbody>
+        <tr ng-repeat="delegate in delegatesFiltered | limitTo:pg.itemsPerPage:pg.firstItem">
+          <!-- Delegate -->
+          <td class="name">
+            <span>
+              <a href="" ng-click="openDialog(delegate)">{{ delegate.user.full_name }}</a>
+            </span>
+
+          <!-- Present -->
+          <td>
+            <span>
+              <i ng-if="delegate.user.is_present" class="fa fa-check-square-o"></i>
+            </span>
+
+          <!-- Keypad -->
+          <td class="text-center">
+            {{ delegate.keypad.number }}
+
+          <!-- Proxy -->
+          <td class="name">
+            <span ng-if="delegate.proxy" >{{ delegate.proxy.rep.full_name }}</span>
+            <span ng-if="!delegate.proxy">–</span>
+
+          <!-- Shares collection, categories must be sorted in the same order as the header -->
+          <td ng-repeat="category in (categories | orderBy:'id')" class="text-right">
+            {{ delegate.shares[category.id] | number:getVPPrecision(category.name) }}
+    </table>
+  </div>
+  <ul uib-pagination
+      ng-show="delegatesFiltered.length > pg.itemsPerPage"
+      total-items="delegatesFiltered.length"
+      items-per-page="pg.itemsPerPage"
+      ng-model="pg.currentPage"
+      ng-change="pg.pageChanged()"
+      class="pagination-sm"
+      direction-links="false"
+      boundary-links="true"
+      first-text="&laquo;"
+      last-text="&raquo;">
+  </ul>
+</div>

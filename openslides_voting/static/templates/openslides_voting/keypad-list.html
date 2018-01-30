@@ -1,0 +1,189 @@
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <div>
+        <a ui-sref="openslides_voting.delegate.list" class="btn btn-sm btn-default">
+          <i class="fa fa-angle-double-left fa-lg"></i>
+          <translate>Back to overview</translate>
+        </a>
+        <a ng-click="openDialog()" class="btn btn-primary btn-sm">
+          <i class="fa fa-plus fa-lg"></i>
+          <translate>New</translate>
+        </a>
+        <a ui-sref="openslides_voting.keypad.import" class="btn btn-default btn-sm">
+          <i class="fa fa-download fa-lg"></i>
+          <translate>Import</translate>
+        </a>
+        <a ng-if="!vc.is_voting || vc.voting_mode != 'Test'" ng-click="startSysTest()" class="btn btn-default btn-sm">
+          <i class="fa fa-cogs fa-lg"></i>
+          <translate>Start system test</translate>
+        </a>
+        <a ng-if="vc.is_voting && vc.voting_mode == 'Test'" ng-click="stopSysTest()" class="btn btn-danger btn-sm">
+          <i class="fa fa-cogs fa-lg"></i>
+          <translate>Stop system test</translate>
+        </a>
+      </div>
+      <div class="spacer">
+        <span class="small pull-right">{{ device }}</span>
+      </div>
+    </div>
+    <h1 translate>Keypads</h1>
+  </div>
+</div>
+
+<div class="details">
+  <div class="row">
+    <div class="col-sm-6">
+      <!-- Delete mode -->
+      <button class="btn"
+          ng-class="isDeleteMode ? 'btn-primary' : 'btn-default'"
+          ng-click="isDeleteMode = !isDeleteMode; uncheckAll()">
+        <i class="fa fa-check-square-o"></i>
+        <translate>Select ...</translate>
+      </button>
+    </div>
+    <!-- Search/filter -->
+    <div class="col-sm-6">
+      <div class="form-inline text-right">
+        <div class="form-group">
+          <div class="input-group">
+            <div class="input-group-addon"><i class="fa fa-search"></i></div>
+            <input type="text" ng-model="filter.search" class="form-control"
+               placeholder="{{ 'Search' | translate}}">
+          </div>
+        </div>
+        <button class="btn btn-default" ng-click="isFilterOpen = !isFilterOpen"
+            ng-class="isFilterOpen ? 'btn-primary' : 'btn-default'">
+          <i class="fa fa-filter"></i>
+          <translate>Filter ...</translate>
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Filter options -->
+  <div uib-collapse="!isFilterOpen" class="row spacer">
+    <div class="col-sm-6 text-right"></div>
+    <div class="col-sm-6 text-right form-inline">
+      <!-- User filter -->
+      <select ng-model="userFilter" class="form-control" id="userFilter">
+        <option value="" translate>--- Select keypad usage ---</option>
+        <option value="false" translate>anonymous</option>
+        <option value="true" translate>personalized</option>
+      </select>
+      <!-- Active filter -->
+      <select ng-model="activeFilter" class="form-control" id="activeFilter">
+        <option value="" translate>--- Select status ---</option>
+        <option value="true" translate>active</option>
+        <option value="false" translate>inactive</option>
+      </select>
+      <!-- TODO: Add in range and battery filter -->
+    </div>
+  </div>
+  <!-- Delete mode options -->
+  <div uib-collapse="!isDeleteMode" class="row spacer">
+    <div class="col-sm-12 text-left">
+      <!-- Delete button -->
+      <a ng-show="isDeleteMode"
+         ng-bootbox-confirm="{{ 'Are you sure you want to delete all selected keypads?' | translate }}"
+         ng-bootbox-confirm-action="deleteMultiple()"
+         class="btn btn-primary">
+        <i class="fa fa-trash fa-lg"></i>
+        <translate>Delete selected keypads</translate>
+      </a>
+    </div>
+  </div>
+
+  <div class="spacer-top-lg italic">
+    <div ng-repeat="kp in keypadsFiltered = (keypads | osFilter:filter.search:getFilterString |
+        filter:{active: activeFilter} | filter:{identified: userFilter} | orderBy:sortColumn:reverse)"></div>
+    {{ keypadsFiltered.length }} /
+    {{ keypads.length }} {{ "keypads" | translate }}<span ng-if="(keypads|filter:{selected:true}).length > 0">,
+    {{(keypads|filter:{selected:true}).length}} {{ "selected" | translate }}</span>
+  </div>
+
+  <table class="table table-striped table-bordered table-hover">
+    <thead>
+      <tr>
+        <!-- Delete selection column -->
+        <th ng-show="isDeleteMode" class="minimum deleteColumn">
+          <input type="checkbox" ng-model="$parent.selectedAll" ng-change="checkAll()">
+
+        <!-- Keypad number column -->
+        <th ng-click="toggleSort('number')" class="sortable">
+          <translate>Keypad</translate>
+          <i class="pull-right fa" ng-show="sortColumn === 'number' && header.sortable != false"
+              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+
+        <!-- User column -->
+        <th ng-click="toggleSort('user.full_name')" class="sortable optional">
+          <translate>Participant</translate>
+          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
+              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+
+        <!-- In range column -->
+        <!-- TODO: Sort by in range -->
+        <th>
+          <translate>In range</translate>
+
+        <!-- Battery column -->
+        <!-- TODO: Sort by battery -->
+        <th>
+          <translate>Battery</translate>
+          <i class="fa fa-info-circle"
+            uib-tooltip="{{ 'Battery state is checked with each voting. Available states: full, medium, low, empty' | translate }}"></i>
+
+    <tbody>
+      <tr ng-repeat="keypad in keypadsFiltered | limitTo:pg.itemsPerPage:pg.firstItem"
+        class="animate-item"
+        ng-class="{'selected':keypad.selected}">
+
+        <!-- Delete selection -->
+        <td ng-show="isDeleteMode" class="deleteColumn">
+          <input type="checkbox" ng-model="keypad.selected">
+
+        <!-- Keypad number-->
+        <td ng-mouseover="keypad.hover=true" ng-mouseleave="keypad.hover=false">
+            <strong>{{ keypad.number }}</strong>
+            &nbsp; <span ng-if="!keypad.active" class="label label-warning"><translate>inactive</translate></span>
+            <div class="hoverActions" ng-class="{'hiddenDiv': !keypad.hover}">
+              <span>
+                <a href="" ng-click="openDialog(keypad)" translate>Edit</a> &middot;
+                <a href="" class="text-danger"
+                  ng-bootbox-confirm="{{ 'Are you sure you want to delete this entry?' | translate }}<br>
+                  <b>{{ keypad.getTitle() }}</b>"
+                  ng-bootbox-confirm-action="delete(keypad)" translate>Delete</a>
+              </span>
+            </div>
+
+        <!-- User -->
+        <td class="optional">
+          <span ng-if="keypad.user">
+            <a href="" ui-sref="users.user.detail({id: keypad.user.id})">{{ keypad.user.full_name }}</a>
+          </span>
+          <span ng-if="!keypad.user"><i><translate>Anonymous</translate></i></span>
+
+        <!-- In range -->
+        <td>
+          <i ng-if="keypad.in_range" class="fa fa-check-square-o fa-lg" title="{{ 'Yes' | translate }}" aria-hidden="true"></i>
+          <i ng-if="!keypad.in_range" class="fa fa-ban fa-lg text-danger" title="{{ 'No' | translate }}" aria-hidden="true"></i>
+
+        <!-- Battery -->
+        <td>
+          <i class="fa fa-lg fa-battery-{{ keypad.powerCSSIcon() }} text-{{ keypad.powerCSSColor() }}"
+            title="{{ keypad.power() | translate }}" aria-hidden="true"></i>
+  </table>
+  <ul uib-pagination
+      ng-show="keypadsFiltered.length > pg.itemsPerPage"
+      total-items="keypadsFiltered.length"
+      items-per-page="pg.itemsPerPage"
+      ng-model="pg.currentPage"
+      ng-change="pg.pageChanged()"
+      class="pagination-sm"
+      direction-links="false"
+      boundary-links="true"
+      first-text="&laquo;"
+      last-text="&raquo;">
+  </ul>
+</div>

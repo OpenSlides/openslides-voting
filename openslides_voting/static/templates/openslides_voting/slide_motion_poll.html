@@ -1,0 +1,126 @@
+<div ng-controller="SlideMotionPollCtrl" class="content scrollcontent">
+
+  <style type="text/css">
+    #resultTable {
+      font-size: 150%;
+      line-height: 40px;
+      margin: 0 20px 0 0;
+      font-weight: bold;
+      width: auto;
+    }
+    #resultTable img {
+      width: auto;
+    }
+    #resultTable td {
+      padding: 9px;
+    }
+    #resultTable td.bold {
+      font-weight: bold;
+      text-align: right;
+    }
+    #resultTable td.vote {
+      min-width: 30px;
+    }
+    #resultTable td.percentage {
+      font-weight: normal;
+      font-size: 70%;
+      min-width: 200px;
+    }
+
+    #delegateBoard table {
+        border-collapse: separate;
+        border-spacing: 5px;
+        border: none;
+    }
+    #delegateBoard table td {
+        background-color: #ffffff;
+    }
+    #delegateBoard table td {
+        padding: 0;
+        font-size: 0.75em;
+        min-width: 1em;
+        width: 3em;
+        height: 3em;
+        border: none;
+    }
+    #delegateBoard table td.seat {
+        border: 1px solid black;
+        line-height: 120%;
+        text-align: center;
+    }
+    #delegateBoard table td.seat-N {
+        background-color: #ff201c;
+    }
+    #delegateBoard table td.seat-Y {
+        background-color: #008f2a;
+    }
+    #delegateBoard table td.seat-A {
+        background-color: #f1d300;
+    }
+    #delegateBoard table td.seat-V {
+        background-color: #999;
+    }
+  </style>
+
+  <!-- Title -->
+  <div id="title">
+    <h1>{{ motion.agenda_item.getTitle() || motion.getTitle() }}</h1>
+    <h2>
+      <span ng-if="config('motions_slide_has_motion_id')"><translate>Motion</translate> {{ motion.identifier }} |</span>
+      <span ng-if="poll.has_votes"><translate>Voting result</translate></span>
+    </h2>
+  </div>
+
+  <!-- Result table -->
+  <!-- TODO NEXT: Add voting principle precision, e.g. poll.yes | number:precision -->
+  <table ng-if="poll.has_votes"
+      class="well pull-left" id="resultTable">
+    <!-- yes -->
+    <tr>
+      <td><img src='/static/img/button-yes.png'>
+      <td class="bold">
+        {{ poll.yes }}
+      <td class="percentage">
+        <div ng-if="poll.getVote(poll.yes, 'yes').percentNumber || !poll.has_votes">
+          {{ poll.getVote(poll.yes, 'yes').percentStr || '&nbsp;' }}
+          <uib-progressbar value="poll.getVote(poll.yes, 'yes').percentNumber" type="success"
+              ng-class="{ 'progress-striped active': !poll.has_votes }"></uib-progressbar>
+        </div>
+
+    <!-- no -->
+    <tr>
+      <td><img src='/static/img/button-no.png'>
+      <td class="bold">
+        {{ poll.no }}
+      <td class="percentage">
+        <div ng-if="poll.getVote(poll.no, 'no').percentNumber || !poll.has_votes">
+          {{ poll.getVote(poll.no, 'no').percentStr || '&nbsp;' }}
+          <uib-progressbar value="poll.getVote(poll.no, 'no').percentNumber" type="danger"
+              ng-class="{ 'progress-striped active': !poll.has_votes }"></uib-progressbar>
+        </div>
+
+    <!-- abstain -->
+    <tr>
+      <td><img src='/static/img/button-abstain.png'>
+      <td class="bold">
+        {{ poll.abstain }}
+      <td class="percentage">
+        <div ng-if="poll.getVote(poll.abstain, 'abstain').percentNumber || !poll.has_votes">
+          {{ poll.getVote(poll.abstain, 'abstain').percentStr || '&nbsp;'}}
+          <uib-progressbar value="poll.getVote(poll.abstain, 'abstain').percentNumber" type="warning"
+              ng-class="{ 'progress-striped active': !poll.has_votes }"></uib-progressbar>
+        </div>
+
+    <!-- valid votes -->
+    <tr class="total">
+      <td>
+      <td class="bold">
+        {{ poll.votesvalid || votes_received }}
+      <td>
+        {{ poll.getVote(poll.votesvalid, 'votesvalid').percentStr }}
+  </table>
+
+
+  <!-- delegate board -->
+  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml"></div>
+</div>

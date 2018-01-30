@@ -1,0 +1,122 @@
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <a ui-sref="openslides_voting.absenteeVote.list" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to overview</translate>
+      </a>
+    </div>
+    <h1 translate>Import absentee votes</h1>
+  </div>
+</div>
+
+<div class="details">
+  <h3 translate>Select a CSV file</h3>
+  <csv-import change="onCsvChange(csv)" config="csvConfig"></csv-import>
+
+
+  <h4 translate>Please note:</h4>
+  <ul class="indentation">
+      <li><translate>Required comma or semicolon separated values with these column header names in the first row</translate>:<br>
+        <code>
+          <translate>Given name</translate>,
+          <translate>Surname</translate>,
+          <translate>Participant number</translate>,
+          <translate>Motion identifier</translate>,
+          <translate>Voting intention</translate>
+        </code>
+      <li translate>Only double quotes are accepted as text delimiter (no single quotes).
+  </ul>
+
+  <div ng-if="delegateVotes.length">
+    <h3 translate>Preview</h3>
+    <table class="table table-striped table-bordered table-condensed">
+      <thead>
+        <tr>
+          <th>
+          <th>#
+          <th translate>Delegate
+          <th translate>Motion
+          <th translate>Voting intention</th>
+      <tbody>
+        <tr ng-repeat="delegateVote in delegateVotes | limitTo:pg.itemsPerPage:pg.firstItem">
+          <td class="minimum"
+              ng-class="{ 'text-danger': delegateVote.importerror, 'text-success': delegateVote.imported }">
+            <span ng-if="delegateVote.importerror">
+              <i class="fa fa-exclamation-triangle fa-lg"></i>
+            </span>
+            <span ng-if="!delegateVote.importerror && !delegateVote.imported" class="pointer">
+              <i class="fa fa-check-circle-o fa-lg"
+                 ng-if="delegateVote.selected" ng-click="delegateVote.selected=false; calcStats();"></i>
+              <i class="fa fa-circle-o fa-lg"
+                 ng-if="!delegateVote.selected" ng-click="delegateVote.selected=true; calcStats();"></i>
+            </span>
+            <span ng-if="delegateVote.imported">
+              <i class="fa fa-check-circle fa-lg"></i>
+            </span>
+          <td class="nobr">
+            {{ (pg.currentPage - 1) * pg.itemsPerPage + $index + 1 }}
+          <td ng-class="{ 'text-danger': delegateVote.user_error }">
+            <span ng-if="delegateVote.user_error" title="{{ delegateVote.user_error | translate }}">
+              <i class="fa fa-exclamation-triangle"></i>
+            </span>
+            {{ delegateVote.fullname }}
+          <td ng-class="{ 'text-danger': delegateVote.motion_error }">
+            <span ng-if="delegateVote.motion_error" title="{{ delegateVote.motion_error | translate }}">
+              <i class="fa fa-exclamation-triangle"></i>
+            </span>
+            {{ delegateVote.motion }}
+          <td ng-class="{ 'text-danger': delegateVote.vote_error }">
+            <span ng-if="delegateVote.vote_error" title="{{ delegateVote.vote_error | translate }}">
+              <i class="fa fa-exclamation-triangle"></i>
+            </span>
+            <i class="fa fa-{{ delegateVote.vote_icon }}"></i>
+            <span style="margin-left: 5px">{{ delegateVote.vote_name }}</span>
+    </table>
+    <ul uib-pagination
+        ng-show="delegateVotes.length > pg.itemsPerPage"
+        total-items="delegateVotes.length"
+        items-per-page="pg.itemsPerPage"
+        ng-model="pg.currentPage"
+        ng-change="pg.pageChanged()"
+        class="pagination-sm"
+        direction-links="false"
+        boundary-links="true"
+        first-text="&laquo;"
+        last-text="&raquo;">
+    </ul>
+
+    <div class="text-danger">
+      <i class="fa fa-exclamation-triangle"></i>
+      {{ votesWillNotBeImported }}
+      <translate>absentee votes will not be imported.</translate>
+    </div>
+    <div>
+      <i class="fa fa-check-circle-o fa-lg"></i>
+      {{ votesWillBeImported }}
+      <translate>absentee votes will be imported.</translate>
+    </div>
+    <div ng-repeat="delegateVote in delegateVotesImported = (delegateVotes | filter:{imported:true})"></div>
+    <div ng-if="delegateVotesImported.length" class="text-success">
+      <hr class="smallhr">
+      <i class="fa fa-check-circle fa-lg"></i>
+      {{ delegateVotesImported.length }}
+      <translate>absentee votes were successfully imported.</translate>
+    </div>
+
+    <div class="spacer">
+      <button ng-click="clear()" class="btn btn-default" translate>
+        Clear preview
+      </button>
+      <button ng-if="!csvImporting && votesWillBeImported > 0" ng-click="import()" class="btn btn-primary" translate>
+        Import {{ votesWillBeImported }} absentee votes
+      </button>
+    </div>
+    <div class="spacer">
+      <a ng-if="csvImported" ui-sref="openslides_voting.absenteeVote.list" class="btn btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to absentee votes overview</translate>
+      </a>
+    </div>
+  </div>
+</div>

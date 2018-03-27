@@ -1,6 +1,14 @@
+import os
+
 from django.apps import AppConfig
 
-from . import __description__, __verbose_name__, __version__
+from . import (
+    __description__,
+    __license__,
+    __url__,
+    __verbose_name__,
+    __version__,
+)
 
 
 class VotingAppConfig(AppConfig):
@@ -8,15 +16,28 @@ class VotingAppConfig(AppConfig):
     verbose_name = __verbose_name__
     description = __description__
     version = __version__
+    license = __license__
+    url = __url__
     angular_site_module = True
     angular_projector_module = True
     js_files = [
         'static/js/openslides_voting/base.js',
-        'static/js/openslides_voting/voting.js',
+        'static/js/openslides_voting/templatehooks.js',
         'static/js/openslides_voting/pdf.js',
         'static/js/openslides_voting/site.js',
-        'static/js/openslides_voting/projector.js'
+        'static/js/openslides_voting/projector.js',
+        'static/js/openslides_voting/templates.js'
     ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        import settings
+        # Add the staticfiles dir to OpenSlides
+        base_path = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+        # remove the app folder 'openslides_voting'
+        base_path = os.path.dirname(base_path)
+        settings.STATICFILES_DIRS.append(os.path.join(base_path, 'static'))
 
     def ready(self):
         # Load projector elements.

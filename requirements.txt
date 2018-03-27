@@ -1,0 +1,6 @@
+# Require OpenSlides
+-r requirements_production.txt
+
+# For testing
+flake8
+isort==4.2.5

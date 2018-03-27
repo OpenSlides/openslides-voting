@@ -1,9 +1,8 @@
 /**
- * Gulp tasks for openslides votecollector plugin.
+ * Gulp tasks for openslides voting plugin.
  *
- * Run
- *
- *      $ ./node_modules/.bin/gulp
+ * Run `./node_modules/.bin/gulp` for all default task and
+ * `./node_modules/.bin/gulp watch` during development
  *
  */
 
@@ -14,12 +13,29 @@ require('es6-promise').polyfill();
 var gulp = require('gulp'),
     gettext = require('gulp-angular-gettext'),
     jshint = require('gulp-jshint'),
-    path = require('path')
+    path = require('path'),
+    templateCache = require('gulp-angular-templatecache');
 
 
 /**
  * Default tasks to be run before start.
  */
+
+// Catches all template files concats them to one file js/templates.js.
+gulp.task('templates', function () {
+    return gulp.src(path.join('**', 'static', 'templates', '**', '*.html'))
+        .pipe(templateCache('templates.js', {
+            module: 'OpenSlidesApp.openslides_voting.templates',
+            standalone: true,
+            moduleSystem: 'IIFE',
+            transformUrl: function (url) {
+                var pathList = url.split(path.sep);
+                pathList.shift();
+                return pathList.join(path.sep);
+            },
+        }))
+        .pipe(gulp.dest(path.join('static', 'js', 'openslides_voting')));
+});
 
 // Compiles translation files (*.po) to *.json and saves them in the directory 'i18n'.
 gulp.task('translations', function () {
@@ -27,11 +43,18 @@ gulp.task('translations', function () {
         .pipe(gettext.compile({
             format: 'json'
         }))
-        .pipe(gulp.dest(path.join('openslides_voting', 'static', 'i18n', 'openslides_voting')));
+        .pipe(gulp.dest(path.join('static', 'i18n', 'openslides_voting')));
 });
 
 // Gulp default task. Runs all other tasks before.
-gulp.task('default', ['translations'], function () {});
+gulp.task('default', ['translations', 'templates'], function () {});
+
+// Watches changes in JavaScript and templates.
+gulp.task('watch', ['templates'], function   () {
+    gulp.watch([
+        path.join('**', 'static', 'templates', '**', '*.html')
+    ], ['templates']);
+});
 
 
 /**
@@ -53,7 +76,7 @@ gulp.task('pot', function () {
 gulp.task('jshint', function () {
     return gulp.src([
             'gulpfile.js',
-            path.join( 'openslides_voting', 'static', '*', '*.js' ),
+            path.join( 'openslides_voting', 'static', 'js', 'openslides_voting', '*.js' ),
         ])
         .pipe(jshint())
         .pipe(jshint.reporter('default'))

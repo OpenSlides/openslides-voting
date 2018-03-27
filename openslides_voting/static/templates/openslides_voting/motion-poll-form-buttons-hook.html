@@ -1,0 +1,25 @@
+<div ng-controller="VotingCtrl" ng-init="poll=$parent.$parent.model" class="spacer">
+  <button type="button"
+    ng-if="canStartVoting()" ng-click="startVoting()"
+    class="btn btn-default">
+    <i class="fa fa-wifi" aria-hidden="true"></i> 
+    {{ 'Start voting' | translate }}</button> 
+  <button type="button"
+    ng-if="canStopVoting()" ng-click="stopVoting()"
+    class="btn btn-primary">
+    <i class="fa fa-wifi" aria-hidden="true"></i>
+    {{ 'Stop voting' | translate }}</button> 
+  <button type="button"
+    ng-if="canClearVotes()" ng-click="clearVotes()"
+    class="btn btn-default">
+    <i class="fa fa-trash" aria-hidden="true"></i>
+    {{ 'Clear votes' | translate }}</button> 
+  <button type="button" os-perms="core.can_manage_projector"
+    ng-class="{ 'btn-primary': isProjected() }"
+    ng-click="projectSlide()"
+    class="btn btn-default"
+    title="{{ 'Project vote result' | translate }}">
+    <i class="fa fa-video-camera"></i> 
+    {{ 'Voting result' | translate }}</button>
+  <p>{{ getVotingStatus() }}</p>
+</div>

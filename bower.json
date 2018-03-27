@@ -1,0 +1,7 @@
+{
+  "name": "openslides-voting",
+  "private": true,
+  "dependencies": {
+    "angular-gettext": "~2.3.6"
+  }
+}

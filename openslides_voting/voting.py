@@ -105,7 +105,6 @@ class Ballot:
         self.poll = poll
         self.admitted_delegates = None
         self.new_ballots = None
-        self.updated = 0
         self._clear_result()
 
     def delete_ballots(self):
@@ -118,11 +117,11 @@ class Ballot:
         for pk in MotionPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
             args.append(MotionPollBallot.get_collection_string())
             args.append(pk)
-        self.updated, l = MotionPollBallot.objects.filter(poll=self.poll).delete()
+        deleted_count, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
         if args:
             inform_deleted_data(*args)
         self._clear_result()
-        return self.updated
+        return deleted_count
 
     def create_absentee_ballots(self):
         """
@@ -138,7 +137,7 @@ class Ballot:
         admitted_delegates = query_admitted_delegates(self.poll.motion.category)
         qs_absentee_votes = qs_absentee_votes.filter(delegate__in=admitted_delegates)
 
-        self.updated = 0
+        updated = 0
         ballots = []
         delegate_ids = []
         for absentee_vote in qs_absentee_votes:
@@ -153,7 +152,7 @@ class Ballot:
             else:
                 ballots.append(mpb)
             delegate_ids.append(mpb.delegate.id)
-            self.updated += 1
+            updated += 1
 
         # Bulk create ballots.
         MotionPollBallot.objects.bulk_create(ballots)
@@ -162,7 +161,7 @@ class Ballot:
         created_ballots = MotionPollBallot.objects.filter(poll=self.poll, delegate_id__in=delegate_ids)
         inform_changed_data(created_ballots)
 
-        return self.updated
+        return updated
 
     def register_vote(self, keypad, vote, commit=True):
         """
@@ -230,7 +229,7 @@ class Ballot:
         shares = None
         if self.poll.motion.category_id:
             # Create a dict (key: delegate, value: shares).
-            # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000'}
+            # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
             qs = VotingShare.objects.filter(category_id=self.poll.motion.category_id)
             shares = dict(qs.values_list('delegate', 'shares'))
 
@@ -281,4 +280,3 @@ class Ballot:
             'valid': [0, Decimal(0)],
             'invalid': [0, Decimal(0)]
         }
-

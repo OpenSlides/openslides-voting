@@ -1,0 +1,14 @@
+<div ng-controller="VoteCountCtrl" ng-if="poll.has_votes" class="spacer">
+  <button type="button" os-perms="openslides_voting.can_manage"
+    ng-click="countVotes()" 
+    class="btn btn-xs btn-default">
+    <i class="fa fa-repeat" aria-hidden="true"></i> 
+    {{ 'Recount votes' | translate }}</button>
+</div>
+<div ng-if="poll.has_votes" class="spacer">
+  <a ui-sref="openslides_voting.motionPoll.detail({id: poll.id})" role="button"
+    os-perms="openslides_voting.can_manage"
+    class="btn btn-xs btn-default">
+    <i class="fa fa-table" aria-hidden="true"></i> 
+    {{ 'Single votes' | translate }}</a>
+</div>

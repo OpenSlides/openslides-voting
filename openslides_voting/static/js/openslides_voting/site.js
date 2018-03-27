@@ -4,22 +4,8 @@
 
 angular.module('OpenSlidesApp.openslides_voting.site', [
     'OpenSlidesApp.openslides_voting',
-    'OpenSlidesApp.openslides_voting.voting',
+    'OpenSlidesApp.openslides_voting.templatehooks',
     'OpenSlidesApp.openslides_voting.pdf'
-])
-
-.config([
-    'mainMenuProvider',
-    'gettext',
-    function (mainMenuProvider, gettext) {
-        mainMenuProvider.register({
-            'ui_sref': 'openslides_voting.delegate.list',
-            'img_class': 'thumbs-o-up',
-            'title': 'Delegates',
-            'weight': 510,
-            'perm': 'openslides_voting.can_manage'
-        });
-    }
 ])
 
 .config([
@@ -29,26 +15,27 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting', {
             url: '/voting',
             abstract: true,
-            template: "<ui-view/>"
+            template: '<ui-view/>',
+            basePermission: 'openslides_voting.can_manage',
         })
-        .state('openslides_voting.delegate', {
-            abstract: true,
-            template: "<ui-view/>"
-        })
-        .state('openslides_voting.delegate.list', {
-        })
-        .state('openslides_voting.delegate.import', {
-            url: '/import',
-            controller: 'VotingShareImportCtrl'
-        })
-        .state('openslides_voting.delegate.attendance', {
+        .state('openslides_voting.attendance', {
             url: '/attendance',
-            controller: 'DelegateAttendanceCtrl'
+            controller: 'AttendanceCtrl'
+        })
+        .state('openslides_voting.shares', {
+            url: '/shares',
+            abstract: true,
+            template: '<ui-view/>',
+        })
+        .state('openslides_voting.shares.list', {})
+        .state('openslides_voting.shares.import', {
+            url: '/import',
+            controller: 'SharesImportCtrl',
         })
         .state('openslides_voting.keypad', {
             url: '/keypad',
             abstract: true,
-            template: "<ui-view/>"
+            template: '<ui-view/>',
         })
         .state('openslides_voting.keypad.list', {})
         .state('openslides_voting.keypad.import', {
@@ -58,7 +45,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting.absenteeVote', {
             url: '/absenteevote',
             abstract: true,
-            template: "<ui-view/>"
+            template: '<ui-view/>',
         })
         .state('openslides_voting.absenteeVote.list', {})
         .state('openslides_voting.absenteeVote.import', {
@@ -67,7 +54,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         })
         .state('openslides_voting.motionPoll', {
             abstract: true,
-            template: "<ui-view/>"
+            template: '<ui-view/>',
         })
         .state('openslides_voting.motionPoll.detail', {
             url: '/motionpoll/:id',
@@ -75,39 +62,47 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         })
     }
 ])
-    
+
+// Overrides the UserForm. Adds fields for keypads, proxies, ...
 .factory('DelegateForm', [
     'gettextCatalog',
+    'UserForm',
     'Category',
     'VotingPrinciple',
     'User',
-    function (gettextCatalog, Category, VotingPrinciple, User) {
+    'UserForm',
+    function (gettextCatalog, UserForm, Category, VotingPrinciple, User) {
         return {
-            getDialog: function (delegate) {
+            getDialog: function (user) {
                 return {
                     template: 'static/templates/openslides_voting/delegate-form.html',
-                    controller: 'DelegateUpdateCtrl',
+                    controller: 'UserUpdateCtrl', // Use the original controller. Our custom controller
+                    // is initialized in the template.
                     className: 'ngdialog-theme-default wide-form',
                     closeByEscape: false,
                     closeByDocument: false,
                     resolve: {
-                        delegate: function () {
-                            return delegate;
+                        userId: function () {
+                            return user.id;
                         }
                     }
                 }
             },
-            getFormFields: function (delegate) {
+            getFormFields: function (user) {
+                var formFields = UserForm.getFormFields();
                 var otherDelegates = User.filter({
                         where: {
                             id: {
-                                '!=': delegate.user.id
+                                '!=': user.id
                             },
                             groups_id : 2
                         },
                         orderBy: 'full_name'
                     });
-                var formFields = [
+                var formFields = formFields.concat([
+                {
+                    template: '<hr class="smallhr">',
+                },
                 {
                     key: 'keypad_number',
                     type: 'input',
@@ -126,16 +121,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                 formScope.options.formState.notRegistered = true;
                             }
                         }
-                    }
-                },
-                {
-                    key: 'is_present',
-                    type: 'checkbox',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Present')
-                    },
-                    expressionProperties: {
-                        'templateOptions.disabled': 'formState.notRegistered'
                     }
                 },
                 {
@@ -166,7 +151,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     }
                 },
                 {
-                    key: 'more',
+                    key: 'delegateMore',
                     type: 'checkbox',
                     templateOptions: {
                         label: gettextCatalog.getString('Show voting rights')
@@ -174,9 +159,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 },
                 {
                     template: '<hr class="smallhr">',
-                    hideExpression: '!model.more'
+                    hideExpression: '!model.delegateMore'
                 }
-                ];
+                ]);
 
                 var fieldGroup = [];
                 _.forEach(Category.filter({orderBy: 'id'}), function (cat) {
@@ -194,7 +179,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         formFields.push({
                             className: "row",
                             fieldGroup: fieldGroup,
-                            hideExpression: '!model.more'
+                            hideExpression: '!model.delegateMore'
                         });
                         fieldGroup = [];
                     }
@@ -214,112 +199,49 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
     }
 ])
-    
-.controller('DelegateListCtrl', [
+
+.controller('UserListExtraContentColumnCtrl', [
     '$scope',
-    '$timeout',
-    'ngDialog',
-    'DelegateForm',
     'Delegate',
     'User',
     'Keypad',
     'VotingProxy',
-    'VotingShare',
-    'Category',
-    'VotingPrinciple',
-    function ($scope, $timeout, ngDialog, DelegateForm, Delegate, User, Keypad, VotingProxy, VotingShare,
-              Category, VotingPrinciple) {
-        Category.bindAll({}, $scope, 'categories');
-        $scope.alert = {};
+    'ErrorMessage',
+    function ($scope, Delegate, User, Keypad, VotingProxy, ErrorMessage) {
+        $scope.d = Delegate;
 
-        var updatePromise;
-        var updateListView = function () {
-            // console.log('Start updating')
-            var delegates = [];
-            // TODO: Allow a delegate to belong to another group besides group 2.
-            _.forEach(User.filter({groups_id: 2}), function (user) {
-                var d = {user: user};
-                d.keypad = Delegate.getKeypad(user.id);
-                d.proxy = Delegate.getProxy(user.id );
-                d.shares = Delegate.getShares(user.id);
-                d.status = Delegate.getStatus(d);
-                delegates.push(d);
-                console.log('Updating delegate');
+        var $mainScope = $scope.$parent.$parent;
+        $mainScope.updateUsers = function () {
+            _.forEach($scope.users, function (user) {
+                if (Delegate.isDelegate(user)) {
+                    user.keypad = Delegate.getKeypad(user.id);
+                    if (user.keypad) {
+                        user.keypad.newNumber = user.keypad.number;
+                    }
+                    user.proxy = Delegate.getProxy(user.id);
+                }
             });
-            $scope.delegates = delegates;
-
-            // Count attending, represented and absent delegates.
-            $scope.attendingCount = Keypad.filter({ 'user.is_present': true }).length;
-            $scope.representedCount = VotingProxy.getAll().length;
-            $scope.absentCount = Math.max(0,
-                $scope.delegates.length - $scope.attendingCount - $scope.representedCount);
-
-            // console.log('Updated list view');
-            return $scope.delegates.length;
-        };
-
+            $scope.updateTableStats();
+        }
         $scope.$watch(function () {
-            // No need to watch User or Keypad. Template variables .user and .keypad update automatically.
-            return VotingProxy.lastModified() + VotingShare.lastModified();
-        }, function () {
-            // NOTE: This function will execute the first time when controller is initiated.
-            var t = 0;
-            if (updatePromise) {
-                // Reschedule to only update list view once after all modifications have been received.
-                $timeout.cancel(updatePromise);
-                t = 1000;
-            }
-            updatePromise = $timeout(updateListView, t);
-            console.log('Reschedule list view update');
-        });
+            return Keypad.lastModified();
+        }, $mainScope.updateUsers);
 
-        $scope.$on('$destroy', function () {
-            $timeout.cancel(updatePromise);
-        });
-
-        // Set up pagination.
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 20,  // NOTE: Less records on page will speed up loading the edit form.
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
+        $scope.saveKeypad = function (user) {
+            if (user.keypad) {
+                var number;
+                if (user.keypad.newNumber) {
+                    number = parseInt(user.keypad.newNumber);
+                    if (number === NaN && number <= 0) {
+                        return;
+                    }
+                }
+                Delegate.updateKeypad(user, number).then(null, function (error) {
+                    $mainScope.alert = ErrorMessage.forAlert(error);
+                });
             }
         };
 
-        // Handle table column sorting.
-        $scope.sortColumn = 'user.full_name';
-        $scope.reverse = false;
-        $scope.toggleSort = function (column) {
-            if ( $scope.sortColumn === column ) {
-                $scope.reverse = !$scope.reverse;
-            }
-            $scope.sortColumn = column;
-        };
-
-        // Define custom search filter string.
-        $scope.getFilterString = function (delegate) {
-            var rep = '', keypad = '';
-            if (delegate.proxy) {
-                rep = delegate.proxy.rep.full_name;
-            }
-            if (delegate.keypad) {
-                keypad = delegate.keypad.number;
-            }
-            return [
-                delegate.user.full_name,
-                rep,
-                keypad
-            ].join(' ');
-        };
-
-        $scope.getVPName = VotingPrinciple.getName;
-        $scope.getVPPrecision = VotingPrinciple.getPrecision;
-
-        // Open edit dialog.
-        $scope.openDialog = function (delegate) {
-            ngDialog.open(DelegateForm.getDialog(delegate));
-        };
     }
 ])
 
@@ -331,66 +253,51 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Delegate',
     'User',
     'Category',
-    'delegate',
-    function ($scope, $q, $http, DelegateForm, Delegate, User, Category, delegate) {
-        var message,
-            onFailed = function (error) {
-                for (var e in error.data) {
-                    message += e + ': ' + error.data[e] + ' ';
-                }
-            };
+    'ErrorMessage',
+    function ($scope, $q, $http, DelegateForm, Delegate, User, Category, ErrorMessage) {
+        $scope.model.keypad_number = $scope.model.keypad ? $scope.model.keypad.number : null;
+        $scope.model.proxy_id = $scope.model.proxy ? $scope.model.proxy.proxy_id : null;
+        $scope.model.mandates_id = Delegate.getMandates($scope.model.id).map(function (vp) {
+            return vp.delegate_id;
+        });
+        $scope.delegateFormFields = DelegateForm.getFormFields($scope.model);
 
-        $scope.model = angular.copy(delegate);
-        $scope.model.keypad_number = delegate.keypad ? delegate.keypad.number : null;
-        $scope.model.is_present = delegate.user.is_present;
-        $scope.model.proxy_id = delegate.proxy ? delegate.proxy.proxy_id : null;
-        $scope.model.mandates_id = Delegate.getMandates(delegate.user.id).map(function (vp) { return vp.delegate_id });
-
-        $scope.formFields = DelegateForm.getFormFields($scope.model);
-
-        $scope.save = function (delegate) {
-            message = '';
-            $scope.alert = {};
+        $scope.delegateSave = function (delegate) {
+            var message = '';
 
             // Check for circular proxy reference.
             if (delegate.mandates_id.indexOf(delegate.proxy_id) >= 0) {
-                message = User.get(delegate.proxy_id).full_name +
-                    ' kann nicht gleichzeitig Vertreter und Vollmachtgeber sein.'
-                $scope.alert = {type: 'danger', msg: message, show: true};
+                // TODO (Jochen): Find a translation for this
+                message = User.get(delegate.proxy_id).full_name + ' ' +
+                    gettextCatalog.getString('cannot be gleichzeitig Vertreter und Vollmachtgeber sein.');
+                $scope.$parent.alert = {type: 'danger', msg: message, show: true};
                 return;
             }
 
             // Update keypad, proxy, mandates, voting shares, user.is_present and collect their promises.
-            var promises = [];
-            Delegate.updateKeypad(delegate, delegate.keypad_number, promises, onFailed);
-            Delegate.updateProxy(delegate, delegate.proxy_id, promises);
-            Delegate.updateMandates(delegate, promises);
-            Delegate.updateShares(delegate, promises);
-            if (delegate.user.is_present != delegate.is_present) {
-                var user = User.get(delegate.user.id);
-                user.is_present = delegate.is_present;
-                promises.push(User.save(user));
-            }
+            var promises = _.filter([
+                Delegate.updateKeypad(delegate, delegate.keypad_number),
+                Delegate.updateProxy(delegate, delegate.proxy_id),
+            ]);
+            promises = promises.concat(Delegate.updateShares(delegate));
+            promises = promises.concat(Delegate.updateMandates(delegate));
 
             // Wait until all promises have been resolved before closing dialog.
             $q.all(promises).then(function () {
-                if (message) {
-                    $scope.alert = {type: 'danger', msg: message, show: true};
-                }
-                else {
-                    $scope.closeThisDialog();
+                $scope.save(delegate); // call the original save method
 
-                    // Get an attendance update.
-                    // The server will create an attendance log entry if attendance
-                    // has changed due to keypad, proxy, user present updates issued above.
-                    $http.get('/voting/attendance/shares/');
-                }
+                // Get an attendance update.
+                // The server will create an attendance log entry if attendance
+                // has changed due to keypad, proxy, user present updates issued above.
+                $http.get('/voting/attendance/shares/');
+            }, function (error) {
+                $scope.$parent.alert = ErrorMessage.forAlert(error);
             });
         };
     }
 ])
 
-.controller('DelegateAttendanceCtrl', [
+.controller('AttendanceCtrl', [
     '$scope',
     '$http',
     '$interval',
@@ -448,7 +355,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
-.controller('VotingShareImportCtrl', [
+.controller('SharesListCtrl', [
+    '$scope',
+    function ($scope) {
+        //TODO
+    }
+])
+
+.controller('SharesImportCtrl', [
     '$scope',
     '$q',
     'gettext',
@@ -1399,5 +1313,278 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
     }
 ])
+
+.controller('VotingCtrl', [
+    '$scope',
+    '$http',
+    'gettextCatalog',
+    'MotionPollBallot',
+    'Projector',
+    'VoteCollector',
+    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, VoteCollector) {
+        VoteCollector.bindOne(1, $scope, 'vc');
+
+        var clearForm = function () {
+            $scope.poll.yes = null;
+            $scope.poll.no = null;
+            $scope.poll.abstain = null;
+            $scope.poll.votesvalid = null;
+            $scope.poll.votesinvalid = null;
+            $scope.poll.votescast = null;
+        };
+
+        $scope.canStartVoting = function () {
+            return $scope.poll.votescast === null &&
+                (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode == 'Test');
+        };
+
+        $scope.canStopVoting = function () {
+            return $scope.vc.is_voting && $scope.vc.voting_mode == 'MotionPoll' &&
+                $scope.vc.voting_target == $scope.poll.id;
+        };
+
+        $scope.canClearVotes = function () {
+            return !$scope.vc.is_voting && $scope.poll.votescast !== null;
+        };
+
+        $scope.startVoting = function () {
+            $scope.$parent.$parent.$parent.alert = {};
+
+            // Start votecollector.
+            $http.get('/votecollector/start_voting/' + $scope.poll.id + '/').then(
+                function (success) {
+                    if (success.data.error) {
+                        $scope.$parent.$parent.$parent.alert = { type: 'danger', msg: success.data.error, show: true };
+                    }
+                },
+                function (failure) {
+                    $scope.$parent.$parent.$parent.alert = {
+                        type: 'danger',
+                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
+                        show: true };
+                }
+            );
+        };
+
+        $scope.stopVoting = function () {
+            $scope.$parent.$parent.$parent.alert = {};
+
+            // Stop votecollector.
+            $http.get('/votecollector/stop/').then(
+                function (success) {
+                    if (success.data.error) {
+                        $scope.$parent.$parent.$parent.alert = { type: 'danger',
+                            msg: success.data.error, show: true };
+                    }
+                    else {
+                        $http.get('/votecollector/result_voting/' + $scope.poll.id + '/').then(
+                            function (success) {
+                                if (success.data.error) {
+                                    $scope.$parent.$parent.$parent.alert = { type: 'danger',
+                                        msg: success.data.error, show: true };
+                                }
+                                else {
+                                    // Store result in DS model; updates form inputs.
+                                    $scope.poll.yes = success.data.votes[0];
+                                    $scope.poll.no = success.data.votes[1];
+                                    $scope.poll.abstain = success.data.votes[2];
+                                    $scope.poll.votesvalid = $scope.poll.yes + $scope.poll.no + $scope.poll.abstain;
+                                    $scope.poll.votesinvalid = 0;
+                                    $scope.poll.votescast = $scope.poll.votesvalid;
+
+                                    // Prompt user to save result.
+                                    $scope.$parent.$parent.$parent.alert = {
+                                        type: 'info',
+                                        msg: gettextCatalog.getString('Motion voting has finished.') + ' ' +
+                                             // gettextCatalog.getString('Received votes:') + ' ' +
+                                             // $scope.votes_received + ' / ' + $scope.vc.voters_count + '. ' +
+                                             gettextCatalog.getString('Save this result now!'),
+                                        show: true
+                                    };
+                                }
+                            }
+                        );
+                    }
+                },
+                function (failure) {
+                    $scope.$parent.$parent.$parent.alert = {
+                        type: 'danger',
+                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
+                        show: true };
+                }
+            );
+        };
+
+        $scope.clearVotes = function () {
+            $scope.$parent.$parent.$parent.alert = {};
+            $http.get('/votecollector/clear_voting/' + $scope.poll.id + '/').then(
+                function (success) {
+                    clearForm();
+                }
+            );
+        };
+
+        $scope.getVotingStatus = function () {
+            if ($scope.vc !== undefined) {
+                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'Test') {
+                    return gettextCatalog.getString('System test is running.');
+                }
+                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'Item') {
+                    return gettextCatalog.getString('Speakers voting is running for agenda item') + ' ' +
+                        $scope.vc.voting_target + '.';
+                }
+                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'AssignmentPoll') {
+                    return gettextCatalog.getString('An election is running.');
+                }
+                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'MotionPoll') {
+                    if ($scope.vc.voting_target != $scope.poll.id) {
+                        return gettextCatalog.getString('Another motion voting is running.');
+                    }
+                    // NOTE: Must not use $scope.vc.votes_received. If server uses multiple workers
+                    // VoteCollector auto-updates may come in out of order.
+                    $scope.votes_received = MotionPollBallot.filter({poll_id: $scope.poll.id}).length;
+                    return gettextCatalog.getString('Votes received:') + ' ' +
+                        // TODO: Add voting duration.
+                        $scope.votes_received + ' / ' + $scope.vc.voters_count;
+                }
+            }
+            return '';
+        };
+
+        $scope.projectSlide = function () {
+            return $http.post(
+                '/rest/core/projector/1/prune_elements/',
+                [{name: 'voting/motion-poll', id: $scope.poll.id}]
+            );
+        };
+
+        $scope.isProjected = function () {
+            // Returns true if there is a projector element with the same
+            // name and the same id of $scope.poll.
+            var projector = Projector.get(1);
+            var isProjected;
+            if (typeof projector !== 'undefined') {
+                var self = this;
+                var predicate = function (element) {
+                    return element.name == "voting/motion-poll" &&
+                        typeof element.id !== 'undefined' &&
+                        element.id == $scope.poll.id;
+                };
+                isProjected = typeof _.findKey(projector.elements, predicate) === 'string';
+            } else {
+                isProjected = false;
+            }
+            return isProjected;
+        }
+    }
+])
+
+.controller('SpeakerListCtrl', [
+    '$scope',
+    '$http',
+    'VoteCollector',
+    function ($scope, $http, VoteCollector) {
+        VoteCollector.bindOne(1, $scope, 'vc');
+
+        $scope.canStartVoting = function () {
+            return (!$scope.vc.is_voting ||
+                    ($scope.vc.voting_mode == 'Item' && $scope.vc.voting_target != $scope.item.id) ||
+                    $scope.vc.voting_mode == 'Test');
+        };
+
+        $scope.canStopVoting = function () {
+            return $scope.vc.is_voting && $scope.vc.voting_mode == 'Item' &&
+                $scope.vc.voting_target == $scope.item.id;
+        };
+
+        $scope.startVoting = function () {
+            $scope.vcAlert = {};
+            $http.get('/votecollector/start_speaker_list/' + $scope.item.id + '/').then(
+                function (success) {
+                    if (success.data.error) {
+                        $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
+                    }
+                },
+                function (failure) {
+                    $scope.vcAlert = {
+                        type: 'danger',
+                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
+                        show: true };
+                }
+            );
+        };
+
+        $scope.stopVoting = function () {
+            $scope.vcAlert = {};
+            $http.get('/votecollector/stop/').then(
+                function (success) {
+                    if (success.data.error) {
+                        $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
+                    }
+                },
+                function (failure) {
+                    $scope.vcAlert = {
+                        type: 'danger',
+                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
+                        show: true };
+                }
+            );
+        };
+    }
+])
+
+.controller('VoteCountCtrl', [
+    '$scope',
+    '$http',
+    function ($scope, $http) {
+        // Recalculate vote result.
+        $scope.countVotes = function () {
+            $http.post('/voting/count/' + $scope.poll.id + '/');
+        };
+    }
+])
+
+// Mark config strings for translation in javascript
+.config([
+    'gettext',
+    function (gettext) {
+        // Config strings
+        gettext('Electronic Voting');
+        gettext('Delegate board');
+        gettext('VoteCollector URL');
+        gettext('Example: http://localhost:8030');
+        gettext('Please vote now!');
+        gettext('Voting start prompt (projector overlay message)');
+        gettext('Use countdown timer');
+        gettext('Auto-start and stop a countdown timer when voting starts and stops.');
+        gettext('Show delegate board');
+        gettext('Show incoming votes on a delegate board on the projector.');
+        gettext('Delegate board columns');
+        gettext('Delegate name format used for delegate table cells');
+        gettext('Short name. Example: Smi,J');
+        gettext('Last name. Example: Smith');
+        gettext('Full name. Example: Smith John');
+        gettext('Vote anonymously');
+        gettext('Keep individual voting behaviour secret on delegate board by using a single colour.');
+
+        // Template hook strings.
+        gettext('Start voting');
+        gettext('Stop voting');
+        gettext('Start election');
+        gettext('Stop election');
+        gettext('Start speakers voting');
+        gettext('Stop speakers voting');
+        gettext('Recount votes');
+        gettext('Single votes');
+        gettext('Voting result');
+        gettext('Project vote result');
+        gettext('Election result');
+        gettext('Project election result');
+        gettext('Clear votes');
+
+        // Permission strings
+        gettext('Can manage voting');
+    }
+]);
 
 }());

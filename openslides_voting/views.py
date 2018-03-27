@@ -24,61 +24,45 @@ from .models import AbsenteeVote, AttendanceLog, Keypad, MotionPollBallot, VoteC
 from .voting import Ballot, find_authorized_voter, get_admitted_delegates, is_registered
 
 
-class VoteCollectorViewSet(ModelViewSet):
+class PermissionMixin:
+    def check_view_permissions(self):
+        return self.get_access_permissions().check_permissions(self.request.user)
+
+
+class VoteCollectorViewSet(PermissionMixin, ModelViewSet):
     access_permissions = VoteCollectorAccessPermissions()
     http_method_names = ['get', 'head', 'options']
     queryset = VoteCollector.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class KeypadViewSet(ModelViewSet):
+class KeypadViewSet(PermissionMixin, ModelViewSet):
     access_permissions = KeypadAccessPermissions()
     queryset = Keypad.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class VotingShareViewSet(ModelViewSet):
+class VotingShareViewSet(PermissionMixin, ModelViewSet):
     access_permissions = VotingShareAccessPermissions()
     queryset = VotingShare.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class VotingProxyViewSet(ModelViewSet):
+class VotingProxyViewSet(PermissionMixin, ModelViewSet):
     access_permissions = VotingProxyAccessPermissions()
     queryset = VotingProxy.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class AbsenteeVoteViewSet(ModelViewSet):
+class AbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
     access_permissions = AbsenteeVoteAccessPermissions()
     queryset = AbsenteeVote.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class MotionPollBallotViewSet(ModelViewSet):
+class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
     access_permissions = MotionPollBallotAccessPermissions()
     queryset = MotionPollBallot.objects.all()
 
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
-
-class AttendanceLogViewSet(ModelViewSet):
+class AttendanceLogViewSet(PermissionMixin, ModelViewSet):
     access_permissions = AttendanceLogAccessPermissions()
     queryset = AttendanceLog.objects.all()
-
-    def check_view_permissions(self):
-        return self.get_access_permissions().check_permissions(self.request.user)
 
 
 @method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')

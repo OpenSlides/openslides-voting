@@ -15,7 +15,7 @@ def get_config_variables():
         label='VoteCollector URL',
         help_text='Example: http://localhost:8030',
         weight=610,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='General'
     )
     yield ConfigVariable(
@@ -23,7 +23,7 @@ def get_config_variables():
         default_value=ugettext_noop('Please vote now!'),
         label='Voting start prompt (projector overlay message)',
         weight=620,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='General'
     )
     yield ConfigVariable(
@@ -33,7 +33,7 @@ def get_config_variables():
         label='Use countdown timer',
         help_text='Auto-start and stop a countdown timer when voting starts and stops.',
         weight=625,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='General'
     )
     yield ConfigVariable(
@@ -43,7 +43,7 @@ def get_config_variables():
         label='Show delegate board',
         help_text='Show incoming votes on a delegate board on the projector.',
         weight=630,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='Delegate board'
     )
     yield ConfigVariable(
@@ -52,7 +52,7 @@ def get_config_variables():
         input_type='integer',
         label='Delegate board columns',
         weight=640,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='Delegate board'
     )
     yield ConfigVariable(
@@ -66,7 +66,7 @@ def get_config_variables():
             {'value': 'full_name', 'display_name': 'Full name. Example: Smith John'},
         ),
         weight=645,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='Delegate board'
     )
     yield ConfigVariable(
@@ -76,6 +76,6 @@ def get_config_variables():
         label='Vote anonymously',
         help_text='Keep individual voting behaviour secret on delegate board by using a single colour.',
         weight=650,
-        group='Electronic Voting',
+        group='Voting',
         subgroup='Delegate board'
     )

@@ -71,13 +71,13 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         pdfTitle,
                         pdfSubtitle,
                         pdfTable
-                    ]
+                    ];
                 }
             };
         };
 
         return {
-            createInstance: createInstance
+            createInstance: createInstance,
         };
     }
 ])
@@ -85,11 +85,10 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
 .factory('AttendanceHistoryContentProvider', [
     '$filter',
     'gettextCatalog',
-    'Category',
     'VotingPrinciple',
     'AttendanceLog',
     'PDFLayout',
-    function ($filter, gettextCatalog, Category, VotingPrinciple, AttendanceLog, PDFLayout) {
+    function ($filter, gettextCatalog, VotingPrinciple, AttendanceLog, PDFLayout) {
         var createInstance = function () {
 
              // Title
@@ -97,37 +96,38 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
 
             // Create attendance history table. Order by descending created time.
 
-            // Create table columns. Header: 'Time', 'Heads', voting principles (category names).
-            var categories = Category.filter({orderBy: 'id'});
+            // Create table columns. Header: 'Time', 'Heads', voting principles.
+            var principles = VotingPrinciple.filter({orderBy: 'id'});
             var columns = [
                 [gettextCatalog.getString('Time')],
                 [gettextCatalog.getString('Heads')]
             ];
-            _.forEach(categories, function (cat) {
-                columns.push([cat.name]);
+            _.forEach(principles, function (principle) {
+                columns.push([principle.name]);
             });
 
             // Create table data.
             _.forEach(AttendanceLog.filter({orderBy: ['created', 'DESC']}), function (log) {
                 // TODO: Use localized time format.
                 columns[0].push($filter('date')(log.created, 'yyyy-MM-dd HH:mm:ss'));
-                columns[1].push($filter('number')(log.json()['heads'], 0));
-                _.forEach(categories, function (cat, index) {
-                    var precision = VotingPrinciple.getPrecision(cat.name);
-                    columns[index + 2].push($filter('number')(log.json()[cat.id], precision));
+                columns[1].push($filter('number')(log.json().heads, 0));
+                _.forEach(principles, function (principle, index) {
+                    columns[index + 2].push(
+                        $filter('number')(log.json()[principle.id], principle.decimal_places)
+                    );
                 });
             });
 
             var tableBody = [[{
                 columns: [],
-                columnGap: 10
+                columnGap: 10,
             }]];
             _.forEach(columns, function (column, index) {
                 tableBody[0][0].columns.push({
                     text: column.join('\n'),
                     width: 'auto',
                     alignment: (index > 0) ? 'right' : 'left'
-                })
+                });
             });
 
             var pdfTable = {
@@ -144,7 +144,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                     return [
                         pdfTitle,
                         pdfTable
-                    ]
+                    ];
                 }
             };
         };
@@ -153,6 +153,6 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
             createInstance: createInstance
         };
     }
-])
+]);
 
 }());

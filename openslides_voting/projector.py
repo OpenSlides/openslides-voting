@@ -3,7 +3,7 @@ from openslides.motions.models import MotionPoll
 from openslides.users.models import User
 from openslides.utils.projector import ProjectorElement
 
-from .models import Keypad, MotionPollBallot, VoteCollector, VotingProxy, VotingShare
+from .models import Keypad, MotionPollBallot, VotingController, VotingProxy, VotingShare
 
 
 class MotionPollSlide(ProjectorElement):
@@ -31,12 +31,12 @@ class MotionPollSlide(ProjectorElement):
             yield from VotingProxy.objects.all()
             yield from VotingShare.objects.all()
             yield from MotionPollBallot.objects.filter(poll=motionpoll)
-            yield VoteCollector.objects.get(id=1)
+            yield VotingController.objects.get()
 
     def get_collection_elements_required_for_this(self, collection_element, config_entry):
         if collection_element.collection_string == MotionPollBallot.get_collection_string():
             output = [collection_element]
-        elif collection_element.collection_string == VoteCollector.get_collection_string():
+        elif collection_element.collection_string == VotingController.get_collection_string():
             output = [collection_element]
         elif collection_element.information.get('voting_prompt'):
             output = []

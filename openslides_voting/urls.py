@@ -10,7 +10,7 @@ urlpatterns = [
     url(r'^voting/admitted_delegates/$',
         views.AdmittedDelegatesView.as_view(),
         name='voting_admitted_delegates'),
-    url(r'^voting/admitted_delegates/(?P<cat_id>\d+)/$',
+    url(r'^voting/admitted_delegates/(?P<principle_id>\d+)/$',
         views.AdmittedDelegatesView.as_view(),
         name='voting_admitted_delegates_cat'),
     url(r'^voting/count/(?P<poll_id>\d+)/$',

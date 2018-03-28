@@ -56,8 +56,9 @@ class VotingAppConfig(AppConfig):
             AttendanceLogViewSet,
             KeypadViewSet,
             MotionPollBallotViewSet,
-            VoteCollectorViewSet,
+            VotingControllerViewSet,
             VotingShareViewSet,
+            VotingPrincipleViewSet,
             VotingProxyViewSet
         )
 
@@ -71,8 +72,9 @@ class VotingAppConfig(AppConfig):
         )
 
         # Register viewsets.
-        router.register(self.get_model('VoteCollector').get_collection_string(), VoteCollectorViewSet)
+        router.register(self.get_model('VotingController').get_collection_string(), VotingControllerViewSet)
         router.register(self.get_model('Keypad').get_collection_string(), KeypadViewSet)
+        router.register(self.get_model('VotingPrinciple').get_collection_string(), VotingPrincipleViewSet)
         router.register(self.get_model('VotingShare').get_collection_string(), VotingShareViewSet)
         router.register(self.get_model('VotingProxy').get_collection_string(), VotingProxyViewSet)
         router.register(self.get_model('AbsenteeVote').get_collection_string(), AbsenteeVoteViewSet)
@@ -84,6 +86,6 @@ class VotingAppConfig(AppConfig):
 
     def get_startup_elements(self):
         from openslides.utils.collection import Collection
-        for model in ('VoteCollector', 'Keypad', 'VotingShare', 'VotingProxy', 'AbsenteeVote', 'MotionPollBallot',
-                      'AttendanceLog'):
+        for model in ('VotingController', 'Keypad', 'VotingPrinciple', 'VotingShare',
+                      'VotingProxy', 'AbsenteeVote', 'MotionPollBallot', 'AttendanceLog'):
             yield Collection(self.get_model(model).get_collection_string())

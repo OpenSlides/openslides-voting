@@ -16,7 +16,7 @@ from openslides.utils import views as utils_views
 from openslides.utils.autoupdate import inform_changed_data
 
 from . import rpc
-from ..models import Keypad, VoteCollector, MotionPollBallot, VotingShare
+from ..models import Keypad, VotingController, MotionPollBallot, VotingShare
 from ..voting import Ballot, get_admitted_delegates
 
 
@@ -127,7 +127,7 @@ class VotingView(AjaxView):
         ballot = Ballot(poll)
         ballot.delete_ballots()
 
-        self.vc = VoteCollector.objects.get(id=1)
+        self.vc = VotingController.objects.get()
         self.vc.votes_received = 0
         self.vc.save()
 
@@ -153,7 +153,7 @@ class StartVoting(VotingView):
         mode = kwargs['mode']
         resource = kwargs['resource']
         poll_obj = self.get_poll_object()
-        self.vc = VoteCollector.objects.get(id=1)
+        self.vc = VotingController.objects.get()
         if not self.error:
             # Stop any active voting no matter what mode.
             if self.vc.is_voting:
@@ -321,7 +321,7 @@ class StopVoting(VotingView):
         except rpc.VoteCollectorError as e:
             self.error = e.value
         # Attention: We purposely set is_voting to False even if stop_voting fails.
-        self.vc = VoteCollector.objects.get(id=1)
+        self.vc = VotingController.objects.get()
         self.vc.is_voting = False
         self.vc.save()
         return super().get(request, *args, **kwargs)
@@ -356,7 +356,7 @@ class VotingResult(VotingView):
     def get(self, request, *args, **kwargs):
         poll = self.get_poll_object()
         if not self.error:
-            self.vc = VoteCollector.objects.get(id=1)
+            self.vc = VotingController.objects.get()
             if self.vc.voting_mode == kwargs['model'] and self.vc.voting_target == int(kwargs['id']):
                 if self.vc.voting_mode == 'MotionPoll' and Ballot:
                     ballot = Ballot(poll)
@@ -405,7 +405,7 @@ class Votes(utils_views.View):
 
     @transaction.atomic()
     def post(self, request, poll_id):
-        vc = VoteCollector.objects.get(id=1)
+        vc = VotingController.objects.get()
 
         # Get poll instance.
         poll_model = MotionPoll if vc.voting_mode == 'MotionPoll' else AssignmentPoll
@@ -463,7 +463,7 @@ class VoteCallback(VotingCallbackView):
             return HttpResponse(_('Vote invalid'))
 
         # Save vote.
-        vc = VoteCollector.objects.get(id=1)
+        vc = VotingController.objects.get()
         model = MotionPoll if vc.voting_mode == 'MotionPoll' else AssignmentPoll
         try:
             poll = model.objects.get(id=poll_id)
@@ -558,8 +558,8 @@ class CandidateCallback(VotingCallbackView):
 
         # TODO: Save candidate vote.
 
-        # Update votecollector.
-        vc = VoteCollector.objects.get(id=1)
+        # Update votingcontroller.
+        vc = VotingController.objects.get()
         vc.votes_received = request.POST.get('votes', 0)
         vc.voting_duration = request.POST.get('elapsed', 0)
         vc.save()

@@ -57,9 +57,9 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'VotingPrinciple',
     'VotingProxy',
     'VotingShare',
-    'VoteCollector',
+    'VotingController',
     function ($scope, $timeout, $http, Config, Motion, MotionPoll, MotionPollBallot, User, Delegate,
-              Keypad, VotingPrinciple, VotingProxy, VotingShare, VoteCollector) {
+              Keypad, VotingPrinciple, VotingProxy, VotingShare, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
             motionId = 0;
@@ -131,7 +131,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         };
 
         $scope.$watch(function () {
-            return VoteCollector.lastModified(1);
+            return VotingController.lastModified(1);
         }, function () {
             // Using timeout seems to give the browser more time to update the DOM.
             if (delegates === null) {
@@ -163,7 +163,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         });
 
         $scope.$watch(function () {
-            // Watch MotionPollBallot to update delegate board AFTER VoteCollector has been stopped.
+            // Watch MotionPollBallot to update delegate board AFTER VotingController has been stopped.
             // This also handles "Clear votes".
             return MotionPollBallot.lastModified();
         }, function () {
@@ -178,6 +178,6 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             $timeout.cancel(updatePromise);
         });
     }
-])
+]);
 
 }());

@@ -59,7 +59,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting.motionPoll.detail', {
             url: '/motionpoll/:id',
             controller: 'MotionPollVoteDetailCtrl'
-        })
+        });
     }
 ])
 
@@ -67,11 +67,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 .factory('DelegateForm', [
     'gettextCatalog',
     'UserForm',
-    'Category',
     'VotingPrinciple',
     'User',
-    'UserForm',
-    function (gettextCatalog, UserForm, Category, VotingPrinciple, User) {
+    function (gettextCatalog, UserForm, VotingPrinciple, User) {
         return {
             getDialog: function (user) {
                 return {
@@ -86,7 +84,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                             return user.id;
                         }
                     }
-                }
+                };
             },
             getFormFields: function (user) {
                 var formFields = UserForm.getFormFields();
@@ -99,7 +97,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         },
                         orderBy: 'full_name'
                     });
-                var formFields = formFields.concat([
+                formFields = formFields.concat([
                 {
                     template: '<hr class="smallhr">',
                 },
@@ -164,20 +162,21 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 ]);
 
                 var fieldGroup = [];
-                _.forEach(Category.filter({orderBy: 'id'}), function (cat) {
+                _.forEach(VotingPrinciple.filter({orderBy: 'id'}), function (principle) {
                     fieldGroup.push({
-                        key: 'shares[' + cat.id + ']',
+                        key: 'shares[' + principle.id + ']',
                         type: 'input',
-                        className: "col-xs-2 no-padding-left",
+                        className: 'col-xs-2 no-padding-left',
                         templateOptions: {
-                            label: cat.name,
+                            label: principle.name,
                             type: 'number',
-                            step: VotingPrinciple.getStep(cat.name)
+                            step: principle.step,
+                            min: 0,
                         }
                     });
                     if (fieldGroup.length == 6) {
                         formFields.push({
-                            className: "row",
+                            className: 'row',
                             fieldGroup: fieldGroup,
                             hideExpression: '!model.delegateMore'
                         });
@@ -189,9 +188,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     var n = (6 - fieldGroup.length) * 2 + 2 ;
                     _.last(fieldGroup).className = "no-padding-left col-xs-" + n;
                     formFields.push({
-                        className: "row",
+                        className: 'row',
                         fieldGroup: fieldGroup,
-                        hideExpression: '!model.more'
+                        hideExpression: '!model.delegateMore'
                     });
                 }
                 return formFields;
@@ -222,7 +221,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 }
             });
             $scope.updateTableStats();
-        }
+        };
         $scope.$watch(function () {
             return Keypad.lastModified();
         }, $mainScope.updateUsers);
@@ -232,7 +231,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 var number;
                 if (user.keypad.newNumber) {
                     number = parseInt(user.keypad.newNumber);
-                    if (number === NaN && number <= 0) {
+                    if (isNaN(number) && number <= 0) {
                         return;
                     }
                 }
@@ -252,14 +251,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'DelegateForm',
     'Delegate',
     'User',
-    'Category',
     'ErrorMessage',
-    function ($scope, $q, $http, DelegateForm, Delegate, User, Category, ErrorMessage) {
+    function ($scope, $q, $http, DelegateForm, Delegate, User, ErrorMessage) {
         $scope.model.keypad_number = $scope.model.keypad ? $scope.model.keypad.number : null;
         $scope.model.proxy_id = $scope.model.proxy ? $scope.model.proxy.proxy_id : null;
-        $scope.model.mandates_id = Delegate.getMandates($scope.model.id).map(function (vp) {
-            return vp.delegate_id;
-        });
+        $scope.model.mandates_id = Delegate.getMandatesIds($scope.model);
+        $scope.model.shares = Delegate.getShares($scope.model);
         $scope.delegateFormFields = DelegateForm.getFormFields($scope.model);
 
         $scope.delegateSave = function (delegate) {
@@ -302,63 +299,229 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$http',
     '$interval',
     'gettextCatalog',
-    'Category',
     'VotingPrinciple',
     'AttendanceLog',
     'AttendanceHistoryContentProvider',
     'PdfMakeDocumentProvider',
     'PdfCreate',
-    function ($scope, $http, $interval, gettextCatalog, Category, VotingPrinciple,
+    function ($scope, $http, $interval, gettextCatalog, VotingPrinciple,
               AttendanceLog, AttendanceHistoryContentProvider,
               PdfMakeDocumentProvider, PdfCreate) {
-        Category.bindAll({}, $scope, 'categories');
+        VotingPrinciple.bindAll({}, $scope, 'principles');
         AttendanceLog.bindAll({}, $scope, 'attendanceLogs');
 
-        $scope.historyVisible = false;
-
-        var updateAttendance = function () {
+        // Update attendance view whenever attendance logs or voting principles have changed.
+        $scope.$watch(function () {
+            return AttendanceLog.lastModified() + VotingPrinciple.lastModified();
+        }, function () {
             // Get attendance data from server.
+            console.log('update');
             $http.get('/voting/attendance/shares/').then(function (success) {
-                console.log('Updating attendance view');
                 $scope.attendance = success.data;
             });
-        };
-
-        // Update attendance view whenever attendance logs or voting principles, i.e. categories have changed.
-        $scope.$watch(function () {
-            return AttendanceLog.lastModified() + Category.lastModified();
-        }, updateAttendance);
-
-        $scope.getVPName = VotingPrinciple.getName;
-        $scope.getVPPrecision = VotingPrinciple.getPrecision;
+        });
 
         // Delete all attendance logs.
         $scope.deleteHistory = function () {
-            // NOTE: AttendanceLog.destroyAll() is not allowed. Not sure why.
-            // TODO: Prevent redundant updateAttendance calls for each log deleted.
-            _.forEach(AttendanceLog.getAll(), function (log) {
-                AttendanceLog.destroy(log.id);
-            });
+            $http.post('/rest/openslides_voting/attendance-log/clear/', {});
         };
 
         // PDF export
         $scope.pdfExport = function () {
             var filename = gettextCatalog.getString('AttendanceHistory') + '.pdf';
             var contentProvider = AttendanceHistoryContentProvider.createInstance();
-            var documentProvider = PdfMakeDocumentProvider.createInstance(contentProvider);
-            var document = documentProvider.getDocument();
-            // Use landscape orientation to fit more voting principles on page.
-            // TODO: PDF paper cuts off after about 10 columns.
-            document.pageOrientation = 'landscape';
-            PdfCreate.download(document, filename);
+            PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
+                PdfCreate.download(documentProvider, filename);
+            });
+        };
+    }
+])
+
+.factory('PrincipleForm', [
+    'gettextCatalog',
+    'Motion',
+    'Assignment',
+    'VotingPrinciple',
+    function (gettextCatalog, Motion, Assignment, VotingPrinciple) {
+        return {
+            getDialog: function (principle) {
+                return {
+                    template: 'static/templates/openslides_voting/principle-form.html',
+                    controller: principle ? 'PrincipleUpdateCtrl' : 'PrincipleCreateCtrl',
+                    className: 'ngdialog-theme-default wide-form',
+                    closeByEscape: false,
+                    closeByDocument: false,
+                    resolve: {
+                        principleId: function () {
+                            return principle ? principle.id : void 0;
+                        }
+                    }
+                };
+            },
+            getFormFields: function (principle) {
+                var principles = VotingPrinciple.filter({
+                    where: {
+                        id: {'!=': principle ? principle.id : void 0}
+                    }
+                });
+                var freeMotions = _.filter(Motion.getAll(), function (motion) {
+                    return !_.some(principles, function (principle) {
+                        return _.includes(principle.motions_id, motion.id);
+                    });
+                });
+                var freeAssignments = _.filter(Assignment.getAll(), function (assignment) {
+                    return !_.some(principles, function (principle) {
+                        return _.includes(principle.assignments_id, assignments.id);
+                    });
+                });
+                return [
+                {
+                    key: 'name',
+                    type: 'input',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Name'),
+                        required: true,
+                    },
+                },
+                {
+                    key: 'decimal_places',
+                    type: 'input',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Decimal places'),
+                        type: 'number',
+                        required: true,
+                        min: 0,
+                        max: 6,
+                    },
+                },
+                {
+                    key: 'motions_id',
+                    type: 'select-multiple',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Motions'),
+                        options: freeMotions,
+                        ngOptions: 'option.id as option.getTitle() for option in to.options',
+                        placeholder: '(' + gettextCatalog.getString('No motions') + ')',
+                    },
+                },
+                {
+                    key: 'assignments_id',
+                    type: 'select-multiple',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Elections'),
+                        options: freeAssignments,
+                        ngOptions: 'option.id as option.title for option in to.options',
+                        placeholder: '(' + gettextCatalog.getString('No elections') + ')',
+                    },
+                }
+                ];
+            },
+        };
+    }
+])
+
+.controller('PrincipleCreateCtrl', [
+    '$scope',
+    'VotingPrinciple',
+    'PrincipleForm',
+    'ErrorMessage',
+    function ($scope, VotingPrinciple, PrincipleForm, ErrorMessage) {
+        $scope.model = {
+            motions_id: [],
+            assignments_id: [],
+        };
+        $scope.formFields = PrincipleForm.getFormFields();
+
+        // Create principle
+        $scope.save = function (principle) {
+            VotingPrinciple.create(principle).then(
+                function (success) {
+                    $scope.closeThisDialog();
+                },
+                function (error) {
+                    $scope.alert = ErrorMessage.forAlert(error);
+                }
+            );
+        };
+    }
+])
+
+.controller('PrincipleUpdateCtrl', [
+    '$scope',
+    'VotingPrinciple',
+    'PrincipleForm',
+    'principleId',
+    'ErrorMessage',
+    function ($scope, VotingPrinciple, PrincipleForm, principleId, ErrorMessage) {
+        $scope.model = angular.copy(VotingPrinciple.get(principleId));
+        $scope.formFields = PrincipleForm.getFormFields($scope.model);
+
+        // Save principle
+        $scope.save = function (principle) {
+            // Inject the changed principle (copy) object back into DS store.
+            VotingPrinciple.inject(principle);
+            // Save changed keypad object on server side.
+            VotingPrinciple.save(principle).then(
+                function (success) {
+                    $scope.closeThisDialog();
+                },
+                function (error) {
+                    // Save error: revert all changes by restoring original principle object
+                    // from server.
+                    VotingPrinciple.refresh(principle);
+                    $scope.alert = ErrorMessage.forAlert(error);
+                }
+            );
         };
     }
 ])
 
 .controller('SharesListCtrl', [
     '$scope',
-    function ($scope) {
-        //TODO
+    '$filter',
+    'User',
+    'VotingPrinciple',
+    'VotingShare',
+    'Delegate',
+    'PrincipleForm',
+    'ngDialog',
+    function ($scope, $filter, User, VotingPrinciple, VotingShare, Delegate, PrincipleForm,
+        ngDialog) {
+        User.bindAll({where: {groups_id: 2}}, $scope, 'delegates');
+
+        $scope.$watch(function () {
+            return VotingShare.lastModified();
+        }, function () {
+            $scope.shares = VotingShare.getAll();
+            _.forEach($scope.shares, function (share) {
+                share.newShares = share.shares;
+            });
+        });
+
+        $scope.$watch(function () {
+            return VotingPrinciple.lastModified();
+        }, function () {
+            $scope.principles = $filter('orderBy')(VotingPrinciple.getAll(), 'id');
+        });
+
+        $scope.getShare = function (delegate, principle) {
+            return _.find($scope.shares, function (share) {
+                return share.delegate_id === delegate.id && share.principle_id === principle.id;
+            });
+        };
+
+        $scope.saveShare = function (newShares, delegate, principle) {
+            var share = $scope.getShare(delegate, principle);
+            Delegate.updateShare(delegate, share, newShares, principle.id);
+        };
+
+        $scope.openDialog = function (principle) {
+            ngDialog.open(PrincipleForm.getDialog(principle));
+        };
+
+        $scope.delete = function (principle) {
+            VotingPrinciple.destroy(principle);
+        };
     }
 ])
 
@@ -366,10 +529,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$scope',
     '$q',
     'gettext',
+    'VotingPrinciple',
     'VotingShare',
     'User',
-    'Category',
-    function ($scope, $q, gettext, VotingShare, User, Category) {
+    function ($scope, $q, gettext, VotingPrinciple, VotingShare, User) {
         // Set up pagination.
         $scope.pg = {
             firstItem: 0,
@@ -382,7 +545,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         // Configure csv.
         var fields = [];
-        $scope.categories = [];
+        $scope.principles = [];
         $scope.delegateShares = [];
         $scope.csvConfig = {
             accept: '.csv, .txt',
@@ -399,13 +562,13 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
             $scope.clear();
 
-            // Get voting principles (categories) and fields from header row.
+            // Get voting principles and fields from header row.
             if (csv.meta !== undefined) {
-                $scope.categories = csv.meta.fields.splice(3);
+                $scope.principles = csv.meta.fields.splice(3);
             }
 
             // Define field names.
-            fields = ['first_name', 'last_name', 'number'].concat($scope.categories);
+            fields = ['first_name', 'last_name', 'number'].concat($scope.principles);
 
             // Read csv rows.
             _.forEach(csv.data, function (row) {
@@ -440,14 +603,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     }
                 }
                 // Validate voting shares.
-                _.forEach($scope.categories, function (cat) {
-                    var num = parseFloat(record[cat]);
+                _.forEach($scope.principles, function (principle) {
+                    var num = parseFloat(record[principle]);
                     if (isNaN(num) || num < 0) {
                         record.importerror = true;
-                        record.error[cat] = gettext('Error: Not a valid number.')
+                        record.error[principle] = gettext('Error: Not a valid number.');
                     }
                     else {
-                        record[cat] = num;
+                        record[principle] = num;
                     }
                 });
                 $scope.delegateShares.push(record);
@@ -470,47 +633,48 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         // Import voting shares.
         $scope.import = function () {
-            var categories = {},
+            var principlesMap = {},
                 promises = [];
             $scope.csvImporting = true;
 
-            // Create categories.
-            _.forEach($scope.categories, function (cat) {
-                var cats = Category.filter({name: cat});
-                if (cats.length >= 1) {  // TODO: Handle duplicate category name.
-                    categories[cat] = cats[0].id;
+            // Create principles if they do not exist.
+            _.forEach($scope.principles, function (principle) {
+                var principles = VotingPrinciples.filter({name: principle});
+                if (principles.length >= 1) {
+                    principlesMap[principle] = principles[0].id;
                 }
                 else {
-                    promises.push(Category.create({name: cat}).then(
-                        function (success) {
-                            categories[success.name] = success.id;
-                        }
-                    ));
+                    promises.push(VotingPrinciple.create({
+                        name: principle,
+                        decimal_places: 6,
+                    }).then(function (success) {
+                        principlesMap[success.name] = success.id;
+                    }));
                 }
             });
 
             $q.all(promises).then(function () {
-                angular.forEach($scope.delegateShares, function (delegateShare) {
+                _.forEach($scope.delegateShares, function (delegateShare) {
                     if (delegateShare.selected && !delegateShare.importerror) {
-                        _.forEach($scope.categories, function (cat) {
+                        _.forEach($scope.principles, function (principle) {
                             // Look for an existing voting share.
-                            var vss = VotingShare.filter({
+                            var shares = VotingShare.filter({
                                 delegate_id: delegateShare.user_id,
-                                category_id: categories[cat]
+                                principle_id: principleMap[principle],
                             });
-                            if (vss.length == 1) {
+                            if (shares.length == 1) {
                                 // Update voting share.
-                                vss[0].shares = delegateShare[cat];
-                                VotingShare.save(vss[0]).then(function (success) {
+                                var share = shares[0];
+                                share.shares = delegateShare[principle];
+                                VotingShare.save(share).then(function (success) {
                                     delegateShare.imported = true;
                                 });
-                            }
-                            else {
+                            }else {
                                 // Create voting share.
                                 VotingShare.create({
                                     delegate_id: delegateShare.user_id,
-                                    category_id: categories[cat],
-                                    shares: delegateShare[cat]
+                                    principle_id: principleMap[principle],
+                                    shares: delegateShare[principle],
                                 }).then(function (success) {
                                     delegateShare.imported = true;
                                 });
@@ -599,8 +763,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     resolve = {
                         keypad: function () {
                             return keypad;
-                        }
-                    }
+                        },
+                    };
                 }
                 return {
                     template: 'static/templates/openslides_voting/keypad-form.html',
@@ -608,8 +772,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     className: 'ngdialog-theme-default',
                     closeByEscape: false,
                     closeByDocument: false,
-                    resolve: (resolve) ? resolve : null
-                }
+                    resolve: (resolve) ? resolve : null,
+                };
             },
             getFormFields: function () {
                 return [
@@ -619,8 +783,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     templateOptions: {
                         label: gettextCatalog.getString('Keypad number'),
                         type: 'number',
-                        required: true
-                    }
+                        required: true,
+                    },
                 },
                 {
                     key: 'user_id',
@@ -629,10 +793,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         label: gettextCatalog.getString('Participant'),
                         options:  User.filter({where: {groups_id: 2}, orderBy: 'full_name'}),
                         ngOptions: 'option.id as option.full_name for option in to.options',
-                        placeholder: '(' + gettextCatalog.getString('Anonymous') + ')'
-                    }
+                        placeholder: '(' + gettextCatalog.getString('Anonymous') + ')',
+                    },
                 }
-                ]
+                ];
             }
         };
     }
@@ -646,11 +810,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'KeypadForm',
     'Keypad',
     'User',
-    'VoteCollector',
-    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VoteCollector) {
+    'VotingController',
+    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VotingController) {
         //Keypad.bindAll({}, $scope, 'keypads');
         // User.bindAll({}, $scope, 'users');
-        VoteCollector.bindOne(1, $scope, 'vc');
+        VotingController.bindOne(1, $scope, 'vc');
         $scope.alert = {};
 
         $scope.$watch(function () {
@@ -738,7 +902,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 keypad.battery_level = -1;
             });
 
-            $http.get('/votecollector/device/').then(
+            $http.get('/votingcontroller/device/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.device = success.data.error;
@@ -746,7 +910,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     else {
                         $scope.device = success.data.device;
                         if (success.data.connected) {
-                            $http.get('/votecollector/start_ping/').then(
+                            $http.get('/votingcontroller/start_ping/').then(
                                 function (success) {
                                     if (success.data.error) {
                                         $scope.device = success.data.error;
@@ -771,7 +935,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         $scope.stopSysTest = function () {
-            $http.get('/votecollector/stop/');
+            $http.get('/votingcontroller/stop/');
         };
     }
 ])
@@ -909,7 +1073,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 var num = parseInt(record.keypad);
                 if (isNaN(num) || num <= 0) {
                     record.importerror = true;
-                    record.keypad_error = gettext('Error: Keypad number must be a positive integer value.')
+                    record.keypad_error = gettext('Error: Keypad number must be a positive integer value.');
                 }
                 else {
                     record.keypad = num;
@@ -973,8 +1137,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     resolve = {
                         absenteeVote: function () {
                             return absenteeVote;
-                        }
-                    }
+                        },
+                    };
                 }
                 return {
                     template: 'static/templates/openslides_voting/absentee-vote-form.html',
@@ -982,8 +1146,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     className: 'ngdialog-theme-default',
                     closeByEscape: false,
                     closeByDocument: false,
-                    resolve: (resolve) ? resolve : null
-                }
+                    resolve: (resolve) ? resolve : null,
+                };
             },
             getFormFields: function () {
                 var voteOptions = [
@@ -997,8 +1161,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         label: gettextCatalog.getString('Participant'),
                         options: User.filter({where: {groups_id: 2}, orderBy: 'full_name'}),
                         ngOptions: 'option.id as option.full_name for option in to.options',
-                        required: true
-                    }
+                        required: true,
+                    },
                 },
                 {
                     key: 'motion_id',
@@ -1007,8 +1171,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         label: gettextCatalog.getString('Motion'),
                         options: Motion.filter({orderBy: 'identifier'}),
                         ngOptions: 'option.id as option.getTitle() for option in to.options',
-                        required: true
-                    }
+                        required: true,
+                    },
                 },
                 {
                         // className: 'col-xs-4',
@@ -1022,10 +1186,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                 {id: 'A', value: gettextCatalog.getString('Abstain')}
                             ],
                             ngOptions: 'option.id as option.value for option in to.options',
-                            required: true
-                        }
+                            required: true,
+                        },
                 }
-                ]
+                ];
             }
         };
     }
@@ -1320,9 +1484,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'gettextCatalog',
     'MotionPollBallot',
     'Projector',
-    'VoteCollector',
-    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, VoteCollector) {
-        VoteCollector.bindOne(1, $scope, 'vc');
+    'VotingController',
+    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, VotingController) {
+        VotingController.bindOne(1, $scope, 'vc');
 
         var clearForm = function () {
             $scope.poll.yes = null;
@@ -1350,8 +1514,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.startVoting = function () {
             $scope.$parent.$parent.$parent.alert = {};
 
-            // Start votecollector.
-            $http.get('/votecollector/start_voting/' + $scope.poll.id + '/').then(
+            // Start votingcontroller.
+            $http.get('/votingcontroller/start_voting/' + $scope.poll.id + '/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.$parent.$parent.$parent.alert = { type: 'danger', msg: success.data.error, show: true };
@@ -1369,15 +1533,15 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.stopVoting = function () {
             $scope.$parent.$parent.$parent.alert = {};
 
-            // Stop votecollector.
-            $http.get('/votecollector/stop/').then(
+            // Stop votingcontroller.
+            $http.get('/votingcontroller/stop/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.$parent.$parent.$parent.alert = { type: 'danger',
                             msg: success.data.error, show: true };
                     }
                     else {
-                        $http.get('/votecollector/result_voting/' + $scope.poll.id + '/').then(
+                        $http.get('/votingcontroller/result_voting/' + $scope.poll.id + '/').then(
                             function (success) {
                                 if (success.data.error) {
                                     $scope.$parent.$parent.$parent.alert = { type: 'danger',
@@ -1417,7 +1581,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.clearVotes = function () {
             $scope.$parent.$parent.$parent.alert = {};
-            $http.get('/votecollector/clear_voting/' + $scope.poll.id + '/').then(
+            $http.get('/votingcontroller/clear_voting/' + $scope.poll.id + '/').then(
                 function (success) {
                     clearForm();
                 }
@@ -1441,7 +1605,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         return gettextCatalog.getString('Another motion voting is running.');
                     }
                     // NOTE: Must not use $scope.vc.votes_received. If server uses multiple workers
-                    // VoteCollector auto-updates may come in out of order.
+                    // VotingController auto-updates may come in out of order.
                     $scope.votes_received = MotionPollBallot.filter({poll_id: $scope.poll.id}).length;
                     return gettextCatalog.getString('Votes received:') + ' ' +
                         // TODO: Add voting duration.
@@ -1475,16 +1639,16 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 isProjected = false;
             }
             return isProjected;
-        }
+        };
     }
 ])
 
 .controller('SpeakerListCtrl', [
     '$scope',
     '$http',
-    'VoteCollector',
-    function ($scope, $http, VoteCollector) {
-        VoteCollector.bindOne(1, $scope, 'vc');
+    'VotingController',
+    function ($scope, $http, VotingController) {
+        VotingController.bindOne(1, $scope, 'vc');
 
         $scope.canStartVoting = function () {
             return (!$scope.vc.is_voting ||
@@ -1499,7 +1663,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.startVoting = function () {
             $scope.vcAlert = {};
-            $http.get('/votecollector/start_speaker_list/' + $scope.item.id + '/').then(
+            $http.get('/votingcontroller/start_speaker_list/' + $scope.item.id + '/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
@@ -1516,7 +1680,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.stopVoting = function () {
             $scope.vcAlert = {};
-            $http.get('/votecollector/stop/').then(
+            $http.get('/votingcontroller/stop/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
@@ -1551,7 +1715,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         // Config strings
         gettext('Electronic Voting');
         gettext('Delegate board');
-        gettext('VoteCollector URL');
+        gettext('VotingController URL');
         gettext('Example: http://localhost:8030');
         gettext('Please vote now!');
         gettext('Voting start prompt (projector overlay message)');

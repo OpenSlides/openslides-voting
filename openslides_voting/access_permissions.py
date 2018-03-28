@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import user_passes_test
 from django.core.exceptions import PermissionDenied
 
-from openslides.utils.access_permissions import BaseAccessPermissions
+from openslides.utils.access_permissions import BaseAccessPermissions as OSBaseAccessPermissions
 from openslides.utils.auth import has_perm
 
 
@@ -21,64 +21,53 @@ def permission_required(perm, login_url=None, raise_exception=False):
     return user_passes_test(check_perm, login_url=login_url)
 
 
-class VoteCollectorAccessPermissions(BaseAccessPermissions):
+class BaseAccessPermissions(OSBaseAccessPermissions):
     def check_permissions(self, user):
         return has_perm(user, 'openslides_voting.can_manage')
 
+
+class VotingControllerAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):
-        from .serializers import VoteCollectorSerializer
-        return VoteCollectorSerializer
+        from .serializers import VotingControllerSerializer
+        return VotingControllerSerializer
 
 
 class KeypadAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import KeypadSerializer
         return KeypadSerializer
 
+class VotingPrincipleAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import VotingPrincipleSerializer
+        return VotingPrincipleSerializer
+
 
 class VotingShareAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import VotingShareSerializer
         return VotingShareSerializer
 
 
 class VotingProxyAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import VotingProxySerializer
         return VotingProxySerializer
 
 
 class AbsenteeVoteAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import AbsenteeVoteSerializer
         return AbsenteeVoteSerializer
 
 
 class MotionPollBallotAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import MotionPollBallotSerializer
         return MotionPollBallotSerializer
 
 
 class AttendanceLogAccessPermissions(BaseAccessPermissions):
-    def check_permissions(self, user):
-        return has_perm(user, 'openslides_voting.can_manage')
-
     def get_serializer_class(self, user=None):
         from .serializers import AttendanceLogSerializer
         return AttendanceLogSerializer

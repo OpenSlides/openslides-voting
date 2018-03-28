@@ -8,16 +8,16 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'OpenSlidesApp.motions'
 ])
 
-.factory('VoteCollector', [
+.factory('VotingController', [
     'DS',
     'gettext',
     function (DS, gettext) {
         return DS.defineResource({
-            name: 'openslides_voting/vote-collector',
+            name: 'openslides_voting/voting-controller',
             methods: {
                 getErrorMessage: function (status, text) {
                     if (status == 503) {
-                        return gettext('VoteCollector not running!');
+                        return gettext('VotingController not running!');
                     }
                     return status + ': ' + text;
                 }
@@ -55,10 +55,10 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return powerLevel[this.battery_level + 1];
                 },
                 powerCSSIcon: function () {
-                    return powerCSSIcon[this.battery_level + 1]
+                    return powerCSSIcon[this.battery_level + 1];
                 },
                 powerCSSColor: function () {
-                    return powerCSSColor[this.battery_level + 1]
+                    return powerCSSColor[this.battery_level + 1];
                 }
             },
             relations: {
@@ -74,55 +74,67 @@ angular.module('OpenSlidesApp.openslides_voting', [
 ])
 
 .factory('VotingPrinciple', [
-    'Category',
-    function (Category) {
-        return {
-            getName: function (value) {
-                // voting principle format: 'name.precision'.
-                var name = typeof value == 'number' ? Category.get(value).name : value,
-                    i = name.lastIndexOf('.');
-                if (i >= 0) {
-                    return name.substr(0, i);
-                }
-                return name;
-            },
-            getPrecision: function (value) {
-                // voting principle format: 'name.precision'. Max. precision is 6.
-                var name = typeof value == 'number' ? Category.get(value).name : value,
-                    i = name.lastIndexOf('.');
-                if (i >= 0) {
-                    var precision = parseInt(name.substr(i + 1));
-                    if (!isNaN(precision) && precision > 0) {
-                        return Math.min(6, precision);
-                    }
-                }
-                return 0;
-            },
-            getStep: function (value) {
+    'DS',
+    function (DS) {
+        return DS.defineResource({
+            name: 'openslides_voting/voting-principle',
+            computed: {
                 // Step between two values based on precision: 1, 0.1, 0.01 etc.
-                var precision = this.getPrecision(value);
-                return Math.pow(10, -precision);
-            }
-        };
+                step: function () {
+                    return Math.pow(10, -this.decimal_places);
+                },
+            },
+            methods: {
+                shares: function () {
+                    return DS.filter('openslides_voting/voting-share', {principle_id: this.id});
+                },
+                share: function (delegate) {
+                    var share = DS.filter('openslides_voting/voting-share', {
+                        principle_id: this.id,
+                        delegate_id: delegate.id,
+                    });
+                    return share.length ? share[0] : null;
+                },
+            },
+            relations: {
+                hasMany: {
+                    'motions/motion': {
+                        localField: 'motions',
+                        localKeys: 'motions_id'
+                    },
+                    'assignments/assignment': {
+                        localField: 'assignments',
+                        localKeys: 'assignments_id'
+                    },
+                },
+            },
+        });
     }
 ])
 
 .factory('VotingShare', [
     'DS',
-    'User',
-    'Category',
-    function (DS, User, Category) {
+    function (DS) {
         return DS.defineResource({
             name: 'openslides_voting/voting-share',
+            validate: function (options, share, callback) {
+                var shares = parseFloat(share.shares);
+                if (isNaN(shares) || shares <= 0) {
+                    shares = 1;
+                }
+                var decimalPlaces = DS.get('openslides_voting/voting-principle', share.principle_id);
+                share.shares = parseFloat(shares.toFixed(decimalPlaces));
+                callback(null, share);
+            },
             relations: {
                 belongsTo: {
                     'users/user': {
-                        localField: 'user',
+                        localField: 'delegate',
                         localKey: 'delegate_id'
                     },
-                    'motions/category': {
-                        localField: 'category',
-                        localKey: 'category_id'
+                    'openslides_voting/voting-principle': {
+                        localField: 'principle',
+                        localKey: 'principle_id'
                     }
                 }
             }
@@ -240,13 +252,12 @@ angular.module('OpenSlidesApp.openslides_voting', [
 .factory('Delegate', [
     '$q',
     'User',
-    'Category',
     'VotingPrinciple',
     'Keypad',
     'VotingProxy',
     'VotingShare',
     'Config',
-    function ($q, User, Category, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config) {
+    function ($q, User, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config) {
         return {
             isDelegate: function (user) {
                 if (user) {
@@ -296,15 +307,21 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 }
                 return 'inactive';
             },
-            getMandates: function (id) {
-                return VotingProxy.filter({ proxy_id: id })
+            getMandates: function (delegate) {
+                return VotingProxy.filter({ proxy_id: delegate.id });
             },
-            getShares: function (id) {
+            getMandatesIds: function (delegate) {
+                return _.map(this.getMandates(delegate), function (proxy) {
+                    return proxy.delegate_id;
+                });
+            },
+            getShares: function (delegate) {
                 var shares = {};
-                _.forEach(Category.getAll(), function (cat) {
-                    var vss = VotingShare.filter({delegate_id: id, category_id: cat.id});
-                    // Use cat.id as key.
-                    shares[cat.id] = vss.length == 1 ? parseFloat(vss[0].shares) : null;
+                _.forEach(VotingPrinciple.getAll(), function (principle) {
+                    var share = principle.share(delegate);
+                    if (share) {
+                        shares[principle.id] = parseFloat(share.shares);
+                    }
                 });
                 return shares;
             },
@@ -413,35 +430,37 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 return promises;
             },
             // returns a list of promises
-            updateShares: function (user) {
-                return _.filter(_.map(user.shares, function (value, key) {
+            updateShares: function (delegate) {
+                var self = this;
+                return _.filter(_.map(delegate.shares, function (value, principleId) {
                     var shares = VotingShare.filter({
-                        delegate_id: user.id,
-                        category_id: key
+                        delegate_id: delegate.id,
+                        principle_id: principleId,
                     });
                     var share = shares.length == 1 ? shares[0]: null;
-                    if (value) {
-                        if (share) {
-                            // Update VotingShare.
-                            share.shares = value;
-                            return VotingShare.save(share);
-                        }
-                        else {
-                            // Create VotingShare.
-                            return VotingShare.create({
-                                delegate_id: user.id,
-                                category_id: key,
-                                shares: value
-                            });
-                        }
-                    }
-                    else if (share) {
-                        // Destroy VotingShare.
-                        return VotingShare.destroy(share);
-                    }
+                    return self.updateShare(delegate, share, value, principleId);
                 }));
-            }
-        }
+            },
+            updateShare: function (delegate, share, newValue, principleId) {
+                if (newValue) {
+                    if (share) {
+                        // Update VotingShare.
+                        share.shares = newValue;
+                        return VotingShare.save(share);
+                    } else {
+                        // Create VotingShare.
+                        return VotingShare.create({
+                            delegate_id: delegate.id,
+                            principle_id: principleId,
+                            shares: newValue
+                        });
+                    }
+                } else if (share) {
+                    // Destroy VotingShare.
+                    return VotingShare.destroy(share);
+                }
+            },
+        };
     }
 ])
 
@@ -471,15 +490,17 @@ angular.module('OpenSlidesApp.openslides_voting', [
 ])
 
 .run([
-    'VoteCollector',
+    'VotingController',
     'Keypad',
+    'VotingPrinciple',
     'VotingShare',
     'VotingProxy',
     'AbsenteeVote',
     'MotionPollBallot',
     'Delegate',
     'AttendanceLog',
-    function (VoteCollector, Keypad, VotingShare, VotingProxy, AbsenteeVote, MotionPollBallot, Delegate, AttendanceLog) {}
-])
+    function (VotingController, Keypad, VotingPrinciple, VotingShare, VotingProxy,
+        AbsenteeVote, MotionPollBallot, Delegate, AttendanceLog) {}
+]);
 
 }());

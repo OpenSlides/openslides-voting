@@ -2,7 +2,8 @@ from django.db import models
 from django.utils.translation import ugettext as _
 from jsonfield import JSONField
 
-from openslides.motions.models import Category, Motion, MotionPoll
+from openslides.assignments.models import Assignment
+from openslides.motions.models import Motion, MotionPoll
 from openslides.users.models import User
 from openslides.utils.models import RESTModelMixin
 
@@ -11,18 +12,45 @@ from .access_permissions import (
     AttendanceLogAccessPermissions,
     KeypadAccessPermissions,
     MotionPollBallotAccessPermissions,
-    VoteCollectorAccessPermissions,
+    VotingControllerAccessPermissions,
+    VotingPrincipleAccessPermissions,
     VotingShareAccessPermissions,
     VotingProxyAccessPermissions,
 )
 
 
-class VoteCollector(RESTModelMixin, models.Model):
+# Workaroud, that we cannot add a foreign key to motions or assignment to VotingPrinciple.
+# See https://github.com/adsworth/django-onetomany for more information
+class OneToManyField(models.ManyToManyField):
     """
-    VoteCollector model. Provides device and voting status information.
-    Currently only one votecollector is supported (pk=1).
+    A forgein key field that behaves just like djangos ManyToMany field,
+    the only difference is that an instance of the other side can only be
+    related to one instance of your side. Also see the test cases.
     """
-    access_permissions = VoteCollectorAccessPermissions()
+    def contribute_to_class(self, cls, name):
+        # Check if the intermediate model will be auto created.
+        # The intermediate m2m model is not auto created if:
+        #  1) There is a manually specified intermediate, or
+        #  2) The class owning the m2m field is abstract.
+        #  3) The class owning the m2m field has been swapped out.
+        auto_intermediate = False
+        if not self.rel.through and not cls._meta.abstract and not cls._meta.swapped:
+            auto_intermediate = True
+
+        #One call super contribute_to_class and have django create the intermediate model.
+        super(OneToManyField, self).contribute_to_class(cls, name)
+
+        if auto_intermediate == True:
+            #Set unique_together to the 'to' relationship, this ensures a OneToMany relationship.
+            self.rel.through._meta.unique_together = ((self.rel.through._meta.unique_together[0][1],),)
+
+
+class VotingController(RESTModelMixin, models.Model):
+    """
+    VotingController model. Provides device and voting status information.
+    Currently only one votingcontroller is supported (pk=1).
+    """
+    access_permissions = VotingControllerAccessPermissions()
 
     device_status = models.CharField(max_length=200, default='No device')
     voting_mode = models.CharField(max_length=50, null=True)
@@ -60,16 +88,29 @@ class Keypad(RESTModelMixin, models.Model):
         return _('Keypad %d') % self.number
 
 
+class VotingPrinciple(RESTModelMixin, models.Model):
+    access_permissions = VotingPrincipleAccessPermissions()
+
+    name = models.CharField(max_length=128, unique=True)
+    decimal_places = models.PositiveIntegerField()
+
+    motions = OneToManyField(Motion, blank=True)
+    assignments = OneToManyField(Assignment, blank=True)
+
+    class Meta:
+        default_permissions = ()
+
+
 class VotingShare(RESTModelMixin, models.Model):
     access_permissions = VotingShareAccessPermissions()
 
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shares')
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    principle = models.ForeignKey(VotingPrinciple, on_delete=models.CASCADE, null=True)
     shares = models.DecimalField(max_digits=15, decimal_places=6)
 
     class Meta:
         default_permissions = ()
-        unique_together = ('delegate', 'category')
+        unique_together = ('delegate', 'principle')
 
     def __str__(self):
         return '%s, %s, %s' % (self.delegate, self.category, self.shares)

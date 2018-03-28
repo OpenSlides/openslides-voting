@@ -73,6 +73,6 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                       '</button>',
         });
     }
-])
+]);
 
 }());

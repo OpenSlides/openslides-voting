@@ -3,9 +3,9 @@ from openslides.utils.rest_api import ModelSerializer
 from . import models
 
 
-class VoteCollectorSerializer(ModelSerializer):
+class VotingControllerSerializer(ModelSerializer):
     class Meta:
-        model = models.VoteCollector
+        model = models.VotingController
         fields = (
             'id', 'device_status', 'voting_mode', 'voting_target', 'voting_duration',
             'voters_count', 'votes_received',
@@ -19,10 +19,16 @@ class KeypadSerializer(ModelSerializer):
         fields = ('id', 'number', 'user', 'battery_level', 'in_range', )
 
 
+class VotingPrincipleSerializer(ModelSerializer):
+    class Meta:
+        model = models.VotingPrinciple
+        fields = ('id', 'name', 'decimal_places', 'motions', 'assignments', )
+
+
 class VotingShareSerializer(ModelSerializer):
     class Meta:
         model = models.VotingShare
-        fields = ('id', 'delegate', 'category', 'shares', )
+        fields = ('id', 'delegate', 'principle', 'shares', )
 
 
 class VotingProxySerializer(ModelSerializer):

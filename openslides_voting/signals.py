@@ -8,7 +8,7 @@ def add_permissions_to_builtin_groups(**kwargs):
     """
     Adds the permissions openslides_voting.can_manage to the group staff.
     """
-    content_type = ContentType.objects.get(app_label='openslides_voting', model='votecollector')
+    content_type = ContentType.objects.get(app_label='openslides_voting', model='votingcontroller')
 
     try:
         # Group with pk == 3 should be the staff group in OpenSlides 2.1

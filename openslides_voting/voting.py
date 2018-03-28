@@ -32,18 +32,18 @@ def find_authorized_voter(delegate, proxies=None):
     return delegate
 
 
-def get_admitted_delegates(cat_id, *order_by):
+def get_admitted_delegates(principle_id, *order_by):
     """
     Returns a dictionary of admitted delegates.
 
-    :param cat_id: Category ID or None.
+    :param principle_id: Principle ID or None.
     :param order_by: User fields the list should be ordered by.
     :return: Dictionary, count
     """
     # Get delegates who have voting rights (shares) for the given category.
     # admitted: key: keypad number, value: list of delegate ids
     admitted = {}
-    qs_delegates = query_admitted_delegates(cat_id)
+    qs_delegates = query_admitted_delegates(Principle.objects.get(pk=principle_id))
     if order_by:
         qs_delegates = qs_delegates.order_by(*order_by)
 
@@ -63,22 +63,22 @@ def get_admitted_delegates(cat_id, *order_by):
     return admitted, count
 
 
-def query_admitted_delegates(category=None):
+def query_admitted_delegates(principle=None):
     """
     Returns a queryset of admitted delegates.
 
     Admitted delegates are users belonging to the Delegates group (id = 2), AND
     who have ANY voting rights (shares) if voting shares exist, AND
-    who have voting rights for a given voting principle (category).
+    who have voting rights for a given voting principle (principle_id).
 
-    :param category: Category, category ID or None.
+    :param principle: Principle or None.
     :return: queryset
     """
     qs = User.objects.filter(groups=2)
     if VotingShare.objects.exists():
         qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
     if category:
-        qs = qs.filter(shares__category=category)
+        qs = qs.filter(shares__principle=principle_id)
     return qs
 
 
@@ -134,6 +134,7 @@ class Ballot:
         qs_absentee_votes = AbsenteeVote.objects.filter(motion=self.poll.motion)
 
         # Allow only absentee votes of admitted delegates.
+        raise NotImplementedError("TODO: change from motion.category to motion.votingprinciples_set or so")
         admitted_delegates = query_admitted_delegates(self.poll.motion.category)
         qs_absentee_votes = qs_absentee_votes.filter(delegate__in=admitted_delegates)
 
@@ -186,6 +187,7 @@ class Ballot:
             return self.updated
 
         # Create a list of admitted delegate ids. Exclude delegates who cast an absentee vote.
+        raise NotImplementedError("TODO: change from motion.category to motion.votingprinciples_set or so")
         qs = query_admitted_delegates(self.poll.motion.category).exclude(
             absenteevote__motion=self.poll.motion)
         self.admitted_delegates = qs.values_list('id', flat=True)

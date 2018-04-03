@@ -44,7 +44,7 @@ def get_server():
     Gets a server proxy object.
     """
     try:
-        server = ServerProxy(config['votecollector_uri'])
+        server = ServerProxy(config['voting_votecollector_uri'])
     except TypeError:
         raise VoteCollectorError(_('Server not found.'))
     return server

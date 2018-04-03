@@ -8,16 +8,20 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
 
 // Template hooks
 .run([
+    '$http',
     'templateHooks',
+    'operator',
     'User',
     'Keypad',
     'VotingProxy',
     'Delegate',
     'UserForm',
     'DelegateForm',
+    'PollCreateForm',
     'ngDialog',
-    function (templateHooks, User, Keypad, VotingProxy, Delegate, UserForm,
-        DelegateForm, ngDialog) {
+    'MotionPollType',
+    function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
+        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
@@ -25,6 +29,18 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
         templateHooks.registerHook({
             id: 'motionPollSmallButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-small-buttons-hook.html',
+            scope: function (scope) {
+                // Recalculate vote result.
+                scope.countVotes = function () {
+                    $http.post('/voting/count/' + scope.poll.id + '/');
+                };
+                scope.$watch(function () {
+                    return MotionPollType.lastModified();
+                }, function () {
+                    var pollTypes = MotionPollType.filter({poll_id: scope.poll.id});
+                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                });
+            },
         });
         templateHooks.registerHook({
             id: 'itemDetailListOfSpeakersButtons',
@@ -70,6 +86,32 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             template: '<button class="btn btn-default btn-sm spacer-right pull-right"' +
                         'ng-click="filter.multiselectFilters.group = [2]" type="button">' +
                         '<translate>Show delegates</translate>' +
+                      '</button>',
+        });
+        templateHooks.registerHook({
+            id: 'motionPollNewVoteButton',
+            scope: function (scope) {
+                scope.create_poll = function () {
+                    if (operator.hasPerms('openslides_voting.can_manage')) {
+                        ngDialog.open(PollCreateForm.getDialog(scope.motion));
+                    } else {
+                         $http.post('/rest/motions/motion/' + scope.motion.id + '/create_poll/', {});
+                    }
+                };
+            },
+        });
+        templateHooks.registerHook({
+            id: 'motionListMenuButton',
+            template: '<a ui-sref="openslides_voting.tokens"' +
+                        'class="btn btn-default btn-sm spacer-left pull-right" type="button">' +
+                        '<translate>Tokens</translate>' +
+                      '</button>',
+        });
+        templateHooks.registerHook({
+            id: 'assignmentListMenuButton',
+            template: '<a ui-sref="openslides_voting.tokens"' +
+                        'class="btn btn-default btn-sm spacer-left pull-right" type="button">' +
+                        '<translate>Tokens</translate>' +
                       '</button>',
         });
     }

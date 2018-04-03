@@ -67,7 +67,31 @@ class MotionPollBallotAccessPermissions(BaseAccessPermissions):
         return MotionPollBallotSerializer
 
 
+class MotionPollTypeAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import MotionPollTypeSerializer
+        return MotionPollTypeSerializer
+
+
+class AssignmentPollBallotAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import AssignmentPollBallotSerializer
+        return AssignmentPollBallotSerializer
+
+
+class AssignmentPollTypeAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import AssignmentPollTypeSerializer
+        return AssignmentPollTypeSerializer
+
+
 class AttendanceLogAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):
         from .serializers import AttendanceLogSerializer
         return AttendanceLogSerializer
+
+
+class VotingTokenAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import VotingTokenSerializer
+        return VotingTokenSerializer

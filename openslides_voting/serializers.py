@@ -49,7 +49,31 @@ class MotionPollBallotSerializer(ModelSerializer):
         fields = ('id', 'poll', 'delegate', 'vote', )
 
 
+class MotionPollTypeSerializer(ModelSerializer):
+    class Meta:
+        model = models.MotionPollType
+        fields = ('id', 'poll', 'type', )
+
+
+class AssignmentPollBallotSerializer(ModelSerializer):
+    class Meta:
+        model = models.AssignmentPollBallot
+        fields = ('id', 'poll', 'delegate', 'vote', )
+
+
+class AssignmentPollTypeSerializer(ModelSerializer):
+    class Meta:
+        model = models.AssignmentPollType
+        fields = ('id', 'poll', 'type', )
+
+
 class AttendanceLogSerializer(ModelSerializer):
     class Meta:
         model = models.AttendanceLog
         fields = ('id', 'message', 'created', )
+
+
+class VotingTokenSerializer(ModelSerializer):
+    class Meta:
+        model = models.VotingToken
+        fields = ('id', 'token', )

@@ -12,8 +12,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'DS',
     'gettext',
     function (DS, gettext) {
+        var name = 'openslides_voting/voting-controller';
         return DS.defineResource({
-            name: 'openslides_voting/voting-controller',
+            name: name,
             methods: {
                 getErrorMessage: function (status, text) {
                     if (status == 503) {
@@ -42,6 +43,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 // active and identified are created and updated by KeypadListCtrl.
             },
             methods: {
+                getResourceName: function () {
+                    return name;
+                },
                 getTitle: function () {
                     return "Keypad " + this.number;
                 },
@@ -76,8 +80,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
 .factory('VotingPrinciple', [
     'DS',
     function (DS) {
+        var name = 'openslides_voting/voting-principle';
         return DS.defineResource({
-            name: 'openslides_voting/voting-principle',
+            name: name,
             computed: {
                 // Step between two values based on precision: 1, 0.1, 0.01 etc.
                 step: function () {
@@ -85,6 +90,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 },
             },
             methods: {
+                getResourceName: function () {
+                    return name;
+                },
                 shares: function () {
                     return DS.filter('openslides_voting/voting-share', {principle_id: this.id});
                 },
@@ -115,8 +123,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
 .factory('VotingShare', [
     'DS',
     function (DS) {
+        var name = 'openslides_voting/voting-share';
         return DS.defineResource({
-            name: 'openslides_voting/voting-share',
+            name: name,
             validate: function (options, share, callback) {
                 var shares = parseFloat(share.shares);
                 if (isNaN(shares) || shares <= 0) {
@@ -125,6 +134,11 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 var decimalPlaces = DS.get('openslides_voting/voting-principle', share.principle_id);
                 share.shares = parseFloat(shares.toFixed(decimalPlaces));
                 callback(null, share);
+            },
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
             },
             relations: {
                 belongsTo: {
@@ -135,9 +149,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     'openslides_voting/voting-principle': {
                         localField: 'principle',
                         localKey: 'principle_id'
-                    }
-                }
-            }
+                    },
+                },
+            },
         });
     }
 ])
@@ -146,8 +160,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'DS',
     'User',
     function (DS, User) {
+        var name = 'openslides_voting/voting-proxy';
         return DS.defineResource({
-            name: 'openslides_voting/voting-proxy',
+            name: name,
             relations: {
                 belongsTo: {
                     'users/user': {
@@ -166,6 +181,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'User',
     'Motion',
     function (DS, gettextCatalog, User, Motion) {
+        var name = 'openslides_voting/absentee-vote';
         var voteOption = {
             Y: gettextCatalog.getString('Yes'),
             N: gettextCatalog.getString('No'),
@@ -178,7 +194,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
         };
 
         return DS.defineResource({
-            name: 'openslides_voting/absentee-vote',
+            name: name,
             relations: {
                 belongsTo: {
                     'users/user': {
@@ -192,6 +208,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 }
             },
             methods: {
+                getResourceName: function () {
+                    return name;
+                },
                 getTitle: function () {
                     return this.user.full_name + ", " + this.getMotionTitle() + ", " + this.getVote();
                 },
@@ -205,8 +224,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 },
                 getVoteIcon: function () {
                     return voteIcon[this.vote];
-                }
-            }
+                },
+            },
         });
     }
 ])
@@ -214,8 +233,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
 .factory('MotionPollBallot', [
     'DS',
     'gettextCatalog',
-    'User',
-    function (DS, gettextCatalog, User) {
+    function (DS, gettextCatalog) {
+        var name = 'openslides_voting/motion-poll-ballot';
         var voteOption = {
             Y: gettextCatalog.getString('Yes'),
             N: gettextCatalog.getString('No'),
@@ -228,7 +247,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
         };
 
         return DS.defineResource({
-            name: 'openslides_voting/motion-poll-ballot',
+            name: name,
             relations: {
                 belongsTo: {
                     'users/user': {
@@ -238,13 +257,109 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 }
             },
             methods: {
+                getResourceName: function () {
+                    return name;
+                },
                 getVote: function () {
                     return voteOption[this.vote];
                 },
                 getVoteIcon: function () {
                     return voteIcon[this.vote];
+                },
+            },
+        });
+    }
+])
+
+.factory('PollType', [
+    'gettext',
+    function (gettext) {
+        var names = {
+            'analog': gettext('Analog voting'),
+            'named_electronic': gettext('Named electronic voting'),
+            'token_electronic': gettext('Token-based electronic voting'),
+            'votecollector': gettext('Votecollector'),
+        };
+        return {
+            getDisplayName: function (value) {
+                return names[value] || 'Unknown';
+            },
+            // returns an array of {key: 'name', displayName: 'displayName'}
+            getTypes: function (includeVoteCollector) {
+                return _.chain(names)
+                    .map(function (value, key) {
+                        return {key: key, displayName: value};
+                    })
+                    .filter(function (item) {
+                        return item.key !== 'votecollector' || includeVoteCollector;
+                    })
+                    .value();
+            },
+        };
+    }
+])
+
+.factory('MotionPollType', [
+    'DS',
+    'PollType',
+    function (DS, PollType) {
+        var name = 'openslides_voting/motion-poll-type';
+        return DS.defineResource({
+            name: name,
+            computed: {
+                displayName: function () {
+                    return PollType.getDisplayName(this.type);
+                },
+            },
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+            },
+            relations: {
+                belongsTo: {
+                    'motions/motion-poll': {
+                        localField: 'poll',
+                        localKey: 'poll_id'
+                    }
                 }
+            },
+        });
+    }
+])
+
+// Dummy..
+.factory('AssignmentPollType', [function () {return {};}])
+
+.factory('AttendanceLog', [
+    'DS',
+    function (DS) {
+        var name = 'openslides_voting/attendance-log';
+        return DS.defineResource({
+            name: name,
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+                json: function () {
+                    return angular.fromJson(this.message.replace(/'/g, '"'));
+                },
             }
+        });
+    }
+])
+
+.factory('VotingToken', [
+    'DS',
+    function (DS) {
+        var name = 'openslides_voting/voting-token';
+        return DS.defineResource({
+            name: name,
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+            },
         });
     }
 ])
@@ -464,20 +579,6 @@ angular.module('OpenSlidesApp.openslides_voting', [
     }
 ])
 
-.factory('AttendanceLog', [
-    'DS',
-    function (DS) {
-        return DS.defineResource({
-            name: 'openslides_voting/attendance-log',
-            methods: {
-                json: function () {
-                    return angular.fromJson(this.message.replace(/'/g, '"'));
-                }
-            }
-        });
-    }
-])
-
 .config([
     'OpenSlidesPluginsProvider',
     function(OpenSlidesPluginsProvider) {
@@ -497,10 +598,11 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'VotingProxy',
     'AbsenteeVote',
     'MotionPollBallot',
+    'MotionPollType',
     'Delegate',
     'AttendanceLog',
     function (VotingController, Keypad, VotingPrinciple, VotingShare, VotingProxy,
-        AbsenteeVote, MotionPollBallot, Delegate, AttendanceLog) {}
+        AbsenteeVote, MotionPollBallot, MotionPollType, Delegate, AttendanceLog) {}
 ]);
 
 }());

@@ -2,16 +2,20 @@ from django.db import models
 from django.utils.translation import ugettext as _
 from jsonfield import JSONField
 
-from openslides.assignments.models import Assignment
+from openslides.assignments.models import Assignment, AssignmentPoll
 from openslides.motions.models import Motion, MotionPoll
 from openslides.users.models import User
 from openslides.utils.models import RESTModelMixin
 
 from .access_permissions import (
     AbsenteeVoteAccessPermissions,
+    AssignmentPollBallotAccessPermissions,
+    AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
     KeypadAccessPermissions,
     MotionPollBallotAccessPermissions,
+    MotionPollTypeAccessPermissions,
+    VotingTokenAccessPermissions,
     VotingControllerAccessPermissions,
     VotingPrincipleAccessPermissions,
     VotingShareAccessPermissions,
@@ -129,6 +133,8 @@ class VotingProxy(RESTModelMixin, models.Model):
         return '%s >> %s' % (self.delegate, self.proxy)
 
 
+# TODO: Same for assignments. Should we do this in a second model or foreign keys
+# to motion and assignment in this model?
 class AbsenteeVote(RESTModelMixin, models.Model):
     access_permissions = AbsenteeVoteAccessPermissions()
 
@@ -148,8 +154,9 @@ class MotionPollBallot(RESTModelMixin, models.Model):
     access_permissions = MotionPollBallotAccessPermissions()
 
     poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
-    delegate = models.ForeignKey(User, on_delete=models.CASCADE, related_name='delegate_set')
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
     vote = models.CharField(max_length=1, blank=True)
+    resultToken = models.PositiveIntegerField(default=0)
 
     class Meta:
         default_permissions = ()
@@ -159,6 +166,43 @@ class MotionPollBallot(RESTModelMixin, models.Model):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
 
 
+class AssignmentPollBallot(RESTModelMixin, models.Model):
+    access_permissions = AssignmentPollBallotAccessPermissions()
+
+    poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
+    vote = models.CharField(max_length=1, blank=True)
+    resultToken = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        default_permissions = ()
+        unique_together = ('poll', 'delegate')
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
+
+
+class MotionPollType(RESTModelMixin, models.Model):
+    access_permissions = MotionPollTypeAccessPermissions()
+
+    poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
+    type = models.CharField(max_length=128, default='analog')
+
+    class Meta:
+        default_permissions = ()
+
+
+class AssignmentPollType(RESTModelMixin, models.Model):
+    access_permissions = AssignmentPollTypeAccessPermissions()
+
+    poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
+    type = models.CharField(max_length=128, default='analog')
+
+    class Meta:
+        default_permissions = ()
+
+
+# TODO: Add voting timestamp to Poll model.
 class AttendanceLog(RESTModelMixin, models.Model):
     access_permissions = AttendanceLogAccessPermissions()
 
@@ -173,4 +217,10 @@ class AttendanceLog(RESTModelMixin, models.Model):
         return '%s | %s' % (self.created.strftime('%Y-%m-%d %H:%M') if self.created else '-', self.message)
 
 
-# TODO: Add voting timestamp to Poll model.
+class VotingToken(RESTModelMixin, models.Model):
+    access_permissions = VotingTokenAccessPermissions()
+
+    token = models.CharField(max_length=128)
+
+    class Meta:
+        default_permissions = ()

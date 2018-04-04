@@ -67,9 +67,9 @@ class AjaxView(utils_views.View):
 
 class VotingView(AjaxView):
     """
-    Base view for the VoteCollector commands.
+    Base view for the VotingController commands.
     """
-    resource_path = '/votecollector'
+    resource_path = '/votingcontroller'
     prompt_key = 'a016f7ecaf2147b2b656c6edf45c24ef'
     countdown_key = '134ddb26831743d586cbfa17e4712be9'
 

@@ -1,7 +1,7 @@
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
 
-from .models import AbsenteeVote, MotionPollBallot, VotingShare, Keypad
+from .models import AbsenteeVote, MotionPollBallot, VotingShare, VotingPrinciple, Keypad
 
 
 def find_authorized_voter(delegate, proxies=None):
@@ -40,7 +40,7 @@ def get_admitted_delegates(principle_id, *order_by):
     :param order_by: User fields the list should be ordered by.
     :return: Dictionary, count
     """
-    # Get delegates who have voting rights (shares) for the given category.
+    # Get delegates who have voting rights (shares) for the given principle.
     # admitted: key: keypad number, value: list of delegate ids
     admitted = {}
     qs_delegates = query_admitted_delegates(Principle.objects.get(pk=principle_id))
@@ -77,8 +77,8 @@ def query_admitted_delegates(principle=None):
     qs = User.objects.filter(groups=2)
     if VotingShare.objects.exists():
         qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
-    if category:
-        qs = qs.filter(shares__principle=principle_id)
+    if printciple:
+        qs = qs.filter(shares__principle=principle)
     return qs
 
 
@@ -134,8 +134,8 @@ class Ballot:
         qs_absentee_votes = AbsenteeVote.objects.filter(motion=self.poll.motion)
 
         # Allow only absentee votes of admitted delegates.
-        raise NotImplementedError("TODO: change from motion.category to motion.votingprinciples_set or so")
-        admitted_delegates = query_admitted_delegates(self.poll.motion.category)
+        admitted_delegates = query_admitted_delegates(
+            VotingPrinciple.objects.get(motion=self.poll.motion))
         qs_absentee_votes = qs_absentee_votes.filter(delegate__in=admitted_delegates)
 
         updated = 0
@@ -187,9 +187,9 @@ class Ballot:
             return self.updated
 
         # Create a list of admitted delegate ids. Exclude delegates who cast an absentee vote.
-        raise NotImplementedError("TODO: change from motion.category to motion.votingprinciples_set or so")
-        qs = query_admitted_delegates(self.poll.motion.category).exclude(
-            absenteevote__motion=self.poll.motion)
+        qs = query_admitted_delegates(
+            VotingPrinciple.objects.get(motion=self.poll.motion)
+            ).exclude(absenteevote__motion=self.poll.motion)
         self.admitted_delegates = qs.values_list('id', flat=True)
 
         if not commit and self.new_ballots is None:
@@ -229,10 +229,12 @@ class Ballot:
         votes = qs.values_list('delegate', 'vote')
 
         shares = None
-        if self.poll.motion.category_id:
+        # try to find a voting principle
+        principle = VotingPrinciple.objects.filter(motions=self.poll.motion)
+        if principle.count() > 0:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
-            qs = VotingShare.objects.filter(category_id=self.poll.motion.category_id)
+            qs = VotingShare.objects.filter(principle_id=principle.all()[0])
             shares = dict(qs.values_list('delegate', 'shares'))
 
         # Sum up the votes.

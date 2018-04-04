@@ -53,13 +53,17 @@ class VotingAppConfig(AppConfig):
         from .urls import urlpatterns
         from .views import (
             AbsenteeVoteViewSet,
+            AssignmentPollBallotViewSet,
+            AssignmentPollTypeViewSet,
             AttendanceLogViewSet,
             KeypadViewSet,
             MotionPollBallotViewSet,
+            MotionPollTypeViewSet,
             VotingControllerViewSet,
-            VotingShareViewSet,
             VotingPrincipleViewSet,
-            VotingProxyViewSet
+            VotingProxyViewSet,
+            VotingShareViewSet,
+            VotingTokenViewSet
         )
 
         # Define config variables
@@ -72,20 +76,25 @@ class VotingAppConfig(AppConfig):
         )
 
         # Register viewsets.
-        router.register(self.get_model('VotingController').get_collection_string(), VotingControllerViewSet)
+        router.register(self.get_model('AbsenteeVote').get_collection_string(), AbsenteeVoteViewSet)
+        router.register(self.get_model('AssignmentPollBallot').get_collection_string(), AssignmentPollBallotViewSet)
+        router.register(self.get_model('AssignmentPollType').get_collection_string(), AssignmentPollTypeViewSet)
+        router.register(self.get_model('AttendanceLog').get_collection_string(), AttendanceLogViewSet)
         router.register(self.get_model('Keypad').get_collection_string(), KeypadViewSet)
+        router.register(self.get_model('MotionPollBallot').get_collection_string(), MotionPollBallotViewSet)
+        router.register(self.get_model('MotionPollType').get_collection_string(), MotionPollTypeViewSet)
+        router.register(self.get_model('VotingToken').get_collection_string(), VotingTokenViewSet)
+        router.register(self.get_model('VotingController').get_collection_string(), VotingControllerViewSet)
         router.register(self.get_model('VotingPrinciple').get_collection_string(), VotingPrincipleViewSet)
         router.register(self.get_model('VotingShare').get_collection_string(), VotingShareViewSet)
         router.register(self.get_model('VotingProxy').get_collection_string(), VotingProxyViewSet)
-        router.register(self.get_model('AbsenteeVote').get_collection_string(), AbsenteeVoteViewSet)
-        router.register(self.get_model('AttendanceLog').get_collection_string(), AttendanceLogViewSet)
-        router.register(self.get_model('MotionPollBallot').get_collection_string(), MotionPollBallotViewSet)
 
         # Provide plugin urlpatterns to application configuration.
         self.urlpatterns = urlpatterns
 
     def get_startup_elements(self):
         from openslides.utils.collection import Collection
-        for model in ('VotingController', 'Keypad', 'VotingPrinciple', 'VotingShare',
-                      'VotingProxy', 'AbsenteeVote', 'MotionPollBallot', 'AttendanceLog'):
+        for model in ('AbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
+                'AttendanceLog', 'MotionPollType', 'MotionPollBallot', 'VotingToken',
+                'VotingController', 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
             yield Collection(self.get_model(model).get_collection_string())

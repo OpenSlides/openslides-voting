@@ -1,3 +1,5 @@
+import random
+
 from decimal import Decimal
 
 from django.db.models import Prefetch
@@ -7,6 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from openslides.assignments.models import Assignment
+from openslides.core.config import config
 from openslides.motions.models import Category, Motion, MotionPoll
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_deleted_data
@@ -15,25 +18,38 @@ from openslides.utils.rest_api import ModelViewSet, ValidationError, list_route,
 from .access_permissions import (
     permission_required,
     AbsenteeVoteAccessPermissions,
+    AssignmentPollBallotAccessPermissions,
+    AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
     KeypadAccessPermissions,
     MotionPollBallotAccessPermissions,
+    MotionPollTypeAccessPermissions,
     VotingControllerAccessPermissions,
     VotingProxyAccessPermissions,
     VotingPrincipleAccessPermissions,
-    VotingShareAccessPermissions
+    VotingShareAccessPermissions,
+    VotingTokenAccessPermissions
 )
 from .models import (
     AbsenteeVote,
+    AssignmentPollBallot,
+    AssignmentPollType,
     AttendanceLog,
     Keypad,
     MotionPollBallot,
+    MotionPollType,
     VotingController,
     VotingPrinciple,
     VotingProxy,
-    VotingShare
+    VotingShare,
+    VotingToken
 )
-from .voting import Ballot, find_authorized_voter, get_admitted_delegates, is_registered
+from .voting import (
+    Ballot,
+    find_authorized_voter,
+    get_admitted_delegates,
+    is_registered
+)
 
 
 class PermissionMixin:
@@ -110,12 +126,61 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
     queryset = MotionPollBallot.objects.all()
 
 
+class MotionPollTypeViewSet(ModelViewSet):
+    access_permissions = MotionPollTypeAccessPermissions()
+    queryset = MotionPollType.objects.all()
+
+    def check_view_permissions(self):
+        """
+        Just allow list and creation. Do not allow updates and deletes.
+        """
+        if self.action in ('list', 'retrieve', 'create'):
+            return self.get_access_permissions().check_permissions(self.request.user)
+        return False
+
+    def create(self, request, *args, **kwargs):
+        # check for a valid type option
+        if not isinstance(request.data.get('type'), str):
+            raise ValidationError({'detail': 'A type with type str has to be given.'})
+
+        # get all defined choices from the config value:
+        choices = config.config_variables['voting_default_voting_type'].choices
+        if request.data.get('type') not in [c['value'] for c in choices]:
+            raise ValidationError({'detail': 'The type is not valid.'})
+
+        if request.data.get('type') == 'votecollector' and not config['voting_enable_votecollector']:
+            raise ValidationError({'detail': 'The votecollector is not enabled.'})
+        return super().create(request, *args, **kwargs)
+
+
+class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
+    access_permissions = AssignmentPollBallotAccessPermissions()
+    queryset = AssignmentPollBallot.objects.all()
+
+
+class AssignmentPollTypeViewSet(ModelViewSet):
+    access_permissions = AssignmentPollTypeAccessPermissions()
+    queryset = AssignmentPollType.objects.all()
+
+    def check_view_permissions(self):
+        """
+        Just allow list and creation. Do not allow updates and deletes.
+        """
+        if self.action in ('list', 'retrieve', 'create'):
+            return self.get_access_permissions().check_permissions(self.request.user)
+        return False
+
+    def create(self, request, *args, **kwargs):
+        # TODO: check for a valid type option
+        return super().create(request, *args, **kwargs)
+
+
 class AttendanceLogViewSet(PermissionMixin, ModelViewSet):
     access_permissions = AttendanceLogAccessPermissions()
     queryset = AttendanceLog.objects.all()
 
     @list_route(methods=['post'])
-    def clear(self, request):
+    def clear(cls, request):
         logs = AttendanceLog.objects.all()
         args = []
         for log in logs:
@@ -125,6 +190,36 @@ class AttendanceLogViewSet(PermissionMixin, ModelViewSet):
         if len(args) > 0:
             inform_deleted_data(args)
         return Response({'detail': 'All attendance logs deleted successfully.'})
+
+
+class VotingTokenViewSet(ModelViewSet):
+    access_permissions = VotingTokenAccessPermissions()
+    queryset = VotingToken.objects.all()
+
+    def check_view_permissions(self):
+        """
+        Just allow list, creation and generation. Do not allow updates and deletes.
+        """
+        print(self.action)
+        if self.action in ('list', 'retrieve', 'create', 'generate'):
+            return self.get_access_permissions().check_permissions(self.request.user)
+        return False
+
+    @list_route(methods=['post'])
+    def generate(self, request):
+        """
+        Generate n tokens. Provide N (1<=N<=4096) as the only argument: {N: <n>}
+        """
+        n = request.data.get('N')
+        if not isinstance(n, int):
+            raise ValidationError({'detail': 'N has to be an int.'})
+        if n < 1 or n > 4096:
+            raise ValidationError({'detail': 'N has to be between 1 and 4096.'})
+
+        # no I,O,i,l,o,0
+        choices = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrsuvwxyz123456789'
+        tokens = [(''.join(random.choice(choices) for _ in range(12))) for _ in range(n)]
+        return Response(tokens)
 
 
 @method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')

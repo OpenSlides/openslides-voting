@@ -1,0 +1,28 @@
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <a href="javascript:history.back()" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to overview</translate>
+      </a>
+      <a ng-click="scan()" class="btn btn-primary btn-sm">
+        <i class="fa fa-plus fa-lg"></i>
+        <translate>Scan token</translate>
+      </a>
+      <a class="btn btn-default btn-sm"
+         ng-bootbox-prompt="{{ 'How much tokens should be generated?' | translate }}"
+         ng-bootbox-prompt-action="generate(result)">
+        <i class="fa fa-file-pdf fa-lg"></i>
+        <translate>Generate</translate>
+      </a>
+    </div>
+    <h1 translate>Tokens</h1>
+  </div>
+</div>
+
+<div class="details">
+  <translate>Active tokens</translate>:
+  <div ng-repeat="token in tokens">
+    {{ token.token }}
+  </div>
+</div>

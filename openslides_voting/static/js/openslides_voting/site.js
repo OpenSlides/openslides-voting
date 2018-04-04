@@ -22,6 +22,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             url: '/attendance',
             controller: 'AttendanceCtrl'
         })
+        .state('openslides_voting.tokens', {
+            url: '/tokens',
+            templateUrl: '/static/templates/openslides_voting/tokens.html',
+            controller: 'TokensCtrl',
+        })
         .state('openslides_voting.shares', {
             url: '/shares',
             abstract: true,
@@ -199,6 +204,88 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
+// Manage creating a poll for a motion or assignment
+.factory('PollCreateForm', [
+    'gettextCatalog',
+    'PollType',
+    'Config',
+    function (gettextCatalog, PollType, Config) {
+        return {
+            getDialog: function (obj) {
+                return {
+                    template: 'static/templates/openslides_voting/poll-create-form.html',
+                    controller: 'PollCreateCtrl',
+                    className: 'ngdialog-theme-default wide-form',
+                    closeByEscape: false,
+                    closeByDocument: false,
+                    resolve: {
+                        objId: function () {
+                            return obj.id;
+                        },
+                        resourceName: function () {
+                            return obj.getResourceName();
+                        },
+                    },
+                };
+            },
+            getFormFields: function (user) {
+                return [
+                {
+                    key: 'votingType',
+                    type: 'select-single',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Type'),
+                        options: PollType.getTypes(Config.get('voting_enable_votecollector').value),
+                        ngOptions: 'option.key as option.displayName for option in to.options',
+                        required: true,
+                    }
+                },
+                ];
+            },
+        };
+    }
+])
+
+.controller('PollCreateCtrl', [
+    '$scope',
+    '$http',
+    'DS',
+    'PollCreateForm',
+    'MotionPollType',
+    'AssignmentPollType',
+    'Config',
+    'objId',
+    'resourceName',
+    'ErrorMessage',
+    function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType,
+        Config, objId, resourceName, ErrorMessage) {
+        $scope.obj = DS.get(resourceName, objId);
+        $scope.model = {
+            votingType: Config.get('voting_default_voting_type').value,
+        };
+        $scope.formFields = PollCreateForm.getFormFields();
+
+        $scope.select = function (model) {
+            if (resourceName === 'motions/motion') {
+                $http.post('/rest/motions/motion/' + objId + '/create_poll/', {}).then(function (success) {
+                    MotionPollType.create({
+                        poll_id: success.data.createdPollId,
+                        type: model.votingType,
+                    }).then (function () {
+                        $scope.closeThisDialog();
+                    }, function (error) {
+                        $scope.alert = ErrorMessage.forAlert(error);
+                    });
+                }, function (error) {
+                    $scope.alert = ErrorMessage.forAlert(error);
+                });
+            } else { // assignment
+                // TODO
+            }
+        };
+    }
+])
+
 .controller('UserListExtraContentColumnCtrl', [
     '$scope',
     'Delegate',
@@ -206,6 +293,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Keypad',
     'VotingProxy',
     'ErrorMessage',
+    'Motion',
     function ($scope, Delegate, User, Keypad, VotingProxy, ErrorMessage) {
         $scope.d = Delegate;
 
@@ -294,6 +382,31 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
+.controller('TokensCtrl', [
+    '$scope',
+    '$http',
+    'VotingToken',
+    function ($scope, $http, VotingToken) {
+        VotingToken.bindAll({}, $scope, 'tokens');
+
+        $scope.generate = function (n) {
+            n = parseInt(n)
+            if (isNaN(n)) {
+                return;
+            }
+            if (n < 1) {
+                n = 1;
+            } else if (n > 4096) {
+                n = 4096;
+            }
+            $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
+                console.log(success.data);
+                // TODO: A PDF export of the tokens...
+            });
+        };
+    }
+])
+
 .controller('AttendanceCtrl', [
     '$scope',
     '$http',
@@ -338,60 +451,60 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 ])
 
 .factory('PrincipleForm', [
-    'gettextCatalog',
-    'Motion',
-    'Assignment',
-    'VotingPrinciple',
-    function (gettextCatalog, Motion, Assignment, VotingPrinciple) {
-        return {
-            getDialog: function (principle) {
-                return {
-                    template: 'static/templates/openslides_voting/principle-form.html',
-                    controller: principle ? 'PrincipleUpdateCtrl' : 'PrincipleCreateCtrl',
-                    className: 'ngdialog-theme-default wide-form',
-                    closeByEscape: false,
-                    closeByDocument: false,
-                    resolve: {
-                        principleId: function () {
-                            return principle ? principle.id : void 0;
+        'gettextCatalog',
+        'Motion',
+        'Assignment',
+        'VotingPrinciple',
+        function (gettextCatalog, Motion, Assignment, VotingPrinciple) {
+            return {
+                getDialog: function (principle) {
+                    return {
+                        template: 'static/templates/openslides_voting/principle-form.html',
+                        controller: principle ? 'PrincipleUpdateCtrl' : 'PrincipleCreateCtrl',
+                        className: 'ngdialog-theme-default wide-form',
+                        closeByEscape: false,
+                        closeByDocument: false,
+                        resolve: {
+                            principleId: function () {
+                                return principle ? principle.id : void 0;
+                            }
                         }
-                    }
-                };
-            },
-            getFormFields: function (principle) {
-                var principles = VotingPrinciple.filter({
-                    where: {
-                        id: {'!=': principle ? principle.id : void 0}
-                    }
-                });
-                var freeMotions = _.filter(Motion.getAll(), function (motion) {
-                    return !_.some(principles, function (principle) {
-                        return _.includes(principle.motions_id, motion.id);
-                    });
-                });
-                var freeAssignments = _.filter(Assignment.getAll(), function (assignment) {
-                    return !_.some(principles, function (principle) {
-                        return _.includes(principle.assignments_id, assignments.id);
-                    });
-                });
-                return [
-                {
-                    key: 'name',
-                    type: 'input',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Name'),
-                        required: true,
-                    },
+                    };
                 },
-                {
-                    key: 'decimal_places',
-                    type: 'input',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Decimal places'),
-                        type: 'number',
-                        required: true,
-                        min: 0,
-                        max: 6,
+                getFormFields: function (principle) {
+                    var principles = VotingPrinciple.filter({
+                        where: {
+                            id: {'!=': principle ? principle.id : void 0}
+                        }
+                    });
+                    var freeMotions = _.filter(Motion.getAll(), function (motion) {
+                        return !_.some(principles, function (principle) {
+                            return _.includes(principle.motions_id, motion.id);
+                        });
+                    });
+                    var freeAssignments = _.filter(Assignment.getAll(), function (assignment) {
+                        return !_.some(principles, function (principle) {
+                            return _.includes(principle.assignments_id, assignments.id);
+                        });
+                    });
+                    return [
+                    {
+                        key: 'name',
+                        type: 'input',
+                        templateOptions: {
+                            label: gettextCatalog.getString('Name'),
+                            required: true,
+                        },
+                    },
+                    {
+                        key: 'decimal_places',
+                        type: 'input',
+                        templateOptions: {
+                            label: gettextCatalog.getString('Decimal places'),
+                            type: 'number',
+                            required: true,
+                            min: 0,
+                            max: 6,
                     },
                 },
                 {
@@ -1693,17 +1806,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         show: true };
                 }
             );
-        };
-    }
-])
-
-.controller('VoteCountCtrl', [
-    '$scope',
-    '$http',
-    function ($scope, $http) {
-        // Recalculate vote result.
-        $scope.countVotes = function () {
-            $http.post('/voting/count/' + $scope.poll.id + '/');
         };
     }
 ])

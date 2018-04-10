@@ -47,7 +47,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getTitle: function () {
-                    return "Keypad " + this.number;
+                    return 'Keypad ' + this.number;
                 },
                 isActive: function () {
                     return this.user === undefined || this.user.is_present;
@@ -212,11 +212,11 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getTitle: function () {
-                    return this.user.full_name + ", " + this.getMotionTitle() + ", " + this.getVote();
+                    return this.user.full_name + ', ' + this.getMotionTitle() + ', ' + this.getVote();
                 },
                 getMotionTitle: function () {
                     if (this.motion) {
-                        return this.motion.identifier + " - " + this.motion.getTitle();
+                        return this.motion.identifier + ' - ' + this.motion.getTitle();
                     }
                 },
                 getVote: function () {

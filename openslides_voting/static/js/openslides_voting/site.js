@@ -191,7 +191,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if (fieldGroup.length > 0) {
                     // TODO: Find a better way to deal with last col-xs.
                     var n = (6 - fieldGroup.length) * 2 + 2 ;
-                    _.last(fieldGroup).className = "no-padding-left col-xs-" + n;
+                    _.last(fieldGroup).className = 'no-padding-left col-xs-' + n;
                     formFields.push({
                         className: 'row',
                         fieldGroup: fieldGroup,
@@ -400,7 +400,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 n = 4096;
             }
             $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
-                console.log(success.data);
                 // TODO: A PDF export of the tokens...
             });
         };
@@ -428,7 +427,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             return AttendanceLog.lastModified() + VotingPrinciple.lastModified();
         }, function () {
             // Get attendance data from server.
-            console.log('update');
             $http.get('/voting/attendance/shares/').then(function (success) {
                 $scope.attendance = success.data;
             });
@@ -969,7 +967,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             return [
                 keypad.number,
                 user
-            ].join(" ");
+            ].join(' ');
         };
 
         // Open new/edit dialog.
@@ -1007,7 +1005,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         // Keypad system test.
-        $scope.startSysTest = function () {
+        $scope.startSystemTest = function () {
             $scope.device = null;
 
             angular.forEach($scope.keypads, function (keypad) {
@@ -1015,15 +1013,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 keypad.battery_level = -1;
             });
 
-            $http.get('/votingcontroller/device/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/update_votecollector_device_status/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.device = success.data.error;
-                    }
-                    else {
+                    } else {
                         $scope.device = success.data.device;
                         if (success.data.connected) {
-                            $http.get('/votingcontroller/start_ping/').then(
+                            $http.post('/rest/openslides_voting/voting-controller/1/ping_votecollector/').then(
                                 function (success) {
                                     if (success.data.error) {
                                         $scope.device = success.data.error;
@@ -1031,7 +1028,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                     else {
                                         // Stop test after 1 min.
                                         $timeout(function () {
-                                            if ($scope.vc.is_voting && $scope.vc.voting_mode == 'Test') {
+                                            if ($scope.vc.is_voting && $scope.vc.voting_mode == 'ping') {
                                                 $scope.stopSysTest();
                                             }
                                         }, 60000);
@@ -1047,8 +1044,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             );
         };
 
-        $scope.stopSysTest = function () {
-            $http.get('/votingcontroller/stop/');
+        $scope.stopSystemTest = function () {
+            $http.post('/rest/openslides_voting/voting-controller/1/stop/');
         };
     }
 ])
@@ -1612,7 +1609,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.canStartVoting = function () {
             return $scope.poll.votescast === null &&
-                (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode == 'Test');
+                (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode == 'ping');
         };
 
         $scope.canStopVoting = function () {
@@ -1627,9 +1624,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.startVoting = function () {
             $scope.$parent.$parent.$parent.alert = {};
 
-            // Start votingcontroller.
-            $http.get('/votingcontroller/start_voting/' + $scope.poll.id + '/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/start_motion_yna/', {
+                poll_id: $scope.poll.id,
+            }).then(
                 function (success) {
+                    // TODO: Use ErrorMessage factory
                     if (success.data.error) {
                         $scope.$parent.$parent.$parent.alert = { type: 'danger', msg: success.data.error, show: true };
                     }
@@ -1647,14 +1646,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.$parent.$parent.$parent.alert = {};
 
             // Stop votingcontroller.
-            $http.get('/votingcontroller/stop/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
                 function (success) {
+                    // TODO: Use ErrorMessage factory
                     if (success.data.error) {
                         $scope.$parent.$parent.$parent.alert = { type: 'danger',
                             msg: success.data.error, show: true };
                     }
                     else {
-                        $http.get('/votingcontroller/result_voting/' + $scope.poll.id + '/').then(
+                        $http.post('/rest/openslides_voting/voting-controller/1/results_motion_votes/', {
+                            poll_id: $scope.poll.id,
+                        }).then(
                             function (success) {
                                 if (success.data.error) {
                                     $scope.$parent.$parent.$parent.alert = { type: 'danger',
@@ -1694,7 +1696,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.clearVotes = function () {
             $scope.$parent.$parent.$parent.alert = {};
-            $http.get('/votingcontroller/clear_voting/' + $scope.poll.id + '/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/clear_motion_votes/', {
+                poll_id: $scope.poll.id,
+            }).then(
                 function (success) {
                     clearForm();
                 }
@@ -1703,7 +1707,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.getVotingStatus = function () {
             if ($scope.vc !== undefined) {
-                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'Test') {
+                if ($scope.vc.is_voting && $scope.vc.voting_mode == 'ping') {
                     return gettextCatalog.getString('System test is running.');
                 }
                 if ($scope.vc.is_voting && $scope.vc.voting_mode == 'Item') {
@@ -1743,7 +1747,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             if (typeof projector !== 'undefined') {
                 var self = this;
                 var predicate = function (element) {
-                    return element.name == "voting/motion-poll" &&
+                    return element.name == 'voting/motion-poll' &&
                         typeof element.id !== 'undefined' &&
                         element.id == $scope.poll.id;
                 };
@@ -1766,7 +1770,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.canStartVoting = function () {
             return (!$scope.vc.is_voting ||
                     ($scope.vc.voting_mode == 'Item' && $scope.vc.voting_target != $scope.item.id) ||
-                    $scope.vc.voting_mode == 'Test');
+                    $scope.vc.voting_mode == 'ping');
         };
 
         $scope.canStopVoting = function () {
@@ -1776,7 +1780,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.startVoting = function () {
             $scope.vcAlert = {};
-            $http.get('/votingcontroller/start_speaker_list/' + $scope.item.id + '/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/start_speaker_list/', {
+                item_id: $scope.item.id,
+            }).then(
                 function (success) {
                     if (success.data.error) {
                         $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
@@ -1793,7 +1799,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.stopVoting = function () {
             $scope.vcAlert = {};
-            $http.get('/votingcontroller/stop/').then(
+            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
                 function (success) {
                     if (success.data.error) {
                         $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };

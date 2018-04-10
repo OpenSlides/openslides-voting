@@ -32,18 +32,18 @@ def find_authorized_voter(delegate, proxies=None):
     return delegate
 
 
-def get_admitted_delegates(principle_id, *order_by):
+def get_admitted_delegates(principle, *order_by):
     """
     Returns a dictionary of admitted delegates.
 
-    :param principle_id: Principle ID or None.
+    :param principle: Principle or None.
     :param order_by: User fields the list should be ordered by.
     :return: Dictionary, count
     """
     # Get delegates who have voting rights (shares) for the given principle.
     # admitted: key: keypad number, value: list of delegate ids
     admitted = {}
-    qs_delegates = query_admitted_delegates(Principle.objects.get(pk=principle_id))
+    qs_delegates = query_admitted_delegates(principle)
     if order_by:
         qs_delegates = qs_delegates.order_by(*order_by)
 
@@ -77,7 +77,7 @@ def query_admitted_delegates(principle=None):
     qs = User.objects.filter(groups=2)
     if VotingShare.objects.exists():
         qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
-    if printciple:
+    if principle:
         qs = qs.filter(shares__principle=principle)
     return qs
 
@@ -115,11 +115,10 @@ class Ballot:
         """
         args = []
         for pk in MotionPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
-            args.append(MotionPollBallot.get_collection_string())
-            args.append(pk)
+            args.append((MotionPollBallot.get_collection_string(), pk))
         deleted_count, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
-        if args:
-            inform_deleted_data(*args)
+        if len(args):
+            inform_deleted_data(args)
         self._clear_result()
         return deleted_count
 
@@ -135,7 +134,7 @@ class Ballot:
 
         # Allow only absentee votes of admitted delegates.
         admitted_delegates = query_admitted_delegates(
-            VotingPrinciple.objects.get(motion=self.poll.motion))
+            VotingPrinciple.objects.get(motions=self.poll.motion))
         qs_absentee_votes = qs_absentee_votes.filter(delegate__in=admitted_delegates)
 
         updated = 0
@@ -166,11 +165,11 @@ class Ballot:
 
     def register_vote(self, keypad, vote, commit=True):
         """
-        Register a vote and all proxy votes by creating MotionPollBallot objects for the voter and any delegate
-        represented by the voter.
+        Register a vote and all proxy votes by creating MotionPollBallot objects for the voter
+        and any delegate represented by the voter.
 
-        A vote is registered whether or not a proxy exists! The rule is not to assign a keypad to a
-        delegate represented by a proxy but we don't enforce this rule here.
+        A vote is registered whether or not a proxy exists! The rule is not to assign a keypad
+        to a delegate represented by a proxy but we don't enforce this rule here.
 
         MotionPollBallot objects will not be created for any delegate who submitted an absentee vote.
 
@@ -188,7 +187,7 @@ class Ballot:
 
         # Create a list of admitted delegate ids. Exclude delegates who cast an absentee vote.
         qs = query_admitted_delegates(
-            VotingPrinciple.objects.get(motion=self.poll.motion)
+            VotingPrinciple.objects.get(motions=self.poll.motion)
             ).exclude(absenteevote__motion=self.poll.motion)
         self.admitted_delegates = qs.values_list('id', flat=True)
 

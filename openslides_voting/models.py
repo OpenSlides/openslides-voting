@@ -185,7 +185,7 @@ class AssignmentPollBallot(RESTModelMixin, models.Model):
 class MotionPollType(RESTModelMixin, models.Model):
     access_permissions = MotionPollTypeAccessPermissions()
 
-    poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
+    poll = models.OneToOneField(MotionPoll, on_delete=models.CASCADE)
     type = models.CharField(max_length=128, default='analog')
 
     class Meta:
@@ -195,7 +195,7 @@ class MotionPollType(RESTModelMixin, models.Model):
 class AssignmentPollType(RESTModelMixin, models.Model):
     access_permissions = AssignmentPollTypeAccessPermissions()
 
-    poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
+    poll = models.OneToOneField(AssignmentPoll, on_delete=models.CASCADE)
     type = models.CharField(max_length=128, default='analog')
 
     class Meta:

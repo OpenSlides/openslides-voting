@@ -34,7 +34,7 @@ gulp.task('templates', function () {
                 return pathList.join(path.sep);
             },
         }))
-        .pipe(gulp.dest(path.join('static', 'js', 'openslides_voting')));
+        .pipe(gulp.dest(path.join('openslides_voting', 'static', 'js', 'openslides_voting')));
 });
 
 // Compiles translation files (*.po) to *.json and saves them in the directory 'i18n'.

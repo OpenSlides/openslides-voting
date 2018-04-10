@@ -10,6 +10,7 @@
 
 # Static data
 static/*
+openslides_voting/static/js/openslides_voting/templates.js
 
 # Translations
 *.mo

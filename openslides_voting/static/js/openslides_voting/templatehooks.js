@@ -103,14 +103,14 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
         templateHooks.registerHook({
             id: 'motionListMenuButton',
             template: '<a ui-sref="openslides_voting.tokens"' +
-                        'class="btn btn-default btn-sm spacer-left pull-right" type="button">' +
+                        'class="btn btn-default btn-sm">' +
                         '<translate>Tokens</translate>' +
                       '</button>',
         });
         templateHooks.registerHook({
             id: 'assignmentListMenuButton',
             template: '<a ui-sref="openslides_voting.tokens"' +
-                        'class="btn btn-default btn-sm spacer-left pull-right" type="button">' +
+                        'class="btn btn-default btn-sm">' +
                         '<translate>Tokens</translate>' +
                       '</button>',
         });

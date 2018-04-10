@@ -29,16 +29,6 @@ class VotingAppConfig(AppConfig):
         'static/js/openslides_voting/templates.js'
     ]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        import settings
-        # Add the staticfiles dir to OpenSlides
-        base_path = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
-        # remove the app folder 'openslides_voting'
-        base_path = os.path.dirname(base_path)
-        settings.STATICFILES_DIRS.append(os.path.join(base_path, 'static'))
-
     def ready(self):
         # Load projector elements.
         # Do this by just importing all from these files.

@@ -47,8 +47,8 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             templateUrl: 'static/templates/openslides_voting/item-detail-list-of-speakers-buttons-hook.html',
         });
         templateHooks.registerHook({
-            id: 'userListExtraContentColumn',
-            templateUrl: 'static/templates/openslides_voting/user-list-extra-content-column-hook.html',
+            id: 'userListExtraContent',
+            templateUrl: 'static/templates/openslides_voting/user-list-extra-content-hook.html',
         });
         templateHooks.registerHook({
             id: 'userListEditButton',

@@ -286,7 +286,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
-.controller('UserListExtraContentColumnCtrl', [
+.controller('UserListExtraContentCtrl', [
     '$scope',
     'Delegate',
     'User',

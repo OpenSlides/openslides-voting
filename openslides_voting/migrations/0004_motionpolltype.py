@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('type', models.CharField(
                     default='analog', max_length=128)),
-                ('poll', models.ForeignKey(
+                ('poll', models.OneToOneField(
                     on_delete=django.db.models.deletion.CASCADE, to='motions.MotionPoll')),
             ],
             options={
@@ -73,7 +73,7 @@ class Migration(migrations.Migration):
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('type', models.CharField(
                     default='analog', max_length=128)),
-                ('poll', models.ForeignKey(
+                ('poll', models.OneToOneField(
                     on_delete=django.db.models.deletion.CASCADE, to='assignments.AssignmentPoll')),
             ],
             options={

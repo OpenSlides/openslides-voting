@@ -85,6 +85,6 @@ class VotingAppConfig(AppConfig):
     def get_startup_elements(self):
         from openslides.utils.collection import Collection
         for model in ('AbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
-                'AttendanceLog', 'MotionPollType', 'MotionPollBallot', 'VotingToken',
+                'AttendanceLog', 'Keypad', 'MotionPollType', 'MotionPollBallot', 'VotingToken',
                 'VotingController', 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
             yield Collection(self.get_model(model).get_collection_string())

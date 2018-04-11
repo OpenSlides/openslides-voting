@@ -7,8 +7,13 @@ class VotingControllerSerializer(ModelSerializer):
     class Meta:
         model = models.VotingController
         fields = (
-            'id', 'device_status', 'voting_mode', 'voting_target', 'voting_duration',
-            'voters_count', 'votes_received',
+            'id',
+            'device_status',
+            'voting_mode',
+            'voting_target',
+            'voting_duration',
+            'voters_count',
+            'votes_received',
             'is_voting',
         )
 

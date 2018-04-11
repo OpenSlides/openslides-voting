@@ -50,6 +50,16 @@ def get_server():
     return server
 
 
+def get_callback_url(request):
+    resource_path = '/votingcontroller'
+    host = request.META['SERVER_NAME']
+    port = request.META.get('SERVER_PORT', 0)
+    if port:
+        return 'http://%s:%s%s' % (host, port, resource_path)
+    else:
+        return 'http://%s%s' % (host, resource_path)
+
+
 def get_keypads():
     keypads = Keypad.objects.exclude(user__is_present=False).values_list(
         'number', flat=True).order_by('number')
@@ -71,7 +81,7 @@ def get_device_status():
     return status
 
 
-def start_voting(mode, options, callback_url):
+def start_voting(mode, callback_url, options=None):
     server = get_server()
     keypads = get_keypads()
 

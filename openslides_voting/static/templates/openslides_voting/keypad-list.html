@@ -14,11 +14,11 @@
           <i class="fa fa-download fa-lg"></i>
           <translate>Import</translate>
         </a>
-        <a ng-if="!vc.is_voting || vc.voting_mode != 'Test'" ng-click="startSysTest()" class="btn btn-default btn-sm">
+        <a ng-if="!vc.is_voting || vc.voting_mode != 'ping'" ng-click="startSystemTest()" class="btn btn-default btn-sm">
           <i class="fa fa-cogs fa-lg"></i>
           <translate>Start system test</translate>
         </a>
-        <a ng-if="vc.is_voting && vc.voting_mode == 'Test'" ng-click="stopSysTest()" class="btn btn-danger btn-sm">
+        <a ng-if="vc.is_voting && vc.voting_mode == 'ping'" ng-click="stopSystemTest()" class="btn btn-danger btn-sm">
           <i class="fa fa-cogs fa-lg"></i>
           <translate>Stop system test</translate>
         </a>

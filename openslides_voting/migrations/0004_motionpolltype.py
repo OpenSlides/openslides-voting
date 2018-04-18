@@ -5,7 +5,19 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+import jsonfield.fields
 import openslides.utils.models
+
+
+def add_authorized_voters_object(apps, schema_editor):
+    """
+    Adds the one and only AuthorizedVoters object.
+    """
+    model = apps.get_model('openslides_voting', 'AuthorizedVoters')
+    # We use bulk_create here because we do not want model's save() method
+    # to be called because we do not want our autoupdate signals to be
+    # triggered.
+    model.objects.bulk_create([model()])
 
 
 class Migration(migrations.Migration):
@@ -54,6 +66,7 @@ class Migration(migrations.Migration):
                     blank=True, max_length=1)),
                 ('delegate', models.ForeignKey(
                     blank=True,
+                    null=True,
                     on_delete=django.db.models.deletion.CASCADE,
                     to=settings.AUTH_USER_MODEL)),
                 ('poll', models.ForeignKey(
@@ -91,11 +104,39 @@ class Migration(migrations.Migration):
             name='delegate',
             field=models.ForeignKey(
                 blank=True,
+                null=True,
                 on_delete=django.db.models.deletion.CASCADE,
                 to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterUniqueTogether(
-            name='assignmentpollballot',
-            unique_together=set([('poll', 'delegate')]),
+            name='motionpollballot',
+            unique_together=set(),
+        ),
+        migrations.CreateModel(
+            name='AuthorizedVoters',
+            fields=[
+                ('id', models.AutoField(
+                    auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('authorized_voters', jsonfield.fields.JSONField(default=[])),
+                ('motion_poll', models.OneToOneField(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    to='motions.MotionPoll',
+                    blank=True,
+                    null=True)),
+                ('assignment_poll', models.OneToOneField(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    to='assignments.AssignmentPoll',
+                    blank=True,
+                    null=True)),
+                ('type', models.CharField(
+                    default='analog', max_length=128)),
+            ],
+            options={
+                'default_permissions': (),
+            },
+            bases=(openslides.utils.models.RESTModelMixin, models.Model),
+        ),
+        migrations.RunPython(
+                add_authorized_voters_object
         ),
     ]

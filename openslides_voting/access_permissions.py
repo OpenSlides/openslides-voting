@@ -1,8 +1,10 @@
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied
 
 from openslides.utils.access_permissions import BaseAccessPermissions as OSBaseAccessPermissions
 from openslides.utils.auth import has_perm
+from openslides.utils.collection import CollectionElement
 
 
 def permission_required(perm, login_url=None, raise_exception=False):
@@ -21,6 +23,18 @@ def permission_required(perm, login_url=None, raise_exception=False):
     return user_passes_test(check_perm, login_url=login_url)
 
 
+class AuthorizedVotersAccessPermissions(OSBaseAccessPermissions):
+    def check_permissions(self, user):
+        """
+        The user has to be logged in.
+        """
+        return user is not None and not isinstance(user, AnonymousUser)
+
+    def get_serializer_class(self, user=None):
+        from .serializers import AuthorizedVotersSerializer
+        return AuthorizedVotersSerializer
+
+
 class BaseAccessPermissions(OSBaseAccessPermissions):
     def check_permissions(self, user):
         return has_perm(user, 'openslides_voting.can_manage')
@@ -36,6 +50,7 @@ class KeypadAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):
         from .serializers import KeypadSerializer
         return KeypadSerializer
+
 
 class VotingPrincipleAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):
@@ -61,7 +76,26 @@ class AbsenteeVoteAccessPermissions(BaseAccessPermissions):
         return AbsenteeVoteSerializer
 
 
-class MotionPollBallotAccessPermissions(BaseAccessPermissions):
+class MotionPollBallotAccessPermissions(OSBaseAccessPermissions):
+    def check_permissions(self, user):
+        if user is None or isinstance(user, AnonymousUser):
+            return False
+        # The user can see this, if he is listed there.
+        from .models import MotionPollBallot
+        return MotionPollBallot.objects.filter(delegate__pk=user.id).exists()
+
+    def get_restricted_data(self, full_data, user):
+        if not isinstance(user, CollectionElement):
+            return []
+
+        if has_perm(user, 'openslides_voting.can_manage'):
+            return full_data
+
+        for item in full_data:
+            if item['delegate_id'] == user.id:
+                return [item]
+        return []
+
     def get_serializer_class(self, user=None):
         from .serializers import MotionPollBallotSerializer
         return MotionPollBallotSerializer

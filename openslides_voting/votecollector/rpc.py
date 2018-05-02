@@ -51,25 +51,13 @@ def get_server():
 
 
 def get_callback_url(request):
-    resource_path = '/votingcontroller'
+    resource_path = '/votingcontroller/votecollector'
     host = request.META['SERVER_NAME']
     port = request.META.get('SERVER_PORT', 0)
     if port:
         return 'http://%s:%s%s' % (host, port, resource_path)
     else:
         return 'http://%s%s' % (host, resource_path)
-
-
-def get_keypads():
-    keypads = Keypad.objects.exclude(user__is_present=False).values_list(
-        'number', flat=True).order_by('number')
-    # NOTE: Keypads not belonging to a user are included here for the purpose of doing a system test
-    # but motion or assignment polling is not possible.
-
-    if not keypads.exists():
-        raise VoteCollectorError(_('No keypads selected.'))
-
-    return keypads
 
 
 def get_device_status():
@@ -83,7 +71,13 @@ def get_device_status():
 
 def start_voting(mode, callback_url, options=None):
     server = get_server()
-    keypads = get_keypads()
+    keypads = Keypad.objects.exclude(user__is_present=False).values_list(
+        'number', flat=True).order_by('number')
+    # NOTE: Keypads not belonging to a user are included here for the purpose of doing a system test
+    # but motion or assignment polling is not possible.
+
+    if not keypads.exists():
+        raise VoteCollectorError(_('No keypads exists for active users.'))
 
     try:
         status = server.voteCollector.getDeviceStatus()

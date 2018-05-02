@@ -43,7 +43,7 @@ gulp.task('translations', function () {
         .pipe(gettext.compile({
             format: 'json'
         }))
-        .pipe(gulp.dest(path.join('static', 'i18n', 'openslides_voting')));
+        .pipe(gulp.dest(path.join('openslides_voting', 'static', 'i18n', 'openslides_voting')));
 });
 
 // Gulp default task. Runs all other tasks before.

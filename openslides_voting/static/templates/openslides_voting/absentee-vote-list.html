@@ -19,6 +19,8 @@
 </div>
 
 <div class="details">
+  <p class="warning">Absentee votes for elections are currently unsupported!</p>
+
   <div class="row">
     <div class="col-sm-6">
       <!-- Delete mode -->
@@ -50,8 +52,6 @@
   </div>
 
   <div class="spacer-top-lg italic">
-    <div ng-repeat="av in absenteeVotesFiltered = (absenteeVotes | osFilter:filter.search:getFilterString |
-        orderBy:sortColumn:reverse)"></div>
     {{ absenteeVotesFiltered.length }} / {{ absenteeVotes.length }} {{ "Absentee votes" | translate }}
     <span ng-if="(absenteeVotes | filter:{selected:true}).length > 0">,
     {{(absenteeVotes | filter:{selected:true}).length}} {{ "selected" | translate }}</span>
@@ -63,6 +63,7 @@
         <!-- Delete selection column -->
         <th ng-show="isDeleteMode" class="minimum deleteColumn">
           <input type="checkbox" ng-model="$parent.selectedAll" ng-change="checkAll()">
+        </th>
 
         <!-- Delegate column -->
         <th ng-click="toggleSort('user.full_name')" class="sortable">
@@ -70,6 +71,7 @@
           <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
               ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
+        </th>
 
         <!-- Motion column -->
         <th ng-click="toggleSort('motion.identifier')" class="sortable">
@@ -77,6 +79,7 @@
           <i class="pull-right fa" ng-show="sortColumn === 'motion.identifier' && header.sortable != false"
               ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
+        </th>
 
         <!-- Vote column -->
         <th ng-click="toggleSort('vote')" class="sortable">
@@ -84,36 +87,55 @@
           <i class="pull-right fa" ng-show="sortColumn === 'vote' && header.sortable != false"
               ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
-
+        </th>
+      </tr>
+    </thead>
     <tbody>
-      <tr ng-repeat="absenteeVote in absenteeVotesFiltered | limitTo:pg.itemsPerPage:pg.firstItem"
-        class="animate-item" ng-class="{'selected':absenteeVote.selected}">
+      <tr ng-repeat="absenteeVote in absenteeVotesFiltered = (absenteeVotes
+        | osFilter: filter.search : getFilterString
+        | orderBy: sortColumn : reverse)
+        | limitTo: pg.itemsPerPage : pg.firstItem"
+        ng-class="{'selected':absenteeVote.selected}"
+        ng-mouseover="absenteeVote.hover=true" ng-mouseleave="absenteeVote.hover=false">
 
         <!-- Delete selection -->
         <td ng-show="isDeleteMode" class="deleteColumn">
           <input type="checkbox" ng-model="absenteeVote.selected">
+        </td>
 
         <!-- Delegate -->
-        <td ng-mouseover="absenteeVote.hover=true" ng-mouseleave="absenteeVote.hover=false">
-            <a href="" ui-sref="users.user.detail({id: absenteeVote.user.id})">{{ absenteeVote.user.full_name }}</a>
-            <div class="hoverActions" ng-class="{'hiddenDiv': !absenteeVote.hover}">
-              <!-- TODO: bootbox-confirm field does not autoupdate -->
-              <span>
-                <a href="" ng-click="openDialog(absenteeVote)" translate>Edit</a> &middot;
-                <a href="" class="text-danger"
-                  ng-bootbox-confirm="{{ 'Are you sure you want to delete this entry?' | translate }}<br>
-                  <b>{{ absenteeVote.getTitle() }}</b>"
-                  ng-bootbox-confirm-action="delete(absenteeVote)" translate>Delete</a>
-              </span>
-            </div>
+        <td>
+          <a href="" ui-sref="users.user.detail({id: absenteeVote.delegate_id})">{{ absenteeVote.delegate.full_name }}</a>
+          <div class="hoverActions" ng-class="{'hiddenDiv': !absenteeVote.hover}">
+            <span>
+              <a href="" ng-click="openDialog(absenteeVote)" translate>Edit</a> &middot;
+              <a href="" class="text-danger"
+                ng-bootbox-confirm="{{ 'Are you sure you want to delete this entry?' | translate }}<br>
+                <b>{{ absenteeVote.getTitle() }}</b>"
+                ng-bootbox-confirm-action="delete(absenteeVote)" translate>Delete</a>
+            </span>
+          </div>
+        </td>
 
-        <!-- Motion -->
-        <td>{{ absenteeVote.getMotionTitle() }}
+        <!-- Object -->
+        <td ng-if="absenteeVote.getResourceName() === 'openslides_voting/motion-absentee-vote'">
+          <a ui-sref="motions.motion.detail({id: absenteeVote.motion_id})">
+            {{ absenteeVote.getObjectTitle() }}
+          </a>
+        </td>
+        <td ng-if="absenteeVote.getResourceName() === 'openslides_voting/assignment-absentee-vote'">
+          <a ui-sref="assignments.assignment.detail({id: absenteeVote.assignment_id})">
+            {{ absenteeVote.getObjectTitle() }}
+          </a>
+        </td>
 
         <!-- Vote -->
         <td>
-          <i class="fa fa-{{ absenteeVote.getVoteIcon() }}"></i>
+          <i ng-if="absenteeVote.getVoteIcon()" class="fa fa-{{ absenteeVote.getVoteIcon() }}"></i>
           <span style="margin-left: 5px">{{ absenteeVote.getVote() | translate }}</span>
+        </td>
+      </tr>
+    </tbody>
   </table>
   <ul uib-pagination
       ng-show="absenteeVotesFiltered.length > pg.itemsPerPage"

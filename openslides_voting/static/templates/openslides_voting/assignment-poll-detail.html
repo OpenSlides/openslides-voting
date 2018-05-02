@@ -1,0 +1,94 @@
+<style type="text/css">
+  #total-result-table {
+    width: auto;
+  }
+  #total-result-table img {
+    width: 30px;
+  }
+  #total-result-table td.bold{
+    font-weight: bold;
+    text-align: right;
+  }
+</style>
+
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <!-- Back to assignment -->
+      <a ui-sref="assignments.assignment.detail({id: assignment.id})" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back to Election</translate>
+      </a>
+      <!-- Anonymize -->
+      <a os-perms="openslides_voting.can_manage"
+        class="btn btn-sm btn-default"
+        ng-bootbox-confirm="{{ 'Are you sure you want to anonymize all votes?' | translate }}"
+        ng-bootbox-confirm-action="anonymizeVotes()">
+        <i class="fa fa-exclamation-triangle fa-lg"></i>
+        <translate>Anonymize votes</translate>
+      </a>
+    </div>
+    <h1>{{ assignment.agenda_item.getTitle() || assignment.getTitle() }}</h1>
+    <h2>
+      <translate translate-comment='ballot of a assignment'>Election result</translate>
+    </h2>
+  </div>
+</div>
+
+<div class="details">
+  <!-- Meta-TODO: The todo below comes from the votecollector. Is is still relevant?-->
+  <!-- TODO: show total votes -->
+  <!-- table class="table table-bordered" id="total-result-table">
+  </table -->
+
+  <h1>TODO: This complete part needs to be redone!</h1>
+
+  <!-- single votes -->
+  <h3 translate>All single votes</h3>
+
+  <div class="row form-group">
+    <div class="col-sm-4 pull-right">
+      <input type="text" ng-model="filter.search" class="form-control"
+          placeholder="{{ 'Filter' | translate }}">
+    </div>
+  </div>
+
+  <table class="table table-striped table-bordered table-hover">
+    <tr>
+      <th translate>Name
+      <th>
+        <translate>Keypad serial number</translate>
+        <i class="fa fa-info-circle"
+          uib-tooltip="{{ 'Press \'Fn+6\' on keypad to show the serial number.' | translate }}"></i>
+      <th translate>Keypad key</th>
+      <th ng-if="poll.pollmethod == 'votes'" translate>Candidate</th>
+    </tr>
+
+    <tr ng-repeat="vote in votesList | filter: filter.search">
+      <!-- name -->
+      <td>
+        <a ng-if="vote.user" href="" ui-sref="users.user.detail({id: vote.user.id})">
+          {{ vote.user.get_full_name() }}
+        </a>
+        <span ng-if="!vote.user"><i><translate>Anonymous</translate></i></span>
+
+      <!-- serial number -->
+      <td>{{ vote.serial_number }}
+
+      <!-- Keypad key -->
+      <td ng-if="poll.pollmethod == 'yna'">
+        <span ng-if="vote.value == 'Y'" translate>Yes</span>
+        <span ng-if="vote.value == 'N'" translate>No</span>
+        <span ng-if="vote.value == 'A'" translate>Abstain</span>
+      <td ng-if="poll.pollmethod == 'votes'">{{ vote.value }}
+
+      <!-- Candidate name (only if voting method is 'votes') -->
+      <td ng-if="poll.pollmethod == 'votes'">
+        <a ng-if="vote.candidate" href="" ui-sref="users.user.detail({id: vote.candidate.id})">
+          {{ vote.candidate.get_full_name() }}
+        </a>
+        <span ng-if="!vote.candidate && vote.value == 0"><i><translate>Abstain</translate></i></span>
+        <span ng-if="!vote.candidate && vote.value != 0"><i><translate>Invalid</translate></i></span>
+    </tr>
+  </table>
+</div>

@@ -62,8 +62,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('vote', models.CharField(
-                    blank=True, max_length=1)),
+                ('vote', jsonfield.fields.JSONField(default={})),
                 ('delegate', models.ForeignKey(
                     blank=True,
                     null=True,
@@ -119,12 +118,12 @@ class Migration(migrations.Migration):
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('authorized_voters', jsonfield.fields.JSONField(default=[])),
                 ('motion_poll', models.OneToOneField(
-                    on_delete=django.db.models.deletion.CASCADE,
+                    on_delete=django.db.models.deletion.SET_NULL,
                     to='motions.MotionPoll',
                     blank=True,
                     null=True)),
                 ('assignment_poll', models.OneToOneField(
-                    on_delete=django.db.models.deletion.CASCADE,
+                    on_delete=django.db.models.deletion.SET_NULL,
                     to='assignments.AssignmentPoll',
                     blank=True,
                     null=True)),
@@ -135,6 +134,37 @@ class Migration(migrations.Migration):
                 'default_permissions': (),
             },
             bases=(openslides.utils.models.RESTModelMixin, models.Model),
+        ),
+        migrations.RenameField(
+            model_name='votingcontroller',
+            old_name='voters_count',
+            new_name='votes_count',
+        ),
+        migrations.AddField(
+            model_name='votingcontroller',
+            name='principle',
+            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='openslides_voting.VotingPrinciple'),
+        ),
+        migrations.CreateModel(
+            name='AssignmentAbsenteeVote',
+            fields=[
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('vote', models.CharField(max_length=255)),
+                ('assignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='assignments.Assignment')),
+                ('delegate', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+            ],
+            options={
+                'default_permissions': (),
+            },
+            bases=(openslides.utils.models.RESTModelMixin, models.Model),
+        ),
+        migrations.AlterUniqueTogether(
+            name='assignmentabsenteevote',
+            unique_together=set([('assignment', 'delegate')]),
+        ),
+        migrations.RenameModel(
+            old_name='AbsenteeVote',
+            new_name='MotionAbsenteeVote',
         ),
         migrations.RunPython(
                 add_authorized_voters_object

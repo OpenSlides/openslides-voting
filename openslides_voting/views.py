@@ -12,7 +12,7 @@ from django.views import View
 from openslides.agenda.models import Item
 from openslides.assignments.models import Assignment, AssignmentOption, AssignmentPoll
 from openslides.core.config import config
-from openslides.core.models import Projector
+from openslides.core.models import Projector, Countdown
 from openslides.motions.models import Category, Motion, MotionPoll
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_deleted_data
@@ -28,12 +28,13 @@ from .votecollector import rpc
 
 from .access_permissions import (
     permission_required,
-    AbsenteeVoteAccessPermissions,
+    AssignmentAbsenteeVoteAccessPermissions,
     AssignmentPollBallotAccessPermissions,
     AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
     AuthorizedVotersAccessPermissions,
     KeypadAccessPermissions,
+    MotionAbsenteeVoteAccessPermissions,
     MotionPollBallotAccessPermissions,
     MotionPollTypeAccessPermissions,
     VotingControllerAccessPermissions,
@@ -43,12 +44,13 @@ from .access_permissions import (
     VotingTokenAccessPermissions
 )
 from .models import (
-    AbsenteeVote,
+    AssignmentAbsenteeVote,
     AssignmentPollBallot,
     AssignmentPollType,
     AttendanceLog,
     AuthorizedVoters,
     Keypad,
+    MotionAbsenteeVote,
     MotionPollBallot,
     MotionPollType,
     VotingController,
@@ -58,9 +60,11 @@ from .models import (
     VotingToken
 )
 from .voting import (
+    AssignmentBallot,
     MotionBallot,
     find_authorized_voter,
-    get_admitted_delegates
+    get_admitted_delegates,
+    get_admitted_delegates_with_keypads
 )
 
 
@@ -86,7 +90,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         Just allow listing. The one and only votingcontroller is created
         during migrations.
         """
-        if self.action in ('list', 'retrieve', 'start_motion_yna', 'start_assignment_yna',
+        if self.action in ('list', 'retrieve', 'start_motion', 'start_assignment',
                 'start_list_speakers', 'results_motion_votes', 'results_assignment_votes',
                 'clear_motion_votes', 'clear_assignment_votes', 'stop',
                 'update_votecollector_device_status', 'ping_votecollector'):
@@ -94,28 +98,35 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         return False
 
     @detail_route(['post'])
-    def start_motion_yna(self, request, **kwargs):
+    def start_motion(self, request, **kwargs):
         """
         Starts a voting for a motion poll. The poll id has to be given as the only argument:
         {poll_id: <poll_id>}
         """
-        return self.start_yna(request, MotionPoll)
+        return self.start_voting(request, MotionPoll)
 
     @detail_route(['post'])
-    def start_assignment_yna(self, request, **kwargs):
+    def start_assignment(self, request, **kwargs):
         """
-        Starts a yna electionfor an assignment poll. The poll id has to be
+        Starts an election for an assignment poll. The poll id has to be
         given as the only argument: {poll_id: <poll_id>}
         """
-        return self.start_yna(request, AssignmentPoll)
+        return self.start_voting(request, AssignmentPoll)
 
-    def start_yna(self, request, model):
+    def start_voting(self, request, model):
         vc = self.get_object()
         poll, poll_id = self.get_request_object(request, model)
 
         # get voting principle and type from motion or assignment
         principle = None
         voting_type = None
+        # Get candidate name (if is an election with one candidate only)
+        candidate_str = ''
+        # projector message and images
+        projector_message = _(config['voting_start_prompt'])
+        projector_yes = '<img src="/static/img/button-yes.png">'
+        projector_no = '<img src="/static/img/button-no.png">'
+        projector_abstain = '<img src="/static/img/button-abstain.png">'
         if type(poll) == MotionPoll:
             try:
                 principle = VotingPrinciple.objects.get(motions=poll.motion)
@@ -125,13 +136,25 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             try:
                 voting_type = MotionPollType.objects.get(poll=poll).type
             except MotionPollType.DoesNotExist:
-                pass
+                voting_type = config['voting_default_voting_type']
 
-            vc.votes_received = MotionBallot(poll).create_absentee_ballots()
+            if voting_type == 'votecollector':
+                if 'Interact' in vc.device_status:
+                    projector_abstain = '2 = '
+                elif 'Reply' in vc.device_status:
+                    projectoryes = '1 = '
+                    projector_no = '2 = '
+                    projector_abstain = '3 = '
+                projector_message += '&nbsp;' + \
+                '<span class="nobr">' + projector_yes + _('Yes') + '</span>&nbsp;' + \
+                '<span class="nobr">' + projector_no + _('No') + '</span>&nbsp;' + \
+                '<span class="nobr">' + projector_abstain + _('Abstain') + '</span>'
 
-        # Get candidate name (if is an election with one candidate only)
-        candidate_str = ''
-        if type(poll) == AssignmentPoll:
+            votecollector_mode = 'YesNoAbstain'
+            votecollector_resource = '/vote/'
+
+            absentee_ballots_created = MotionBallot(poll).create_absentee_ballots(principle=principle)
+        elif type(poll) == AssignmentPoll:
             try:
                 principle = VotingPrinciple.objects.get(assignments=poll.assignment)
             except VotingPrinciple.DoesNotExist:
@@ -140,16 +163,54 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             try:
                 voting_type = AssignmentPollType.objects.get(poll=poll).type
             except AssignmentPollType.DoesNotExist:
-                pass
+                voting_type = config['voting_default_voting_type']
 
-            assignmentOptions = AssignmentOption.objects.filter(poll=poll)
-            if assignmentOptions.count() == 1:
-                candidate = assignmentOptions[0].candidate
-                candidate_str = '<div class="spacer candidate">' + str(candidate) + '</div>'
+            options = AssignmentOption.objects.filter(poll=poll).order_by('weight')
+            # check, if the pollmethod is supported by the votecollector
+            # If so, calculate the projector message for the voting prompt
+            if voting_type == 'votecollector':
+                if poll.pollmethod == 'yn' or (poll.pollmethod == 'yna' and options.count() is not 1):
+                    raise ValidationError({'detail':
+                        'The votecollector does not support the pollmethod {} (with {} candidates).'.format(
+                            poll.pollmethod,
+                            options.count())})
 
-        # If not given, use the default voting type
-        if voting_type is None:
-            voting_type = config['voting_default_voting_type']
+                if 'Interact' in vc.device_status:
+                    projector_abstain = '2 = '
+                elif 'Reply' in vc.device_status:
+                    projectoryes = '1 = '
+                    projector_no = '2 = '
+                    projector_abstain = '3 = '
+
+                # calculate the candidate string
+                if poll.pollmethod == 'yna':
+                    candidate = str(options.all()[0].candidate)
+                    projector_message += '&nbsp;' + \
+                        '<span class="nobr">' + projector_yes + _('Yes') + '</span>&nbsp;' + \
+                        '<span class="nobr">' + projector_no + _('No') + '</span>&nbsp;' + \
+                        '<span class="nobr">' + projector_abstain + _('Abstain') + '</span>' + \
+                        '<div class="spacer candidate">' + candidate + '</div>'
+
+                    votecollector_mode = 'YesNoAbstain'
+                    votecollector_resource = '/vote/'
+                else:  # votes
+                    projector_message += '<div><ul class="columns" data-columns="3">'
+                    for index, option in enumerate(options.all()):
+                        projector_message += \
+                                '<li><span class="key">' + str(index + 1) + '</span>' + \
+                                '<span class="candidate">' + str(option.candidate) + '</span></li>'
+                    projector_message += '<li><span class="key">0</span><span class="candidate">' + \
+                        _('Abstain') + '</span></li></ul></div>'
+
+                    if options.count() < 10:
+                        votecollector_mode = 'SingleDigit'
+                    else:
+                        votecollector_mode = 'MultiDigit'
+                    votecollector_resource = '/candidate/'
+
+            absentee_ballots_created = AssignmentBallot(poll).create_absentee_ballots()
+        else:
+            raise ValidationError({'detail': 'Not supported type {}.'.format(type(poll))})
 
         if voting_type == 'votecollector':
             if not config['voting_enable_votecollector']:
@@ -158,25 +219,29 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             # Stop any active voting no matter what mode.
             self.force_stop_active_votecollector()
 
-            url = rpc.get_callback_url(request) + '/vote/'
+            url = rpc.get_callback_url(request) + votecollector_resource
             url += '%s/' % poll_id
 
+            print(votecollector_mode)
+
             try:
-                vc.voters_count, vc.device_status = rpc.start_voting('YesNoAbstain', url)
+                vc.votes_count, vc.device_status = rpc.start_voting(votecollector_mode, url)
             except rpc.VoteCollectorError as e:
                 raise ValidationError({'detail': e.value})
 
             # Limit voters count to length of admitted delegates list.
-            admitted_dalegates = get_admitted_delegates_with_keypads(principle)
+            votes_count, admitted_delegates = get_admitted_delegates_with_keypads(principle)
         else:
             # Limit voters count to length of admitted delegates list.
-            admitted_delegates = get_admitted_delegates(principle)
+            votes_count, admitted_delegates = get_admitted_delegates(principle)
 
-        vc.voters_count = len(admitted_delegates)
+        vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
+        # of votes we expect to come in and the absentee votes.
         vc.voting_mode = model.__name__
         vc.voting_target = poll_id
-        vc.votes_received = 0
+        vc.votes_received = absentee_ballots_created
         vc.is_voting = True
+        vc.principle = principle
         vc.save()
 
         # Update AuthorizedVoter object
@@ -185,130 +250,34 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         else:
             AuthorizedVoters.set_voting(admitted_delegates, voting_type, assignment_poll=poll)
 
-        # Show device dependent voting prompt on projector.
-        yes = '<img src="/static/img/button-yes.png">'
-        no = '<img src="/static/img/button-no.png">'
-        abstain = '<img src="/static/img/button-abstain.png">'
-
-        if voting_type == 'votecollector':
-            if 'Interact' in vc.device_status:
-                abstain = '2 = '
-            elif 'Reply' in vc.device_status:
-                yes = '1 = '
-                no = '2 = '
-                abstain = '3 = '
-
-        message = _(config['voting_start_prompt']) + '&nbsp;' + \
-            '<span class="nobr">' + yes + _('Yes') + '</span>&nbsp;' + \
-            '<span class="nobr">' + no + _('No') + '</span>&nbsp;' + \
-            '<span class="nobr">' + abstain + _('Abstain') + '</span>' + \
-            candidate_str
-        projector = self.add_voting_prompt(message, save=False)
-
-        # Auto start countdown and add it to projector.
-        if config['voting_auto_countdown']:
-            self.start_auto_countdown()
-        projector.save(information={'voting_prompt': True})
-
-        return Response()
-
-    @detail_route(['post'])
-    def start_assignment(self, request, **kwargs):
-        """
-        Starts voting for an AssignmentPoll. Give the id by: {'poll_id': <poll_id>}
-        """
-        poll, poll_id = self.get_request_obejct(request, AssignmentPoll)
-        vc = self.get_object()
-
-        # get voting principle and type from motion or assignment
-        principle = None
-        voting_type = None
-
-        try:
-            principle = VotingPrinciple.objects.get(assignments=poll.assignment)
-        except VotingPrinciple.DoesNotExist:
-            pass
-
-        try:
-            voting_type = AssignmentPollType.objects.get(poll=poll).type
-        except AssignmentPollType.DoesNotExist:
-            pass
-
-        # Get candidate name (if is an election with one candidate only)
-        candidate_str = '<div><ul class="columns" data-columns="3">'
-        options = AssignmentOption.objects.filter(poll=poll).order_by('weight').all()
-        for index, option in enumerate(options):
-            candidate_str += \
-                    '<li><span class="key">' + str(index + 1) + '</span>' + \
-                    '<span class="candidate">' + str(option.candidate) + '</span></li>'
-        candidate_str += '<li><span class="key">0</span><span class="candidate">' + \
-            _('Abstain') + '</span></li></ul></div>'
-
-        # If not given, use the default voting type
-        if voting_type is None:
-            voting_type = config['voting_default_voting_type']
-
-        if voting_type == 'votecollector':
-            if not config['voting_enable_votecollector']:
-                raise ValidationError({'detail': 'The VoteCollector is not enabled'})
-
-            # Stop any active voting no matter what mode.
-            self.force_stop_active_votecollector()
-
-            url = rpc.get_callback_url(request) + '/candidate/'
-            url += '%s/' % poll_id
-
-            try:
-                vc.voters_count, vc.device_status = rpc.start_voting('SingleDigit', url)
-            except rpc.VoteCollectorError as e:
-                raise ValidationError({'detail': e.value})
-
-            # Limit voters count to length of admitted delegates list.
-            admitted_delegates = get_admitted_delegates_with_keypads(principle)
-        else:
-            # Limit voters count to length of admitted delegates list.
-            admitted_delegates = get_admitted_delegates(principle)
-
-        vc.voters_count = len(admitted_delegates)
-        vc.voting_mode = 'AssignmentPoll'
-        vc.voting_target = poll_id
-        vc.votes_received = 0
-        vc.is_voting = True
-        vc.save()
-
-        # Update AuthorizedVoter object
-        AuthorizedVoters.set_voting(admitted_delegates, voting_type, assignment_poll=poll)
-
-        message = _(config['voting_start_prompt']) + '<br>' + candidate_str
-        self.add_voting_prompt(message)
-
-    def add_voting_prompt(self, message, save=True):
+        # Add projector message
         projector = Projector.objects.get(id=1)
         projector.config[self.prompt_key] = {
             'name': 'voting/prompt',
-            'message': message,
+            'message': projector_message,
             'visible': True,
             'stable': True
         }
-        if save:
-            projector.save(information={'voting_prompt': True})
-        return projector
 
-    def start_auto_countdown(self):
-        # Use countdown 2 since 1 is reserved for speakers list.
-        countdown, created = Countdown.objects.get_or_create(
-            pk=2, description=_('Poll is open'),
-            defaults={'default_time': config['projector_default_countdown'],
-                      'countdown_time': config['projector_default_countdown']}
-        )
-        if not created:
-            countdown.control(action='reset')
-        countdown.control(action='start')
-        projector.config[self.countdown_key] = {
-            'name': 'core/countdown',
-            'id': 2,
-            'stable': True
-        }
+        # Auto start countdown and add it to projector.
+        if config['voting_auto_countdown']:
+            # Use countdown 2 since 1 is reserved for speakers list.
+            countdown, created = Countdown.objects.get_or_create(
+                pk=2, description=_('Poll is open'),
+                defaults={'default_time': config['projector_default_countdown'],
+                          'countdown_time': config['projector_default_countdown']}
+            )
+            if not created:
+                countdown.control(action='reset')
+            countdown.control(action='start')
+            projector.config[self.countdown_key] = {
+                'name': 'core/countdown',
+                'id': 2,
+                'stable': True
+            }
+        projector.save(information={'voting_prompt': True})
+
+        return Response()
 
     @detail_route(['post'])
     def start_speaker_list(self,request, **kwargs):
@@ -323,7 +292,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         url = rpc.get_callback_url(request) + '/speaker/' + str(item_id) + '/'
 
         try:
-            vc.voters_count, self.vc.device_status = rpc.start_voting('SpeakerList', url)
+            vc.votes_count, self.vc.device_status = rpc.start_voting('SpeakerList', url)
         except rpc.VoteCollectorError as e:
             raise ValidationError({'detail': e.value})
 
@@ -365,24 +334,12 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
         if vc.voting_mode == 'MotionPoll':
             ballot = MotionBallot(poll)
-            votes = ballot.count_votes()
-            result = [
-                int(votes['Y'][1]),
-                int(votes['N'][1]),
-                int(votes['A'][1])
-            ]
+            result = ballot.count_votes()
         else:
-            raise NotImplementedError('TODO in views.VotingControllerViewSet.results_votes')
-        # TODO: This does not seem to be correct. What does the mode has to do with
-        # the votecollector??
+            ballot = AssignmentBallot(poll)
+            result = ballot.count_votes()
 
-        #else:
-        #    # Get vote result from votecollector.
-        #    try:
-        #        self.result = rpc.get_voting_result()
-        #    except rpc.VoteCollectorError as e:
-        #        self.error = e.value
-        return Response({'votes': result})
+        return Response(result)
 
     @detail_route(['post'])
     def clear_motion_votes(self, request, **kwargs):
@@ -406,12 +363,11 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             poll.votescast = poll.votesinvalid = poll.votesvalid = None
             poll.save()
 
-        # TODO
         if model == MotionPoll:
             ballot = MotionBallot(poll)
-            ballot.delete_ballots()
         else:  # AssignmentPoll
-            raise NotImplementedError('TODO in views.VotingControllerViewSet.clear_votes')
+            ballot = AssignmentBallot(poll)
+        ballot.delete_ballots()
 
         vc = self.get_object()
         vc.votes_received = 0
@@ -475,7 +431,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         field from the votingcontroller.
         """
         if not config['voting_enable_votecollector']:
-            raise ValidationError({'detail': _('The VoteColelctor is not enabled.')})
+            raise ValidationError({'detail': _('The VoteCollector is not enabled.')})
 
         vc = self.get_object()
         try:
@@ -504,7 +460,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         url = rpc.get_callback_url(request) + '/keypad/'
 
         try:
-            vc.voters_count, vc.device_status = rpc.start_voting('Ping', url)
+            vc.votes_count, vc.device_status = rpc.start_voting('Ping', url)
         except rpc.VoteCollectorError as e:
             raise ValidationError({'detail': e.value})
 
@@ -579,9 +535,14 @@ class VotingProxyViewSet(PermissionMixin, ModelViewSet):
     queryset = VotingProxy.objects.all()
 
 
-class AbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
-    access_permissions = AbsenteeVoteAccessPermissions()
-    queryset = AbsenteeVote.objects.all()
+class MotionAbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
+    access_permissions = MotionAbsenteeVoteAccessPermissions()
+    queryset = MotionAbsenteeVote.objects.all()
+
+
+class AssignmentAbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
+    access_permissions = AssignmentAbsenteeVoteAccessPermissions()
+    queryset = AssignmentAbsenteeVote.objects.all()
 
 
 class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):

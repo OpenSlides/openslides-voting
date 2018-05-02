@@ -8,12 +8,13 @@ from openslides.agenda.models import Item, Speaker
 from openslides.assignments.models import AssignmentOption, AssignmentPoll
 from openslides.core.exceptions import OpenSlidesError
 from openslides.motions.models import MotionPoll
+from openslides.users.models import User
 from openslides.utils import views as utils_views
 from openslides.utils.autoupdate import inform_changed_data
 
 from . import rpc
 from ..models import AuthorizedVoters, Keypad, VotingController, MotionPollBallot, VotingShare
-from ..voting import MotionBallot
+from ..voting import AssignmentBallot, MotionBallot
 
 
 class ValidationError(Exception):
@@ -33,10 +34,102 @@ class ValidationView(utils_views.View):
         # Raise a validationerror if the decryption fails!!
         return message
 
+    def validate_input_data(self, data, votecollector):
+        """
+        returns the validated data or raises a ValidationError. The correct
+        format is [{<vote>}, {<vote>}, ...], where vote is a dict with
+        {
+            value: <has to be there and has to be checked separatly>,
+            id: <keypad_number, not id!>,
+            keypad: <keypad_instance>,
+            bl: <keypad_battery_level>
+        }
+        id and bl are required if votecollector is true and permitted if votecollector
+        is False.
+        Additional fields in the dict are not cleared.
+        If votecollector is False, the length of the list has to be one.
+        """
+        try:
+            votes = json.loads(data.decode('utf-8'))
+        except ValueError:
+            raise ValidationError({'detail': 'The content is malformed.'})
+        if not isinstance(votes, list):
+            votes = [votes]
+
+        if not votecollector and len(votes) != 1:
+            raise ValidationError({'detail': 'Just one vote has to be given'})
+
+        for vote in votes:
+            if not isinstance(vote, dict):
+                raise ValidationError({'detail': 'All votes have to be a dict'})
+            if 'value' not in vote:
+                raise ValidationError({'detail': 'A vote value is missing'})
+
+            if votecollector:
+                if not 'bl' in vote or not 'id' in vote:
+                    raise ValidationError({'detail': 'bl and id are necessary for the votecollector'})
+                if not isinstance(vote['bl'], int) or not isinstance(vote['id'], int):
+                    raise ValidationError({'detail': 'bl and id has to be int.'})
+                try:
+                    keypad = Keypad.objects.get(number=vote['id'])
+                except Keypad.DoesNotExist:
+                    raise ValidationError({
+                        'detail': 'The keypad with id {} does not exist'.format(vote['id'])})
+                vote['keypad'] = keypad
+        return votes
 
 
 class SubmitVotes(ValidationView):
     http_method_names = ['post']
+
+    def validate_simple_yna_votes(self, votes):
+        """
+        Checks, if all values are in ('Y', 'N' or 'A').
+        """
+        for vote in votes:
+            value = vote['value']
+            if not isinstance(value, str):
+                raise ValidationError({'detail': 'Value has to be a string.'})
+            if not value in ('Y', 'N', 'A'):
+                raise ValidationError({'detail': 'Value has to be Y, N or A.'})
+
+    def validate_and_format_votecollector_candidates_votes(self, votes, pollmethod, options):
+        """
+        Reformat the votes that come from the votecollector to match the
+        internal structure. The pollmethod has to be 'yna' or 'yn'.
+        """
+        first_option_id = options[0].candidate.id
+        for vote in votes:
+            value = vote['value']
+            if not isinstance(value, str):
+                raise ValidationError({'detail': 'Value has to be a string.'})
+            if not value in [s.upper() for s in pollmethod]:
+                raise ValidationError({'detail': 'Value has to match the pollmethod {}.'.format(pollmethod)})
+            vote['value'] = {
+                first_option_id: value,
+            }
+        return votes
+
+
+    def validate_candidates_votes(self, votes, pollmethod, options):
+        """
+        Check, if the votes values matches the given pollmethod. It can either be
+        'yna' or 'yn'.
+        The value has to be a dict with _every_ candidate index as key with 'Y', 'N'
+        or 'A' as value (no 'A' for 'YN' method obviosly).
+        """
+        for vote in votes:
+            value = vote['value']
+            if not isinstance(value, dict):
+                raise ValidationError({'detail': 'Value has to be a dict.'})
+            for option in options:
+                option_value = value.get(str(option.candidate.id))
+                if not isinstance(option_value, str):
+                    raise ValidationError({'detail': 'The option value (id {}) has the wrong format '.format(
+                        option.candidate.id)})
+                if option_value not in [s.upper() for s in pollmethod]:
+                    raise ValidationError({'detail': 'The option value {} is wrong.'.format(
+                        option_value)})
 
     @transaction.atomic()
     def post(self, request, poll_id, votecollector=False):
@@ -71,7 +164,7 @@ class SubmitVotes(ValidationView):
         # get request content
         body = request.body
         if votecollector:
-            body = self.decrypt_message(body)
+            body = self.decrypt_votecollector_message(body)
         votes = self.validate_input_data(body, votecollector)
 
         if vc.voting_mode == 'MotionPoll':
@@ -80,99 +173,189 @@ class SubmitVotes(ValidationView):
             except MotionPoll.DoesNotExist:
                 raise ValidationError({'detail': 'The MotionPoll does not exist.'})
 
-            # Get ballot instance.
+            self.validate_simple_yna_votes(votes)
+
             ballot = MotionBallot(poll)
+        elif vc.voting_mode == 'AssignmentPoll':
+            try:
+                poll = AssignmentPoll.objects.get(id=poll_id)
+            except AssigmentPoll.DoesNotExist:
+                raise ValidationError({'detail': 'The AssignmentPoll does not exist.'})
 
-            if av.type in ('named_electronic', 'token_based_electronic'):
-                user = None
-                if av.type == 'named_electronic':
-                    user = request.user
+            # Here, just yna and yn methods are allowed:
+            if poll.pollmethod not in ('yna', 'yn'):
+                raise ValidationError({'detail': 'The pollmethod has to be yna or yn.'})
 
-                if user.id not in av.authorized_voters:
-                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+            # validate votes. For the votecollector the votes get formatted right.
+            options = AssignmentOption.objects.filter(poll=poll_id).order_by('weight').all()
+            if votecollector:
+                votes = self.validate_and_format_votecollector_candidates_votes(
+                    votes,
+                    poll.pollmethod,
+                    options)
+            else:
+                self.validate_candidates_votes(
+                    votes,
+                    poll.pollmethod,
+                    options)
 
-                vote = votes[0]
-                vc.votes_received += ballot.register_vote(vote['value'], voter=user)
-                vc.save()
-            else:  # votecollector
-                keypad_set = set()
-                for vote in votes:
-                    # Mark keypad as in range and update battery level.
-                    keypad = vote['keypad']
-                    keypad.in_range = True
-                    keypad.battery_level = vote['bl']
-                    keypad.save()
-
-                    # Get delegate user the keypad is assigned to.
-                    try:
-                        user = User.objects.get(keypad__number=keypad_id)
-                    except User.DoesNotExist:
-                        raise ValidationError({
-                            'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
-                    if user.id not in av.authorized_voters:
-                        raise ValidationError({'detail': 'The user is not authorized to vote.'})
-
-                    # Write ballot.
-                    ballots_created = ballot.register_vote(vote['value'], voter=user)
-                    if ballots_created > 0:
-                        keypad_set.add(keypad.id)
-                        vc.votes_received += ballots_created
-                        vc.save()
-
-        elif vc.voting_mode == 'AssignmentPoll':  # TODO
-            pass
+            ballot = AssignmentBallot(poll)
         else:
             raise ValidationError({'detail': 'The voting mode is neiher MotionPoll nor AssignmentPoll.'})
 
+        # we can now operate for motions and assignment equally, because the logic is
+        # encapsulated in the ballot objects
+        if av.type in ('named_electronic', 'token_based_electronic'):
+            user = None
+            if av.type == 'named_electronic':
+                user = request.user
+
+            if user.id not in av.authorized_voters:
+                raise ValidationError({'detail': 'The user is not authorized to vote.'})
+
+            vote = votes[0]
+            vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+        else:  # votecollector
+            for vote in votes:
+                # Mark keypad as in range and update battery level.
+                keypad = vote['keypad']
+                keypad.in_range = True
+                keypad.battery_level = vote['bl']
+                keypad.save()
+
+                # Get delegate the keypad is assigned to.
+                user = keypad.user
+                if user is None:
+                    continue
+                    # TODO: Design decision. Keypads can vote, if they are not connected to users.
+                    # Should we allow this, or not. If not, should we do it silent (like now with
+                    # the continue statement) or raise an error?
+                    # Info: Adapt this decision also in the CandidateSubmit-View.
+                    #raise ValidationError({
+                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
+                if user.id not in av.authorized_voters:
+                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+
+                # Write ballot.
+                vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+        vc.save()
+
         return HttpResponse()
 
-    def validate_input_data(self, data, votecollector):
-        """
-        returns the validated data or raises a ValidationError. The correct
-        format is [{<vote>}, {<vote>}, ...], where vote is a dict with
-        {
-            value: 'Y', 'N' or 'A',
-            id: <keypad_id>,
-            keypad: <keypad_instance>,
-            bl: <keypad_battery_level>
-        }
-        id and bl are required if votecollector is true and permitted if votecollector
-        is False.
-        Additional fields in the dict are not cleared.
-        If votecollector is False, the length of the list has to be one.
-        """
-        try:
-            votes = json.loads(data.decode('utf-8'))
-        except ValueError:
-            raise ValidationError({'detail': 'The content is malformed.'})
-        if not isinstance(votes, list):
-            votes = [votes]
 
-        if not votecollector and len(votes) != 1:
-            raise ValidationError({'detail': 'Just one vote has to be given'})
+class SubmitCandidates(ValidationView):
+    http_method_names = ['post']
 
+    def validate_candidates_votes(self, votes, options):
+        """
+        Validates, that the vote values are integers with 0 < value <= len(options).
+        replaves this index with the actual candidate id.
+        """
         for vote in votes:
-            if not isinstance(vote, dict):
-                raise ValidationError({'detail': 'All votes have to be a dict'})
-            value = vote.get('value')
-            if not isinstance(value, str):
-                raise ValidationError({'detail': 'Value has to be a string.'})
-            if not value in ('Y', 'N', 'A'):
-                raise ValidationError({'detail': 'Value has to be Y, N or A.'})
-            if votecollector:
-                if not 'bl' in vote or not 'id' in vote:
-                    raise ValidationError({'detail': 'bl and id are necessary for the votecollector'})
-                if not isinstance(vote['bl'], int) or not isinstance(vote['id'], int):
-                    raise ValidationError({'detail': 'bl and id has to be int.'})
-                try:
-                    keypad = Keypad.objects.get(number=vote['id'])
-                except Keypad.DoesNotExist:
-                    raise ValidationError({
-                        'detail': 'The keypad with id {} does not exist'.format(vote['id'])})
-                vote['keypad'] = keypad
+            value = vote['value']
+            try:
+                value = int(value)
+            except:
+                raise ValidationError({'detail': 'Value has to be an int.'})
+            if value > len(options) or value <= 0:
+                raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
+
+            vote['value'] = str(options[value - 1].candidate.id)  # save the actual candidate id
         return votes
 
+    @transaction.atomic()
+    def post(self, request, poll_id, votecollector=False):
+        """
+        Takes requests for incomming votes for candidates. They should have the format
+        given in self.validate_input_data with the matching format for value (the pollmethod).
+        For a single vote, the list can be omitted.
+        Note: The values for the candidates are NOT the IDs. Its the index started by 1, if
+        you put all candidates ordered by their weight in a straight order.
+        """
+        poll_id = int(poll_id)
+        try:
+            poll = AssignmentPoll.objects.get(id=poll_id)
+        except AssignmentPoll.DoesNotExist:
+            raise ValidationError({'detail': 'The AssignmentPoll does not exist.'})
 
+        vc = VotingController.objects.get()
+        av = AuthorizedVoters.objects.get()
+
+        # Check, if there is an active voting
+        if not vc.is_voting:
+            raise ValidationError({'detail': 'No currently active voting.'})
+
+        # No voting for analog voting mode
+        if av.type == 'analog':
+            raise ValidationError({'detail': 'Analog voting does not support votes.'})
+
+        # Only allow votecollector requests if the type is right and the other way around
+        if votecollector and not av.type == 'votecollector':
+            raise ValidationError({'detail': 'The type is not votecollector!'})
+        if not votecollector and av.type == 'votecollector':
+            raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
+
+        # check for valid poll_id
+        # TODO: Isn't this redundant? Why does the users/votecollector have to give the
+        # poll_id, if the id of the current voting is saved in the votingcontroller
+        if poll_id != vc.voting_target:
+            raise ValidationError({'detail': 'The given poll id is not the current voting target.'})
+
+        # Here, just the votes methods is allowed:
+        if poll.pollmethod != 'votes':
+            raise ValidationError({'detail': 'The pollmethod has to be votes.'})
+
+        options = AssignmentOption.objects.filter(poll=poll_id).order_by('weight').all()
+        ballot = AssignmentBallot(poll)
+
+        # get request content
+        body = request.body
+        if votecollector:
+            body = self.decrypt_votecollector_message(body)
+        votes = self.validate_input_data(body, votecollector)
+        votes = self.validate_candidates_votes(votes, options)
+
+        if av.type in ('named_electronic', 'token_based_electronic'):
+            user = None
+            if av.type == 'named_electronic':
+                user = request.user
+
+            if user.id not in av.authorized_voters:
+                raise ValidationError({'detail': 'The user is not authorized to vote.'})
+
+            vote = votes[0]
+            vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+            vc.save()
+        else:  # votecollector
+            keypad_set = set()
+            for vote in votes:
+                # Mark keypad as in range and update battery level.
+                keypad = vote['keypad']
+                keypad.in_range = True
+                keypad.battery_level = vote['bl']
+                keypad.save()
+
+                # Get delegate the keypad is assigned to.
+                user = keypad.user
+                if user is None:
+                    continue
+                    #raise ValidationError({
+                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
+                if user.id not in av.authorized_voters:
+                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+
+                # Write ballot.
+                ballots_created = ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+                if ballots_created > 0:
+                    keypad_set.add(keypad.id)
+                    vc.votes_received += ballots_created
+                    vc.save()
+
+                    # TODO: Save candidates
+                    candidate_id = options[value - 1].candidate_id
+
+        return HttpResponse()
+"""
 class VotingCallbackView(utils_views.View):
     http_method_names = ['post']
 
@@ -223,52 +406,6 @@ class VoteCallback(VotingCallbackView):
 
         return HttpResponse(_('Vote submitted'))
 
-
-class Candidates(utils_views.View):
-    http_method_names = ['post']
-
-    @transaction.atomic()
-    def post(self, request, poll_id):
-        # Get assignment poll.
-        try:
-            poll = AssignmentPoll.objects.get(id=poll_id)
-        except AssignmentPoll.DoesNotExist:
-            return HttpResponse('')
-
-        # Load json list from request body.
-        votes = json.loads(request.body.decode('utf-8'))
-        candidate_count = poll.assignment.related_users.all().count()
-        keypad_set = set()
-        connections = []
-        for vote in votes:
-            keypad_id = vote['id']
-            try:
-                keypad = Keypad.objects.get(number=keypad_id)
-            except Keypad.DoesNotExist:
-                continue
-
-            # Mark keypad as in range and update battery level.
-            keypad.in_range = True
-            keypad.battery_level = vote['bl']
-            keypad.save(skip_autoupdate=True)
-
-            # Validate vote value.
-            try:
-                value = int(vote['value'])
-            except ValueError:
-                continue
-            if value < 0 or value > 9:
-                # Invalid candidate number.
-                continue
-
-            # Get the selected candidate.
-            candidate_id = None
-            if 0 < value <= candidate_count:
-                candidate_id = AssignmentOption.objects.filter(poll=poll_id).order_by('weight').all()[value - 1].candidate_id
-
-            # TODO: Save candidates
-
-        return HttpResponse()
 
 
 class CandidateCallback(VotingCallbackView):
@@ -387,3 +524,4 @@ class KeypadCallback(VotingCallbackView):
         if keypad:
             inform_changed_data(keypad)
         return HttpResponse()
+"""

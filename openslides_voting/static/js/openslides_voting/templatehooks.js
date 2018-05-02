@@ -20,9 +20,11 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'PollCreateForm',
     'ngDialog',
     'MotionPollType',
+    'AssignmentPollType',
     'Voter',
     function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
-        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType, Voter) {
+        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
+        AssignmentPollType, Voter) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
@@ -96,7 +98,12 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                     if (operator.hasPerms('openslides_voting.can_manage')) {
                         ngDialog.open(PollCreateForm.getDialog(scope.motion));
                     } else {
-                         $http.post('/rest/motions/motion/' + scope.motion.id + '/create_poll/', {});
+                         $http.post('/rest/motions/motion/' + scope.motion.id + '/create_poll/', {}).then(function (success) {
+                            MotionPollType.create({
+                                poll_id: success.data.createdPollId,
+                                type: Config.get('voting_default_voting_type').value,
+                            });
+                        });
                     }
                 };
             },
@@ -124,11 +131,11 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                     },
                     getVoteForActivePoll: function () {
                         var vote = Voter.motionPollVoteForMotion(scope.motion);
-                        if (vote == 'Y') {
+                        if (vote === 'Y') {
                             vote = 'Yes';
-                        } else if (vote = 'N') {
+                        } else if (vote === 'N') {
                             vote = 'No';
-                        } else if (vote = 'A') {
+                        } else if (vote === 'A') {
                             vote = 'Abstain';
                         }
                         return vote;
@@ -136,6 +143,49 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 };
             },
             templateUrl: 'static/templates/openslides_voting/motion-poll-voting-header-hook.html',
+        });
+        templateHooks.registerHook({
+            id: 'assignmentPollFormButtons',
+            templateUrl: 'static/templates/openslides_voting/assignment-poll-form-buttons-hook.html',
+        });
+        templateHooks.registerHook({
+            id: 'assignmentPollNewBallotButton',
+            scope: function (scope) {
+                scope.createBallot = function () {
+                    if (operator.hasPerms('openslides_voting.can_manage')) {
+                        ngDialog.open(PollCreateForm.getDialog(scope.assignment));
+                    } else {
+                         $http.post('/rest/assignments/assignment/' + scope.assignment.id +
+                             '/create_poll/', {}).then(function (success) {
+                            if (assignment.phase === 0) {
+                                scope.updatePhase(1);
+                            }
+
+                            MotionPollType.create({
+                                poll_id: success.data.createdPollId,
+                                type: Config.get('voting_default_voting_type').value,
+                            });
+                        });
+                    }
+                };
+            },
+        });
+        templateHooks.registerHook({
+            id: 'assignmentPollSmallButtons',
+            templateUrl: 'static/templates/openslides_voting/assignment-poll-small-buttons-hook.html',
+            scope: function (scope) {
+                // Recalculate vote result.
+                scope.countVotes = function () {
+                    //$http.post('/voting/count/' + scope.poll.id + '/');
+                    throw "TODO";
+                };
+                scope.$watch(function () {
+                    return AssignmentPollType.lastModified();
+                }, function () {
+                    var pollTypes = AssignmentPollType.filter({poll_id: scope.poll.id});
+                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                });
+            },
         });
     }
 ]);

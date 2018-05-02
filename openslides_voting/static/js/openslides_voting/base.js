@@ -8,6 +8,33 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'OpenSlidesApp.motions'
 ])
 
+.factory('AuthorizedVoters', [
+    'DS',
+    function (DS) {
+        var name = 'openslides_voting/authorized-voters';
+        return DS.defineResource({
+            name: name,
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+            },
+            relations: {
+                belongsTo: {
+                    'motions/motion-poll': {
+                        localField: 'motionPoll',
+                        localKey: 'motion_poll_id'
+                    },
+                    'assignments/assignment-poll': {
+                        localField: 'assignmentPoll',
+                        localKey: 'assignment_poll_id'
+                    },
+                }
+            },
+        });
+    }
+])
+
 .factory('VotingController', [
     'DS',
     'gettext',
@@ -16,6 +43,9 @@ angular.module('OpenSlidesApp.openslides_voting', [
         return DS.defineResource({
             name: name,
             methods: {
+                getResourceName: function () {
+                    return name;
+                },
                 getErrorMessage: function (status, text) {
                     if (status == 503) {
                         return gettext('VotingController not running!');
@@ -591,6 +621,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
 ])
 
 .run([
+    'AuthorizedVoters',
     'VotingController',
     'Keypad',
     'VotingPrinciple',
@@ -601,7 +632,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'MotionPollType',
     'Delegate',
     'AttendanceLog',
-    function (VotingController, Keypad, VotingPrinciple, VotingShare, VotingProxy,
+    function (AuthorizedVoters, VotingController, Keypad, VotingPrinciple, VotingShare, VotingProxy,
         AbsenteeVote, MotionPollBallot, MotionPollType, Delegate, AttendanceLog) {}
 ]);
 

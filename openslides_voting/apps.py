@@ -1,6 +1,7 @@
 import os
 
 from django.apps import AppConfig
+from openslides.utils.projector import register_projector_elements
 
 from . import (
     __description__,
@@ -39,6 +40,7 @@ class VotingAppConfig(AppConfig):
         from openslides.core.signals import post_permission_creation
         from openslides.utils.rest_api import router
         from .config_variables import get_config_variables
+        from .projector import get_projector_elements
         from .signals import add_permissions_to_builtin_groups
         from .urls import urlpatterns
         from .views import (
@@ -46,6 +48,7 @@ class VotingAppConfig(AppConfig):
             AssignmentPollBallotViewSet,
             AssignmentPollTypeViewSet,
             AttendanceLogViewSet,
+            AuthorizedVotersViewSet,
             KeypadViewSet,
             MotionPollBallotViewSet,
             MotionPollTypeViewSet,
@@ -55,6 +58,9 @@ class VotingAppConfig(AppConfig):
             VotingShareViewSet,
             VotingTokenViewSet
         )
+
+        # Register projector elements
+        register_projector_elements(get_projector_elements())
 
         # Define config variables
         config.update_config_variables(get_config_variables())
@@ -70,6 +76,7 @@ class VotingAppConfig(AppConfig):
         router.register(self.get_model('AssignmentPollBallot').get_collection_string(), AssignmentPollBallotViewSet)
         router.register(self.get_model('AssignmentPollType').get_collection_string(), AssignmentPollTypeViewSet)
         router.register(self.get_model('AttendanceLog').get_collection_string(), AttendanceLogViewSet)
+        router.register(self.get_model('AuthorizedVoters').get_collection_string(), AuthorizedVotersViewSet)
         router.register(self.get_model('Keypad').get_collection_string(), KeypadViewSet)
         router.register(self.get_model('MotionPollBallot').get_collection_string(), MotionPollBallotViewSet)
         router.register(self.get_model('MotionPollType').get_collection_string(), MotionPollTypeViewSet)
@@ -85,6 +92,6 @@ class VotingAppConfig(AppConfig):
     def get_startup_elements(self):
         from openslides.utils.collection import Collection
         for model in ('AbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
-                'AttendanceLog', 'Keypad', 'MotionPollType', 'MotionPollBallot', 'VotingToken',
-                'VotingController', 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
+                'AttendanceLog', 'AuthorizedVoters', 'Keypad', 'MotionPollType', 'MotionPollBallot',
+                'VotingToken', 'VotingController', 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
             yield Collection(self.get_model(model).get_collection_string())

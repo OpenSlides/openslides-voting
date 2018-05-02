@@ -1,6 +1,18 @@
-from openslides.utils.rest_api import ModelSerializer
+from openslides.utils.rest_api import ModelSerializer, JSONField
 
 from . import models
+
+
+class AuthorizedVotersSerializer(ModelSerializer):
+    authorized_voters = JSONField()
+    class Meta:
+        model = models.AuthorizedVoters
+        fields = (
+                'id',
+                'authorized_voters',
+                'type',
+                'motion_poll',
+                'assignment_poll')
 
 
 class VotingControllerSerializer(ModelSerializer):

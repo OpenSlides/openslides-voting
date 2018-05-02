@@ -64,6 +64,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting.motionPoll.detail', {
             url: '/motionpoll/:id',
             controller: 'MotionPollVoteDetailCtrl'
+        })
+
+        // votes enter states
+        .state('submit_votes', {
+            abstract: true,
+            template: '<ui-view/>',
+        })
+        .state('submit_votes.motionPoll', {
+            url: '/motionpoll/submit/{id:int}',
+            templateUrl: '/static/templates/openslides_voting/submit-motion-poll.html',
+            controller: 'MotionPollSubmitCtrl',
         });
     }
 ])
@@ -241,6 +252,130 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     }
                 },
                 ];
+            },
+        };
+    }
+])
+
+.factory('Voter', [
+    '$rootScope',
+    'operator',
+    'AuthorizedVoters',
+    'MotionPollBallot',
+    'Messaging',
+    'gettextCatalog',
+    function ($rootScope, operator, AuthorizedVoters, MotionPollBallot,
+        Messaging, gettextCatalog) {
+        var av;
+        var messageId;
+
+        // Handles the message for the user
+        // Look for explicit changes for the operator
+        var oldIncluded = false;
+        var oldHasVoted = false;
+        var oldMotionPollId = null;
+        var oldAssignmentPollId = null;
+        var updateMessage = function () {
+            if (!operator.user) {
+                return;
+            }
+
+            av = AuthorizedVoters.get(1);
+            // No av or no active voting
+            if (!av || (!av.motion_poll_id && !av.assignment_poll_id)) {
+                Messaging.deleteMessage(messageId);
+                return;
+            }
+
+            var included = operator.user && _.includes(av.authorized_voters, operator.user.id);
+            // This user is not affected by the current voting.
+            if (!included) {
+                Messaging.deleteMessage(messageId);
+                oldIncluded = false;
+                return;
+            }
+
+            var hasVoted;
+            if (av.motion_poll_id) {
+                hasVoted = _.find(MotionPollBallot.getAll(), function (mpb) {
+                    return mpb.delegate_id === operator.user.id &&
+                        av.motion_poll_id === mpb.poll_id;
+                });
+            } else { // assignment poll
+                //hasVoted = _.find(AssignmentPollBallot.getAll()...
+                throw "TODO";
+            }
+            if (hasVoted) {
+                Messaging.deleteMessage(messageId);
+                oldHasVoted = true;
+                return;
+            }
+
+            if (oldMotionPollId == av.motion_poll_id &&
+                oldAssignmentPollId == av.assignment_poll_id &&
+                oldIncluded == included &&
+                oldHasVoted == hasVoted) {
+                return;
+            }
+
+            oldIncluded = included;
+            oldHasVoted = hasVoted;
+            oldMotionPollId = av.motion_poll_id;
+            oldAssignmentPollId = av.assignment_poll_id;
+
+            // something has changed. Either the user was added to the voting
+            // or one poll has changed. Display a notification!
+            if (av.type == 'named_electronic') {
+                var msg = gettextCatalog.getString('Vote now!');
+                if (av.motion_poll_id) {
+                    msg += '<a class="spacer-left" href="/motionpoll/submit/' +
+                        av.motion_poll_id + '">' + av.motionPoll.motion.getTitle() + '</a>';
+                } else {
+                    msg += "TODO";
+                }
+
+                messageId = Messaging.createOrEditMessage(messageId, msg, 'success', {});
+            }
+
+            // TODO: check, if the user has already voted
+        };
+
+        operator.registerSetUserCallback(function (user) {
+            $rootScope.$watch(function () {
+                return AuthorizedVoters.lastModified();
+            }, updateMessage);
+        });
+
+        $rootScope.$watch(function () {
+            return MotionPollBallot.lastModified();
+        }, updateMessage);
+
+        return {
+            // Returns the motion poll id, if one poll is active for this motion
+            // and the user is authorized. undefined else.
+            motionPollIdForMotion: function (motion) {
+                if (!av || !motion || !av.motionPoll || motion.id != av.motionPoll.motion.id) {
+                    return;
+                }
+                if (_.includes(av.authorized_voters, operator.user.id)) {
+                    return av.motion_poll_id;
+                }
+            },
+            // Returns Y, N or A for an active poll from the motion. If the oerator
+            // hasn't voted yet or there is no active poll, false is returned.
+            motionPollVoteForMotion: function (motion) {
+                var pollId = this.motionPollIdForMotion(motion);
+                if (!pollId) {
+                    return false;
+                }
+                var mpb = _.find(MotionPollBallot.getAll(), function (mpb) {
+                    return mpb.delegate_id === operator.user.id &&
+                        mpb.poll_id === pollId;
+                });
+                if (mpb) {
+                    return mpb.vote;
+                }
+                return false;
             },
         };
     }
@@ -1594,8 +1729,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'gettextCatalog',
     'MotionPollBallot',
     'Projector',
+    'ProjectHelper',
     'VotingController',
-    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, VotingController) {
+    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, ProjectHelper,
+        VotingController) {
+        Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
         var clearForm = function () {
@@ -1732,30 +1870,39 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             return '';
         };
 
-        $scope.projectSlide = function () {
-            return $http.post(
-                '/rest/core/projector/1/prune_elements/',
-                [{name: 'voting/motion-poll', id: $scope.poll.id}]
-            );
-        };
-
-        $scope.isProjected = function () {
-            // Returns true if there is a projector element with the same
-            // name and the same id of $scope.poll.
-            var projector = Projector.get(1);
-            var isProjected;
-            if (typeof projector !== 'undefined') {
+        $scope.projectModel = {
+            project: function (projectorId) {
+                var isProjectedIds = this.isProjected();
+                var requestData = {
+                    clear_ids: isProjectedIds,
+                };
+                if (_.indexOf(isProjectedIds, projectorId) == -1) {
+                    requestData.prune = {
+                        id: projectorId,
+                        element: {
+                            name: 'voting/motion-poll',
+                            id: $scope.poll.id,
+                        },
+                    };
+                }
+                ProjectHelper.project(requestData);
+            },
+            isProjected: function () {
                 var self = this;
                 var predicate = function (element) {
                     return element.name == 'voting/motion-poll' &&
                         typeof element.id !== 'undefined' &&
                         element.id == $scope.poll.id;
                 };
-                isProjected = typeof _.findKey(projector.elements, predicate) === 'string';
-            } else {
-                isProjected = false;
-            }
-            return isProjected;
+
+                var isProjectedIds = [];
+                Projector.getAll().forEach(function (projector) {
+                    if (typeof _.findKey(projector.elements, predicate) === 'string') {
+                        isProjectedIds.push(projector.id);
+                    }
+                });
+                return isProjectedIds;
+            },
         };
     }
 ])
@@ -1812,6 +1959,40 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         show: true };
                 }
             );
+        };
+    }
+])
+
+.controller('MotionPollSubmitCtrl', [
+    '$scope',
+    '$stateParams',
+    '$http',
+    'MotionPoll',
+    'MotionPollBallot',
+    'operator',
+    'ErrorMessage',
+    function ($scope, $stateParams, $http, MotionPoll, MotionPollBallot,
+        operator, ErrorMessage) {
+        var poll_id = $stateParams.id;
+        $scope.motionPoll = MotionPoll.get(poll_id);
+        $scope.alert = {};
+
+        $scope.$watch(function () {
+            return MotionPollBallot.lastModified();
+        }, function () {
+            $scope.mpb = _.find(MotionPollBallot.getAll(), function (mpb) {
+                return mpb.delegate_id === operator.user.id &&
+                    poll_id === mpb.poll_id;
+            });
+        });
+
+        $scope.vote = function (vote) {
+            vote = {
+                value: vote,
+            };
+            $http.post('/votingcontroller/vote/' + poll_id + '/', vote).then(null, function (error) {
+                $scope.alert = ErrorMessage.forAlert(error);
+            });
         };
     }
 ])

@@ -20,8 +20,9 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'PollCreateForm',
     'ngDialog',
     'MotionPollType',
+    'Voter',
     function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
-        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType) {
+        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType, Voter) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
@@ -105,14 +106,36 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             template: '<a ui-sref="openslides_voting.tokens"' +
                         'class="btn btn-default btn-sm">' +
                         '<translate>Tokens</translate>' +
-                      '</button>',
+                      '</a>',
         });
         templateHooks.registerHook({
             id: 'assignmentListMenuButton',
             template: '<a ui-sref="openslides_voting.tokens"' +
                         'class="btn btn-default btn-sm">' +
                         '<translate>Tokens</translate>' +
-                      '</button>',
+                      '</a>',
+        });
+        templateHooks.registerHook({
+            id: 'motionPollVotingHeader',
+            scope: function (scope) {
+                return {
+                    getActivePoll: function () {
+                        return Voter.motionPollIdForMotion(scope.motion);
+                    },
+                    getVoteForActivePoll: function () {
+                        var vote = Voter.motionPollVoteForMotion(scope.motion);
+                        if (vote == 'Y') {
+                            vote = 'Yes';
+                        } else if (vote = 'N') {
+                            vote = 'No';
+                        } else if (vote = 'A') {
+                            vote = 'Abstain';
+                        }
+                        return vote;
+                    },
+                };
+            },
+            templateUrl: 'static/templates/openslides_voting/motion-poll-voting-header-hook.html',
         });
     }
 ]);

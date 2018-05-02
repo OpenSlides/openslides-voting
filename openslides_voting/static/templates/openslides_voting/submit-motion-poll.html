@@ -1,0 +1,59 @@
+<div class="header">
+  <div class="title">
+    <div class="submenu">
+      <a href="javascript:history.back()" class="btn btn-sm btn-default">
+        <i class="fa fa-angle-double-left fa-lg"></i>
+        <translate>Back</translate>
+      </a>
+    </div>
+    <h1>
+      <translate>Vote for</translate>
+      <span ng-if="motion.identifier">
+        {{ motion.identifier }} &mdash;
+      </span>
+      {{ motionPoll.motion.getTitle() }}
+    </h1>
+    <div class="row" ng-if="mpb">
+      <div class="col-sm-12">
+        <h2>
+          <translate>You have voted for</translate>
+          <strong ng-if="mpb.vote == 'Y'" translate>
+            Yes
+          </strong>
+          <strong ng-if="mpb.vote == 'N'" translate>
+            No
+          </strong>
+          <strong ng-if="mpb.vote == 'A'" translate>
+            Abstain
+          </strong>
+        </h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="details">
+  <div uib-alert ng-show="alert.show" ng-class="'alert-' + (alert.type || 'warning')" close="alert={}">
+    {{ alert.msg }}
+  </div>
+  <div class="row">
+    <div class="col-xs-4">
+      <span class="pointer" ng-click="vote('Y')">
+        <img src="/static/img/button-yes.png">
+        <translate>Yes</translate>
+      </span>
+    </div>
+    <div class="col-xs-4">
+      <span class="pointer" ng-click="vote('N')">
+        <img src="/static/img/button-no.png">
+        <translate>No</translate>
+      </span>
+    </div>
+    <div class="col-xs-4">
+      <span class="pointer" ng-click="vote('A')">
+        <img src="/static/img/button-abstain.png">
+        <translate>Abstain</translate>
+      </span>
+    </div>
+  </div>
+</div>

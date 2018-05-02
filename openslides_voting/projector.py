@@ -61,3 +61,9 @@ class VotingIcon(ProjectorElement):
     Voting icon on the projector.
     """
     name = 'voting/icon'
+
+
+def get_projector_elements():
+    yield MotionPollSlide
+    yield VotingPrompt
+    yield VotingIcon

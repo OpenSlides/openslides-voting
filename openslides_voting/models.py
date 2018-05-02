@@ -12,6 +12,7 @@ from .access_permissions import (
     AssignmentPollBallotAccessPermissions,
     AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
+    AuthorizedVotersAccessPermissions,
     KeypadAccessPermissions,
     MotionPollBallotAccessPermissions,
     MotionPollTypeAccessPermissions,
@@ -47,6 +48,31 @@ class OneToManyField(models.ManyToManyField):
         if auto_intermediate == True:
             #Set unique_together to the 'to' relationship, this ensures a OneToMany relationship.
             self.rel.through._meta.unique_together = ((self.rel.through._meta.unique_together[0][1],),)
+
+
+class AuthorizedVoters(RESTModelMixin, models.Model):
+    access_permissions = AuthorizedVotersAccessPermissions()
+    authorized_voters = JSONField(default=[])
+
+    motion_poll = models.OneToOneField(MotionPoll, on_delete=models.CASCADE, null=True, blank=True)
+    assignment_poll = models.OneToOneField(AssignmentPoll, on_delete=models.CASCADE, null=True, blank=True)
+    type = models.CharField(max_length=128, default='analog')
+
+    class Meta:
+        default_permissions = ()
+
+    @classmethod
+    def set_voting(cls, delegates, voting_type, motion_poll=None, assignment_poll=None):
+        instance = cls.objects.get()
+        instance.authorized_voters = [delegate.id for delegate in delegates]
+        instance.type = voting_type
+        instance.motion_poll = motion_poll
+        instance.assignment_poll = assignment_poll
+        instance.save()
+
+    @classmethod
+    def clear_voting(cls):
+        cls.set_voting([], '', motion_poll=None, assignment_poll=None)
 
 
 class VotingController(RESTModelMixin, models.Model):
@@ -154,13 +180,12 @@ class MotionPollBallot(RESTModelMixin, models.Model):
     access_permissions = MotionPollBallotAccessPermissions()
 
     poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
-    delegate = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = models.CharField(max_length=1, blank=True)
     resultToken = models.PositiveIntegerField(default=0)
 
     class Meta:
         default_permissions = ()
-        unique_together = ('poll', 'delegate')
 
     def __str__(self):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
@@ -170,13 +195,12 @@ class AssignmentPollBallot(RESTModelMixin, models.Model):
     access_permissions = AssignmentPollBallotAccessPermissions()
 
     poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
-    delegate = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = models.CharField(max_length=1, blank=True)
     resultToken = models.PositiveIntegerField(default=0)
 
     class Meta:
         default_permissions = ()
-        unique_together = ('poll', 'delegate')
 
     def __str__(self):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)

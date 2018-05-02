@@ -32,6 +32,7 @@ from .access_permissions import (
     AssignmentPollBallotAccessPermissions,
     AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
+    AuthorizedVotersAccessPermissions,
     KeypadAccessPermissions,
     MotionPollBallotAccessPermissions,
     MotionPollTypeAccessPermissions,
@@ -46,6 +47,7 @@ from .models import (
     AssignmentPollBallot,
     AssignmentPollType,
     AttendanceLog,
+    AuthorizedVoters,
     Keypad,
     MotionPollBallot,
     MotionPollType,
@@ -56,16 +58,20 @@ from .models import (
     VotingToken
 )
 from .voting import (
-    Ballot,
+    MotionBallot,
     find_authorized_voter,
-    get_admitted_delegates,
-    is_registered
+    get_admitted_delegates
 )
 
 
 class PermissionMixin:
     def check_view_permissions(self):
         return self.get_access_permissions().check_permissions(self.request.user)
+
+
+class AuthorizedVotersViewSet(PermissionMixin, ModelViewSet):
+    access_permissions = AuthorizedVotersAccessPermissions()
+    queryset  = AuthorizedVoters.objects.all()
 
 
 class VotingControllerViewSet(PermissionMixin, ModelViewSet):
@@ -121,7 +127,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             except MotionPollType.DoesNotExist:
                 pass
 
-            vc.votes_received = Ballot(poll).create_absentee_ballots()
+            vc.votes_received = MotionBallot(poll).create_absentee_ballots()
 
         # Get candidate name (if is an election with one candidate only)
         candidate_str = ''
@@ -141,9 +147,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 candidate = assignmentOptions[0].candidate
                 candidate_str = '<div class="spacer candidate">' + str(candidate) + '</div>'
 
-        # Limit voters count to length of admitted delegates list.
-        _not_used, vc.voters_count = get_admitted_delegates(principle)
-
         # If not given, use the default voting type
         if voting_type is None:
             voting_type = config['voting_default_voting_type']
@@ -162,15 +165,25 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 vc.voters_count, vc.device_status = rpc.start_voting('YesNoAbstain', url)
             except rpc.VoteCollectorError as e:
                 raise ValidationError({'detail': e.value})
-        else:
-            # TODO: I think this is not right...
-            vc.voters_count = User.objects.filter(groups__pk=2).count()
 
+            # Limit voters count to length of admitted delegates list.
+            admitted_dalegates = get_admitted_delegates_with_keypads(principle)
+        else:
+            # Limit voters count to length of admitted delegates list.
+            admitted_delegates = get_admitted_delegates(principle)
+
+        vc.voters_count = len(admitted_delegates)
         vc.voting_mode = model.__name__
         vc.voting_target = poll_id
         vc.votes_received = 0
         vc.is_voting = True
         vc.save()
+
+        # Update AuthorizedVoter object
+        if type(poll) == MotionPoll:
+            AuthorizedVoters.set_voting(admitted_delegates, voting_type, motion_poll=poll)
+        else:
+            AuthorizedVoters.set_voting(admitted_delegates, voting_type, assignment_poll=poll)
 
         # Show device dependent voting prompt on projector.
         yes = '<img src="/static/img/button-yes.png">'
@@ -231,9 +244,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         candidate_str += '<li><span class="key">0</span><span class="candidate">' + \
             _('Abstain') + '</span></li></ul></div>'
 
-        # Limit voters count to length of admitted delegates list.
-        _not_used, vc.voters_count = get_admitted_delegates(principle)
-
         # If not given, use the default voting type
         if voting_type is None:
             voting_type = config['voting_default_voting_type']
@@ -252,15 +262,22 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 vc.voters_count, vc.device_status = rpc.start_voting('SingleDigit', url)
             except rpc.VoteCollectorError as e:
                 raise ValidationError({'detail': e.value})
-        else:
-            # TODO: I think this is not right...
-            vc.voters_count = User.objects.filter(groups__pk=2).count()
 
+            # Limit voters count to length of admitted delegates list.
+            admitted_delegates = get_admitted_delegates_with_keypads(principle)
+        else:
+            # Limit voters count to length of admitted delegates list.
+            admitted_delegates = get_admitted_delegates(principle)
+
+        vc.voters_count = len(admitted_delegates)
         vc.voting_mode = 'AssignmentPoll'
         vc.voting_target = poll_id
         vc.votes_received = 0
         vc.is_voting = True
         vc.save()
+
+        # Update AuthorizedVoter object
+        AuthorizedVoters.set_voting(admitted_delegates, voting_type, assignment_poll=poll)
 
         message = _(config['voting_start_prompt']) + '<br>' + candidate_str
         self.add_voting_prompt(message)
@@ -347,7 +364,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             raise ValidationError({'detail': _('Another voting is active.')})
 
         if vc.voting_mode == 'MotionPoll':
-            ballot = Ballot(poll)
+            ballot = MotionBallot(poll)
             votes = ballot.count_votes()
             result = [
                 int(votes['Y'][1]),
@@ -391,7 +408,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
         # TODO
         if model == MotionPoll:
-            ballot = Ballot(poll)
+            ballot = MotionBallot(poll)
             ballot.delete_ballots()
         else:  # AssignmentPoll
             raise NotImplementedError('TODO in views.VotingControllerViewSet.clear_votes')
@@ -433,6 +450,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         # Attention: We purposely set is_voting to False even if stop_voting fails.
         vc.is_voting = False
         vc.save()
+
+        AuthorizedVoters.clear_voting()
 
         self.force_stop_active_votecollector()
 
@@ -693,7 +712,9 @@ class AttendanceView(View):
 
             # If auth_voter is delegate himself set index to 2 (in person) else 3 (represented).
             i = 2 if auth_voter == delegate else 3
-            attending = is_registered(auth_voter)
+            attending = auth_voter is not None and auth_voter.is_present
+            if config['voting_enable_votecollector']:
+                attending = attending and hasattr(auth_voter, 'keypad')
             if attending:
                 total_shares['heads'][i] += 1
 
@@ -721,27 +742,6 @@ class AttendanceView(View):
 
 
 @method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')
-class AdmittedDelegatesView(View):
-    http_method_names = ['get']
-
-    def get(self, request, principle_id=None):
-        """
-        Gets a JSON list of admitted delegates sorted by last_name, first_name, number.
-
-        :param request:
-        :param principle_id: Principle ID or None.
-        :return: JSON list of delegate IDs.
-        """
-        try:
-            principle = VotingPrinciple.objects.get(pk=principle_id)
-        except VotingPrinciple.DoesNotExist:
-            principle = None
-        delegates, count = get_admitted_delegates(principle, 'last_name', 'first_name', 'number')
-        admitted = {'delegates': delegates}
-        return JsonResponse(admitted)
-
-
-@method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')
 class CountVotesView(View):
     http_method_names = ['post']
 
@@ -749,7 +749,7 @@ class CountVotesView(View):
         poll = get_object_or_404(MotionPoll, id=poll_id)
 
         # Count ballot votes.
-        ballot = Ballot(poll)
+        ballot = MotionBallot(poll)
         result = ballot.count_votes()
 
         # Update motion poll.

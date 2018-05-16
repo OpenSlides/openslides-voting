@@ -1,6 +1,7 @@
 import os
 
 from django.apps import AppConfig
+from django.conf import settings
 from openslides.utils.projector import register_projector_elements
 
 from . import (
@@ -24,10 +25,11 @@ class VotingAppConfig(AppConfig):
     js_files = [
         'static/js/openslides_voting/base.js',
         'static/js/openslides_voting/templatehooks.js',
-        'static/js/openslides_voting/pdf.js',
         'static/js/openslides_voting/site.js',
+        'static/js/openslides_voting/pdf.js',
         'static/js/openslides_voting/projector.js',
-        'static/js/openslides_voting/templates.js'
+        'static/js/openslides_voting/templates.js',
+        'static/js/openslides_voting/libs.js'
     ]
 
     def ready(self):
@@ -98,3 +100,25 @@ class VotingAppConfig(AppConfig):
                 'MotionPollType', 'MotionPollBallot', 'VotingToken', 'VotingController',
                 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
             yield Collection(self.get_model(model).get_collection_string())
+
+    def get_angular_constants(self):
+        # Custom settings
+        voting_settings_dict = {
+            'votingResultTokenTimeout': getattr(settings, 'VOTING_RESULT_TOKEN_TIMEOUT', 30),
+        }
+        voting_settings = {
+            'name': 'VotingSettings',
+            'value': voting_settings_dict,
+        }
+
+        # all polltypes
+        from .models import POLLTYPES
+        polltypes_dict = {}
+        for polltype, verbose_name in POLLTYPES:
+            polltypes_dict[polltype] = verbose_name
+        polltypes = {
+            'name': 'PollTypes',
+            'value': polltypes_dict,
+        }
+
+        return [voting_settings, polltypes]

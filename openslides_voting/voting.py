@@ -153,7 +153,13 @@ class BaseBallot:
         """
         raise NotImplementedError('This function needs to be implemented')
 
-    def register_vote(self, vote, voter=None, principle=None):
+    def get_next_result_token(self):
+        """
+        Returns the next result token for this poll.
+        """
+        raise NotImplementedError('This function needs to be implemented')
+
+    def register_vote(self, vote, voter=None, principle=None, result_token=0):
         """
         Register a vote by creating ballot objects for the voter and all proxies represented
         by the voter. Just delegates can vote, if they do have a shares > 0 for the given
@@ -169,7 +175,7 @@ class BaseBallot:
         """
         created = 0
         if voter is None:
-            if self._create_ballot(vote):
+            if self._create_ballot(vote, result_token=result_token):
                 created += 1
         else:
             principle_id = principle.pk if principle is not None else None
@@ -184,7 +190,7 @@ class BaseBallot:
                     if shares.count() == 0 or shares.first().shares <= 0:
                         continue  # skip creating a ballot for this delegate: it does
                                   # not have any shares (or zero)
-                if self._create_ballot(vote, delegate):
+                if self._create_ballot(vote, delegate=delegate, result_token=result_token):
                     created += 1
 
         return created
@@ -198,7 +204,7 @@ class BaseBallot:
         """
         raise NotImplementedError('This function needs to be implemented')
 
-    def _create_ballot(self, vote, delegate=None):
+    def _create_ballot(self, vote, delegate=None, result_token=0):
         """
         Helper function to actually create or update a ballot.
         Returns True, if a ballot was created.
@@ -259,6 +265,13 @@ class MotionBallot(BaseBallot):
 
         return len(delegate_ids)
 
+    def get_next_result_token(self):
+        """
+        Returns the next result token for this poll.
+        """
+        used_tokens = MotionPollBallot.objects.filter(poll=self.poll).values_list('result_token', flat=True)
+        return MotionPollBallot.get_next_result_token(used_tokens)
+
     def count_votes(self):
         """
         Counts the votes of all MotionPollBallot objects for the given poll. The result
@@ -293,11 +306,15 @@ class MotionBallot(BaseBallot):
             'invalid': [0, Decimal(0)]
         }
         for delegate_id, vote in votes:
-            try:
-                delegate_share = shares[delegate_id] if shares else 1
-            except KeyError:
-                # Occurs if voting share was removed after delegate cast a vote.
-                continue
+            if delegate_id is None:
+                # This is for anonymous votes.
+                delegate_share = 1
+            else:
+                try:
+                    delegate_share = shares[delegate_id] if shares else 1
+                except KeyError:
+                    # Occurs if voting share was removed after delegate cast a vote.
+                    continue
 
             result[vote][0] += 1
             result[vote][1] += delegate_share
@@ -308,7 +325,7 @@ class MotionBallot(BaseBallot):
         # TODO NEXT: Add 'not voted abstains' option.
         return result
 
-    def _create_ballot(self, vote, delegate=None):
+    def _create_ballot(self, vote, delegate=None, result_token=0):
         """
         Helper function to actually create or update a ballot.
         """
@@ -324,6 +341,7 @@ class MotionBallot(BaseBallot):
             created = True
 
         mpb.vote = vote
+        mpb.result_token = result_token
         mpb.save()
         return created
 
@@ -401,6 +419,13 @@ class AssignmentBallot(BaseBallot):
 
         return len(delegate_ids)
 
+    def get_next_result_token(self):
+        """
+        Returns the next result token for this poll.
+        """
+        used_tokens = AssignmentPollBallot.objects.filter(poll=self.poll).values_list('result_token', flat=True)
+        return MotionPollBallot.get_next_result_token(used_tokens)
+
     def count_votes(self):
         """
         Counts all votes for all AssignmentPollBallots for the given poll. The result depends
@@ -464,11 +489,14 @@ class AssignmentBallot(BaseBallot):
 
         # Sum up the votes.
         for vote in votes:
-            try:
-                delegate_share = shares[vote.delegate.pk] if shares else 1
-            except KeyError:
-                # Occurs if voting share was removed after delegate cast a vote.
-                continue
+            if vote.delegate is None:
+                delegate_share = 1
+            else:
+                try:
+                    delegate_share = shares[vote.delegate.pk] if shares else 1
+                except KeyError:
+                    # Occurs if voting share was removed after delegate cast a vote.
+                    continue
 
             if pollmethod in ('yn', 'yna'):
                 # count every vote for each candidate
@@ -484,7 +512,7 @@ class AssignmentBallot(BaseBallot):
 
         return result
 
-    def _create_ballot(self, vote, delegate=None):
+    def _create_ballot(self, vote, delegate=None, result_token=0):
         """
         Helper function to actually create or update a ballot.
         """
@@ -496,9 +524,10 @@ class AssignmentBallot(BaseBallot):
                 apb = AssignmentPollBallot(poll=self.poll, delegate=delegate)
                 created = True
         else:
-            apb = MotionPollBallot(poll=self.poll)
+            apb = AssignmentPollBallot(poll=self.poll)
             created = True
 
         apb.vote = vote
+        apb.result_token = result_token
         apb.save()
         return created

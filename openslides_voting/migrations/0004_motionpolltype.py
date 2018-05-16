@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('token', models.CharField(max_length=128)),
+                ('token', models.CharField(max_length=128, unique=True)),
             ],
             options={
                 'default_permissions': (),
@@ -48,7 +48,13 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('type', models.CharField(
-                    default='analog', max_length=128)),
+                    choices=[
+                        ('analog', 'Analog voting'),
+                        ('named_electronic', 'Named electronic voting'),
+                        ('token_based_electronic', 'Token-based electronic voting'),
+                        ('votecollector', 'Votecollector')],
+                    default='analog',
+                    max_length=32)),
                 ('poll', models.OneToOneField(
                     on_delete=django.db.models.deletion.CASCADE, to='motions.MotionPoll')),
             ],
@@ -70,8 +76,7 @@ class Migration(migrations.Migration):
                     to=settings.AUTH_USER_MODEL)),
                 ('poll', models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE, to='assignments.AssignmentPoll')),
-                ('resultToken', models.PositiveIntegerField(
-                    default=0)),
+                ('result_token', models.PositiveIntegerField()),
             ],
             options={
                 'default_permissions': (),
@@ -84,7 +89,13 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(
                     auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('type', models.CharField(
-                    default='analog', max_length=128)),
+                    choices=[
+                        ('analog', 'Analog voting'),
+                        ('named_electronic', 'Named electronic voting'),
+                        ('token_based_electronic', 'Token-based electronic voting'),
+                        ('votecollector', 'Votecollector')],
+                    default='analog',
+                    max_length=32)),
                 ('poll', models.OneToOneField(
                     on_delete=django.db.models.deletion.CASCADE, to='assignments.AssignmentPoll')),
             ],
@@ -95,8 +106,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='motionpollballot',
-            name='resultToken',
-            field=models.PositiveIntegerField(default=0),
+            name='result_token',
+            field=models.PositiveIntegerField(),
         ),
         migrations.AlterField(
             model_name='motionpollballot',
@@ -144,6 +155,16 @@ class Migration(migrations.Migration):
             model_name='votingcontroller',
             name='principle',
             field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='openslides_voting.VotingPrinciple'),
+        ),
+        migrations.AlterModelOptions(
+            name='votingcontroller',
+            options={
+                'default_permissions': (),
+                'permissions': (
+                    ('can_manage', 'Can manage voting'),
+                    ('can_see_token_voting', 'Can see the token voting interface')
+                )
+            },
         ),
         migrations.CreateModel(
             name='AssignmentAbsenteeVote',

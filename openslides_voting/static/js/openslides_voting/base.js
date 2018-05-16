@@ -396,21 +396,15 @@ angular.module('OpenSlidesApp.openslides_voting', [
 ])
 
 .factory('PollType', [
-    'gettext',
-    function (gettext) {
-        var names = {
-            'analog': gettext('Analog voting'),
-            'named_electronic': gettext('Named electronic voting'),
-            'token_electronic': gettext('Token-based electronic voting'),
-            'votecollector': gettext('Votecollector'),
-        };
+    'PollTypes', // they come form the server
+    function (PollTypes) {
         return {
             getDisplayName: function (value) {
-                return names[value] || 'Unknown';
+                return PollTypes[value] || 'Unknown';
             },
             // returns an array of {key: 'name', displayName: 'displayName'}
             getTypes: function (includeVoteCollector) {
-                return _.chain(names)
+                return _.chain(PollTypes)
                     .map(function (value, key) {
                         return {key: key, displayName: value};
                     })
@@ -754,10 +748,12 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'VotingPrinciple',
     'VotingProxy',
     'VotingShare',
+    'VotingToken',
     'VotingController',
     function (AssignmentAbsenteeVote, AssignmentPollBallot, AssignmentPollType,
         AuthorizedVoters, Delegate, Keypad, MotionAbsenteeVote, MotionPollBallot,
-        MotionPollType, VotingPrinciple, VotingProxy, VotingShare, VotingController) {}
+        MotionPollType, VotingPrinciple, VotingProxy, VotingShare, VotingToken,
+        VotingController) {}
 ])
 
 .run([

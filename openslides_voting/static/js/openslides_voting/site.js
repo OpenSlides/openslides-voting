@@ -88,7 +88,217 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             url: '/assignmentpoll/submit/{id:int}',
             templateUrl: '/static/templates/openslides_voting/submit-assignment-poll.html',
             controller: 'AssignmentPollSubmitCtrl',
+        })
+        .state('submit_votes.token_entry', {
+            url: '/token/submit',
+            controller: 'TokenSubmitCtrl',
+            templateUrl: '/static/templates/openslides_voting/submit-token.html',
+            data: {
+                basePerm: 'openslides_voting.can_see_token_voting',
+            },
         });
+    }
+])
+
+.run([
+    '$state',
+    '$timeout',
+    '$rootScope',
+    'operator',
+    function ($state, $timeout, $rootScope, operator) {
+        operator.registerSetUserCallback(function (user) {
+            if (operator.hasPerms('openslides_voting.can_see_token_voting')) {
+                $state.transitionTo('submit_votes.token_entry');
+                // Remove the header controls, navigation, projector sidebar and the footer
+                $('#header .user').remove();
+                $('#nav').remove();
+                $('#footer').remove();
+                // Wait for angular to finish the dom..
+                $timeout(function () {
+                    $('#sidebar').remove();
+                });
+
+                // Prevent state changes
+                $rootScope.$on('$stateChangeStart', function (event, toState) {
+                    if (toState.name !== 'submit_votes.token_entry') {
+                        event.preventDefault(); 
+                    }
+                })
+            }
+        });
+    }
+])
+
+.controller('TokenSubmitCtrl', [
+    '$scope',
+    '$http',
+    '$timeout',
+    '$interval',
+    '$filter',
+    'AuthorizedVoters',
+    'VotingSettings',
+    'gettextCatalog',
+    'ErrorMessage',
+    function ($scope, $http, $timeout, $interval, $filter, AuthorizedVoters,
+        VotingSettings, gettextCatalog, ErrorMessage) {
+        // All states: 'scan' -> 'enter' -> 'submitted'
+        $scope.votingState = 'scan';
+        $scope.alert = {};
+
+        var token, timeoutInterval;
+
+        $scope.$watch(function () {
+            return AuthorizedVoters.lastModified();
+        }, function () {
+            if ($scope.votingState === 'enter') {
+                // Notify the one, who enters the votes.
+                // TODO
+            } else {
+                $scope.av = AuthorizedVoters.get(1);
+                $scope.isTokenVoting =  (($scope.av.motionPoll || $scope.av.assignmentPoll) &&
+                    $scope.av.type === 'token_based_electronic');
+            }
+        });
+
+        var resetInput = function () {
+            $scope.tokenInput = '';
+            $scope.tokenInputDisabled = false;
+            $timeout(function () {
+                $('#tokenInput').focus();
+            });
+        };
+
+        $scope.scan = function () {
+            if ($scope.votingState !== 'scan') {
+                return;
+            }
+
+            $scope.tokenInputDisabled = true;
+            token = $scope.tokenInput;
+            $http.post('/rest/openslides_voting/voting-token/check_token/', {token: token}).then(function (success) {
+                if (success.data) {
+                    $scope.alert = {};
+                    startVoting();
+                } else {
+                    $scope.alert = {
+                        msg: gettextCatalog.getString('The token is not valid.'),
+                        type: 'danger',
+                        show: true,
+                    };
+                }
+                resetInput();
+            }, function (error) {
+                $scope.alert = ErrorMessage.forAlert(error);
+                resetInput();
+            });
+        };
+
+        var startVoting = function () {
+            $scope.votingState = 'enter';
+
+            if ($scope.av.assignmentPoll) {
+                $scope.poll = $scope.av.assignmentPoll;
+                // prepare the votes model
+                $scope.votes = {};
+                if ($scope.poll.pollmethod === 'votes') {
+                    $scope.votes.candidateIndex = -1;
+                } else {
+                    _.forEach($scope.poll.options, function (option) {
+                        $scope.votes[option.candidate.id] = 'N';
+                    });
+                }
+            }
+        };
+
+        // This function is called, if a motion poll option is clicked
+        $scope.vote = function (vote) {
+            $scope.alert = {};
+            $scope.mpbVote = {
+                value: vote,
+                token: token,
+            };
+        };
+
+        // This function submitts the vote
+        $scope.submitVote = function () {
+            $scope.alert = {};
+            if ($scope.av.motionPoll) {
+                $http.post('/votingcontroller/vote/' + $scope.av.motionPoll.id + '/', $scope.mpbVote).then(
+                    function (success) {
+                        startSubmit(success.data);
+                    }, function (error) {
+                        $scope.alert = ErrorMessage.forAlert(error);
+                    }
+                );
+            } else {
+                var vote = {
+                    token: token,
+                };
+                var route;
+                if ($scope.poll.pollmethod === 'votes') {
+                    route = 'candidate';
+                    vote.value = $scope.votes.candidateIndex;
+                    if (vote.value <= 0 || vote.value > $scope.poll.options.length) {
+                        $scope.alert = {
+                            msg: gettextCatalog.getString('Please select a candidate'),
+                            type: 'danger',
+                            show: true,
+                        };
+                        return;
+                    }
+                } else {
+                    route = 'vote';
+                    vote.value = $scope.votes;
+                }
+                $http.post('/votingcontroller/' + route + '/' + $scope.poll.id + '/', vote).then(
+                    function (success) {
+                        startSubmit(success.data);
+                    }, function (error) {
+                        $scope.alert = ErrorMessage.forAlert(error);
+                    }
+                );
+            }
+        };
+
+        // Change into submitted state
+        var startSubmit = function (resultData) {
+            $scope.resultToken = resultData.result_token;
+            $scope.resultVote = resultData.result_vote;
+            $scope.votingState = 'submitted';
+            var timeout = VotingSettings.votingResultTokenTimeout;
+            if (timeout) {
+                $scope.timeout = timeout;
+                timeoutInterval = $interval(function () {
+                    $scope.timeout--;
+                    if ($scope.timeout <= 0) {
+                        $scope.reset();
+                    }
+                }, 1000);
+            }
+        };
+
+        // Returns the voted candidate.
+        $scope.getResultCandidate = function () {
+            var optionIndex = parseInt($scope.resultVote);
+            var poll = $scope.av.assignmentPoll;
+            var option = $filter('orderBy')(poll.options, 'weight')[optionIndex-1];
+            if (option) {
+                return option.candidate.full_name;
+            }
+        };
+
+        $scope.reset = function () {
+            $interval.cancel(timeoutInterval);
+            $scope.timeout = 0;
+            $scope.alert = {};
+            $scope.mpbVote = void 0;
+            $scope.poll = void 0;
+            $scope.resultToken = void 0;
+            $scope.resultVote = void 0;
+            token = void 0;
+            $scope.votingState = 'scan';
+            resetInput();
+        };
     }
 ])
 
@@ -568,8 +778,33 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$scope',
     '$http',
     'VotingToken',
-    function ($scope, $http, VotingToken) {
+    'TokenContentProvider',
+    'PdfMakeDocumentProvider',
+    'PdfCreate',
+    'gettextCatalog',
+    'ErrorMessage',
+    function ($scope, $http, VotingToken, TokenContentProvider, PdfMakeDocumentProvider,
+        PdfCreate, gettextCatalog, ErrorMessage) {
         VotingToken.bindAll({}, $scope, 'tokens');
+
+        $scope.scan = function () {
+            $scope.tokenInputDisabled = true;
+            var token = $scope.tokenInput;
+            VotingToken.create({
+                token: token,
+            }).then(function (success) {
+                $scope.alert = {
+                    msg: gettextCatalog.getString('Token') + ' ' + token + ' ' +
+                        gettextCatalog.getString('was activated successfully'),
+                    type: 'success',
+                    show: true,
+                };
+            }, function (error) {
+                $scope.alert = ErrorMessage.forAlert(error);
+            });
+            $scope.tokenInput = '';
+            $scope.tokenInputDisabled = false;
+        };
 
         $scope.generate = function (n) {
             n = parseInt(n)
@@ -582,7 +817,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 n = 4096;
             }
             $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
-                // TODO: A PDF export of the tokens...
+                var filename = gettextCatalog.getString('Tokens') + '.pdf';
+                var contentProvider = TokenContentProvider.createInstance(success.data);
+                PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
+                    PdfCreate.download(documentProvider, filename);
+                });
             });
         };
     }
@@ -1915,7 +2154,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         $scope.getVotingStatus = function () {
-            if (!$scope.vc || ! $scope.vc.is_voting) {
+            if (!$scope.vc || !$scope.vc.is_voting) {
                 return '';
             }
             if ($scope.vc.voting_mode == 'ping') {
@@ -1932,8 +2171,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if ($scope.vc.voting_target != $scope.poll.id) {
                     return gettextCatalog.getString('Another motion voting is running.');
                 }
-                return gettextCatalog.getString('Votes received:') + ' ' +
-                    $scope.vc.votes_received + ' / ' + $scope.vc.votes_count;
+                var msg =  gettextCatalog.getString('Votes received:') + ' ' +
+                        $scope.vc.votes_received;
+                if ($scope.vc.votes_count > 0) {
+                    msg += ' / ' + $scope.vc.votes_count;
+                }
+                return msg;
             }
         };
 
@@ -2106,8 +2349,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if ($scope.vc.voting_target != $scope.poll.id) {
                     return gettextCatalog.getString('Another election is running.');
                 }
-                return gettextCatalog.getString('Votes received:') + ' ' +
-                    $scope.vc.votes_received + ' / ' + $scope.vc.votes_count;
+                var msg =  gettextCatalog.getString('Votes received:') + ' ' +
+                        $scope.vc.votes_received;
+                if ($scope.vc.votes_count > 0) {
+                    msg += ' / ' + $scope.vc.votes_count;
+                }
+                return msg;
             }
         };
 

@@ -10,11 +10,17 @@
 // See https://github.com/postcss/postcss#nodejs-010-and-the-promise-api
 require('es6-promise').polyfill();
 
-var gulp = require('gulp'),
+var argv = require('yargs').argv,
+    concat = require('gulp-concat'),
+    gulp = require('gulp'),
     gettext = require('gulp-angular-gettext'),
+    gulpif = require('gulp-if'),
     jshint = require('gulp-jshint'),
+    mainBowerFiles = require('main-bower-files'),
     path = require('path'),
-    templateCache = require('gulp-angular-templatecache');
+    sourcemaps = require('gulp-sourcemaps'),
+    templateCache = require('gulp-angular-templatecache'),
+    uglify = require('gulp-uglify');
 
 
 /**
@@ -37,6 +43,17 @@ gulp.task('templates', function () {
         .pipe(gulp.dest(path.join('openslides_voting', 'static', 'js', 'openslides_voting')));
 });
 
+gulp.task('js-libs', function () {
+    return gulp.src(mainBowerFiles({
+            filter: /\.js$/
+        }))
+        .pipe(sourcemaps.init())
+        .pipe(concat('libs.js'))
+        .pipe(sourcemaps.write())
+        .pipe(gulpif(argv.production, uglify()))
+        .pipe(gulp.dest(path.join('openslides_voting', 'static', 'js', 'openslides_voting')));
+});
+
 // Compiles translation files (*.po) to *.json and saves them in the directory 'i18n'.
 gulp.task('translations', function () {
     return gulp.src(path.join('openslides_voting', 'locale', 'angular-gettext', '*.po'))
@@ -47,7 +64,7 @@ gulp.task('translations', function () {
 });
 
 // Gulp default task. Runs all other tasks before.
-gulp.task('default', ['translations', 'templates'], function () {});
+gulp.task('default', ['translations', 'templates', 'js-libs'], function () {});
 
 // Watches changes in JavaScript and templates.
 gulp.task('watch', ['templates'], function   () {

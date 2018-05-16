@@ -1,3 +1,5 @@
+import random
+
 from django.db import models
 from django.utils.translation import ugettext as _
 from jsonfield import JSONField
@@ -128,6 +130,7 @@ class VotingController(RESTModelMixin, models.Model):
         default_permissions = ()
         permissions = (
             ('can_manage', 'Can manage voting'),
+            ('can_see_token_voting', 'Can see the token voting interface'),
         )
 
     def delete(self, *args, **kwargs):
@@ -198,13 +201,34 @@ class AssignmentAbsenteeVote(RESTModelMixin, models.Model):
         return '%s, %s, %s' % (self.assignment, self.delegate, self.vote)
 
 
-class MotionPollBallot(RESTModelMixin, models.Model):
+class PollBallot:
+    @classmethod
+    def get_next_result_token(cls, used_tokens):
+        if len(used_tokens) == 0:
+            return random.randint(100, 999)
+
+        max_token_value = max(used_tokens)
+        digits = len(str(max_token_value))
+
+        max_token_count = 10 ** digits - 101  # the 101 is for the first 100 and the
+        # last one. So for e.g. 4 digits, the range would be from 100 to 9999,
+        # so 10000-101 = 9899 possible tokens
+
+        if len(used_tokens) >= max_token_count:
+            # We need to have one more digit.
+            return random.randint(10 ** digits, 10 ** (digits+1) - 1)
+
+        not_used_tokens = [t for t in range(100, 10**digits) if t not in used_tokens]
+        return random.choice(not_used_tokens)
+
+
+class MotionPollBallot(RESTModelMixin, models.Model, PollBallot):
     access_permissions = MotionPollBallotAccessPermissions()
 
     poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = models.CharField(max_length=1, blank=True)
-    resultToken = models.PositiveIntegerField(default=0)
+    result_token = models.PositiveIntegerField()
 
     class Meta:
         default_permissions = ()
@@ -213,26 +237,34 @@ class MotionPollBallot(RESTModelMixin, models.Model):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
 
 
-class AssignmentPollBallot(RESTModelMixin, models.Model):
+class AssignmentPollBallot(RESTModelMixin, models.Model, PollBallot):
     access_permissions = AssignmentPollBallotAccessPermissions()
 
     poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = JSONField(default={})
-    resultToken = models.PositiveIntegerField(default=0)
+    result_token = models.PositiveIntegerField()
 
     class Meta:
         default_permissions = ()
 
     def __str__(self):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
+
+
+POLLTYPES = [
+    ('analog', 'Analog voting'),
+    ('named_electronic', 'Named electronic voting'),
+    ('token_based_electronic', 'Token-based electronic voting'),
+    ('votecollector', 'Votecollector')
+]
 
 
 class MotionPollType(RESTModelMixin, models.Model):
     access_permissions = MotionPollTypeAccessPermissions()
 
     poll = models.OneToOneField(MotionPoll, on_delete=models.CASCADE)
-    type = models.CharField(max_length=128, default='analog')
+    type = models.CharField(max_length=32, default=POLLTYPES[0][0], choices=POLLTYPES)
 
     class Meta:
         default_permissions = ()
@@ -242,7 +274,7 @@ class AssignmentPollType(RESTModelMixin, models.Model):
     access_permissions = AssignmentPollTypeAccessPermissions()
 
     poll = models.OneToOneField(AssignmentPoll, on_delete=models.CASCADE)
-    type = models.CharField(max_length=128, default='analog')
+    type = models.CharField(max_length=32, default=POLLTYPES[0][0], choices=POLLTYPES)
 
     class Meta:
         default_permissions = ()
@@ -266,7 +298,7 @@ class AttendanceLog(RESTModelMixin, models.Model):
 class VotingToken(RESTModelMixin, models.Model):
     access_permissions = VotingTokenAccessPermissions()
 
-    token = models.CharField(max_length=128)
+    token = models.CharField(max_length=128, unique=True)
 
     class Meta:
         default_permissions = ()

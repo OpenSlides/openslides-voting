@@ -11,6 +11,7 @@
 # Static data
 static/*
 openslides_voting/static/js/openslides_voting/templates.js
+openslides_voting/static/js/openslides_voting/libs.js
 openslides_voting/static/i18n/*
 
 # Translations

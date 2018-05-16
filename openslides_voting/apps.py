@@ -44,12 +44,13 @@ class VotingAppConfig(AppConfig):
         from .signals import add_permissions_to_builtin_groups
         from .urls import urlpatterns
         from .views import (
-            AbsenteeVoteViewSet,
+            AssignmentAbsenteeVoteViewSet,
             AssignmentPollBallotViewSet,
             AssignmentPollTypeViewSet,
             AttendanceLogViewSet,
             AuthorizedVotersViewSet,
             KeypadViewSet,
+            MotionAbsenteeVoteViewSet,
             MotionPollBallotViewSet,
             MotionPollTypeViewSet,
             VotingControllerViewSet,
@@ -72,12 +73,13 @@ class VotingAppConfig(AppConfig):
         )
 
         # Register viewsets.
-        router.register(self.get_model('AbsenteeVote').get_collection_string(), AbsenteeVoteViewSet)
+        router.register(self.get_model('AssignmentAbsenteeVote').get_collection_string(), AssignmentAbsenteeVoteViewSet)
         router.register(self.get_model('AssignmentPollBallot').get_collection_string(), AssignmentPollBallotViewSet)
         router.register(self.get_model('AssignmentPollType').get_collection_string(), AssignmentPollTypeViewSet)
         router.register(self.get_model('AttendanceLog').get_collection_string(), AttendanceLogViewSet)
         router.register(self.get_model('AuthorizedVoters').get_collection_string(), AuthorizedVotersViewSet)
         router.register(self.get_model('Keypad').get_collection_string(), KeypadViewSet)
+        router.register(self.get_model('MotionAbsenteeVote').get_collection_string(), MotionAbsenteeVoteViewSet)
         router.register(self.get_model('MotionPollBallot').get_collection_string(), MotionPollBallotViewSet)
         router.register(self.get_model('MotionPollType').get_collection_string(), MotionPollTypeViewSet)
         router.register(self.get_model('VotingToken').get_collection_string(), VotingTokenViewSet)
@@ -91,7 +93,8 @@ class VotingAppConfig(AppConfig):
 
     def get_startup_elements(self):
         from openslides.utils.collection import Collection
-        for model in ('AbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
-                'AttendanceLog', 'AuthorizedVoters', 'Keypad', 'MotionPollType', 'MotionPollBallot',
-                'VotingToken', 'VotingController', 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
+        for model in ('AssignmentAbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
+                'AttendanceLog', 'AuthorizedVoters', 'Keypad', 'MotionAbsenteeVote',
+                'MotionPollType', 'MotionPollBallot', 'VotingToken', 'VotingController',
+                'VotingShare', 'VotingPrinciple', 'VotingProxy'):
             yield Collection(self.get_model(model).get_collection_string())

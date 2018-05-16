@@ -12,6 +12,14 @@ urlpatterns = [
             'votecollector': True,
         },
         name='votingcontroller_votecollector_votes'),
+    url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/$',
+        views.SubmitCandidates.as_view(),
+        name='votingcontroller_candidates'),
+    url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/$',
+        csrf_exempt(views.SubmitCandidates.as_view()), {
+            'votecollector': True,
+        },
+        name='votingcontroller_votecollector_candidates'),
 ]
 
 def TODO():
@@ -19,10 +27,6 @@ def TODO():
     url(r'^votingcontroller/vote/(?P<poll_id>\d+)/(?P<keypad_id>\d+)/$',
         csrf_exempt(views.VoteCallback.as_view()),
         name='votingcontroller_vote'),
-
-    url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/$',
-        csrf_exempt(views.Candidates.as_view()),
-        name='votingcontroller_candidates'),
 
     url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/(?P<keypad_id>\d+)/$',
         csrf_exempt(views.CandidateCallback.as_view()),

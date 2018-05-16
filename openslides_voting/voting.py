@@ -1,9 +1,18 @@
 from decimal import Decimal
 
+from openslides.assignments.models import AssignmentOption
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
 
-from .models import AbsenteeVote, MotionPollBallot, VotingShare, VotingPrinciple, Keypad
+from .models import (
+    AssignmentAbsenteeVote,
+    MotionAbsenteeVote,
+    AssignmentPollBallot,
+    MotionPollBallot,
+    VotingShare,
+    VotingPrinciple,
+    Keypad,
+)
 
 
 def find_authorized_voter(delegate):
@@ -33,40 +42,55 @@ def find_authorized_voter(delegate):
 
 def get_admitted_delegates(principle, *order_by):
     """
-    Returns a list of admitted delegates.
-    Admitted delegates are users in the delegate group AND
-    are present
+    Returns a list of admitted delegates and the count of all possible votes.
+    Admitted delegates are users in the delegate group that do not have a proxy
+    AND are present. The votes count also counts proxies. If A is a proxy of B and
+    A is present, the list contains only A, but the count would be 2.
 
     :param principle: Principle or None.
     :param order_by: User fields the list should be ordered by.
-    :return: list
+    :return: (list, int)
     """
     # Get delegates who have voting rights (shares) for the given principle.
-    # admitted: key: keypad number, value: list of delegate ids
-    admitted = query_admitted_delegates(principle)
+    admitted = query_admitted_delegates(principle=principle)
     if order_by:
         admitted = admitted.order_by(*order_by)
 
     admitted_list = []
+    votes_count = 0
     for delegate in admitted.select_related('votingproxy').all():
         auth_voter = find_authorized_voter(delegate)
-        if auth_voter is not None and auth_voter.is_present and auth_voter not in admitted_list:
-            admitted_list.append(auth_voter)
-    return admitted_list
+        if auth_voter is not None and auth_voter.is_present:
+            votes_count += 1
+            if auth_voter not in admitted_list:
+                admitted_list.append(auth_voter)
+    return (votes_count, admitted_list)
 
 
 def get_admitted_delegates_with_keypads(principle, *order_by):
     """
-    Returns a dict of keypad numbers to list of admitted delegate ids.
-    Admitted delegates are users in the delegate group AND
-    are present AND have a keypad assigned
+    Returns a list of admitted delegates and the votes_count similar
+    to get_admitted_delegates(). Admitted delegates are users in the
+    delegate group AND are present AND have a keypad assigned.
 
     :param principle: Principle or None.
     :param order_by: User fields the list should be ordered by.
-    :return: list of delegates
+    :return: (list, int)
     """
-    admitted = [delegate for delegate in get_admitted_delegated(principle, *order_by) if hasattr(delegate, 'kaypad')]
-    return admitted
+    # Get delegates who have voting rights (shares) for the given principle.
+    admitted = query_admitted_delegates(principle=principle)
+    if order_by:
+        admitted = admitted.order_by(*order_by)
+
+    admitted_list = []
+    votes_count = 0
+    for delegate in admitted.select_related('votingproxy').all():
+        auth_voter = find_authorized_voter(delegate)
+        if auth_voter is not None and auth_voter.is_present and hasattr(auth_voter, 'keypad'):
+            votes_count += 1
+            if auth_voter not in admitted_list:
+                admitted_list.append(auth_voter)
+    return (votes_count, admitted_list)
 
     """
     admitted_dict = {}
@@ -103,52 +127,117 @@ def query_admitted_delegates(principle=None):
     return qs
 
 
-class MotionBallot:
+class BaseBallot:
     """
-    Creates, deletes, updates MotionPollBallot objects for a given MotionPoll object.
-    Registers votes including proxy votes.
+    The interface to care about the actual modification of different ballot types
+    for a given poll.
     """
 
     def __init__(self, poll):
         """
-        Creates a Ballot instance for a given MotionPoll object.
-        :param poll: MotionPoll
+        Creates a Ballot instance for a given poll object.
         """
         self.poll = poll
 
     def delete_ballots(self):
         """
-        Deletes all MotionPollBallot objects of the current poll.
-
-        :return: Number of ballots deleted.
+        Deletes all ballot objects of the current poll. Returns the number of ballots deleted.
         """
-        args = []
+        raise NotImplementedError('This function needs to be implemented')
+
+    def create_absentee_ballots(self, principle=None):
+        """
+        Creates ballot objects for all voting delegates who have cast an absentee vote.
+        Objects are created even if the delegate is present or whether or not a proxy
+        is present. Returns the number of absentee ballots.
+        """
+        raise NotImplementedError('This function needs to be implemented')
+
+    def register_vote(self, vote, voter=None, principle=None):
+        """
+        Register a vote by creating ballot objects for the voter and all proxies represented
+        by the voter. Just delegates can vote, if they do have a shares > 0 for the given
+        principle. THis check is ommitted, if no principle is given. If voter is none, just
+        the vote is registered, because we do not know the proxy chain.
+
+        ballot objects will not be created for any delegate who submitted an absentee vote. For
+        this see the create_absentee_ballots function.
+
+        vote: Vote, typically 'Y', 'N', 'A' or an ID
+        voter: User, may be None
+        Returns th number of ballots created (and NOT updated).
+        """
+        created = 0
+        if voter is None:
+            if self._create_ballot(vote):
+                created += 1
+        else:
+            principle_id = principle.pk if principle is not None else None
+
+            # Register the vote and proxy votes.
+            delegates_to_create_ballot = [voter]
+            while len(delegates_to_create_ballot) > 0:
+                delegate = delegates_to_create_ballot.pop()
+                delegates_to_create_ballot.extend([proxy.delegate for proxy in delegate.mandates.all()])
+                if principle_id is not None:
+                    shares = delegate.shares.filter(principle__pk=principle_id)
+                    if shares.count() == 0 or shares.first().shares <= 0:
+                        continue  # skip creating a ballot for this delegate: it does
+                                  # not have any shares (or zero)
+                if self._create_ballot(vote, delegate):
+                    created += 1
+
+        return created
+
+
+    def count_votes(self):
+        """
+        Counts the votes of all ballot objects for the given poll. The returned format
+        depends heavily of the actual ballot and poll. Look in the docstrings of the child
+        classes to get mor information. These results always have to be handled separately!
+        """
+        raise NotImplementedError('This function needs to be implemented')
+
+    def _create_ballot(self, vote, delegate=None):
+        """
+        Helper function to actually create or update a ballot.
+        Returns True, if a ballot was created.
+        """
+        raise NotImplementedError('This function needs to be implemented')
+
+
+class MotionBallot(BaseBallot):
+    """
+    Creates, deletes, updates MotionPollBallot objects for a given MotionPoll object.
+    For more docstring read the descriptions in BaseBallot.
+    """
+
+    def delete_ballots(self):
+        """
+        Deletes all MotionPollBallot objects of the current poll.
+        """
+        deleted = []
+        collection_string = MotionPollBallot.get_collection_string()
         for pk in MotionPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
-            args.append((MotionPollBallot.get_collection_string(), pk))
+            deleted.append((collection_string, pk))
         deleted_count, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
-        if len(args):
-            inform_deleted_data(args)
+        inform_deleted_data(deleted)
         return deleted_count
 
-    def create_absentee_ballots(self):
+    def create_absentee_ballots(self, principle=None):
         """
-        Creates MotionPollBallot objects for all voting delegates who have cast an absentee vote.
-        Objects are created even if the delegate is present or whether or not a proxy is present.
-
-        :return: Number of ballots created or updated.
+        Creates or updates all motion poll ballots for every admitted delegate that has an
+        absentee vote registered. Returns the amount of absentee votes.
         """
-        # Query absentee votes for given motion.
-        qs_absentee_votes = AbsenteeVote.objects.filter(motion=self.poll.motion)
-
         # Allow only absentee votes of admitted delegates.
-        admitted_delegates = query_admitted_delegates(
-            VotingPrinciple.objects.get(motions=self.poll.motion))
-        qs_absentee_votes = qs_absentee_votes.filter(delegate__in=admitted_delegates)
+        admitted_delegates = query_admitted_delegates(principle=principle)
 
-        updated = 0
-        ballots = []
+        # Query absentee votes for given motion.
+        absentee_votes = MotionAbsenteeVote.objects.filter(motion=self.poll.motion).filter(delegate__in=admitted_delegates)
+
+        ballots_to_create = []
         delegate_ids = []
-        for absentee_vote in qs_absentee_votes:
+        for absentee_vote in absentee_votes.all():
             # Update or create ballot instance.
             try:
                 mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)
@@ -158,67 +247,41 @@ class MotionBallot:
             if mpb.pk:
                 mpb.save(skip_autoupdate=True)
             else:
-                ballots.append(mpb)
+                ballots_to_create.append(mpb)
             delegate_ids.append(mpb.delegate.id)
-            updated += 1
 
         # Bulk create ballots.
-        MotionPollBallot.objects.bulk_create(ballots)
+        MotionPollBallot.objects.bulk_create(ballots_to_create)
 
         # Trigger auto-update.
         created_ballots = MotionPollBallot.objects.filter(poll=self.poll, delegate_id__in=delegate_ids)
         inform_changed_data(created_ballots)
 
-        return updated
-
-    def register_vote(self, vote, voter=None):
-        """
-        Register a vote and all proxy votes by creating MotionPollBallot objects for the voter
-        and any delegate represented by the voter.
-
-        A vote is registered whether or not a proxy exists! The rule is not to assign a keypad
-        to a delegate represented by a proxy but we don't enforce this rule here.
-
-        MotionPollBallot objects will not be created for any delegate who submitted an absentee vote.
-
-        :param vote: Vote, typically 'Y', 'N', 'A'
-        :param voter: User
-        :return: Number of ballots created or updated.
-        """
-        created = 0
-        if voter is None:
-            self._create_ballot(vote)
-            created = 1
-        else:
-            # Register the vote and proxy votes.
-            delegates_to_create_ballot = [voter]
-            while len(delegates_to_create_ballot) > 0:
-                delegate = delegates_to_create_ballot.pop()
-                delegates_to_create_ballot.extend([proxy.delegate for proxy in delegate.mandates.all()])
-                self._create_ballot(vote, delegate)
-                created += 1
-
-        return created
+        return len(delegate_ids)
 
     def count_votes(self):
         """
-        Counts the votes of all MotionPollBallot objects for the given poll and saves the result
-        in a RESULT dictionary.
-        :return: Result
+        Counts the votes of all MotionPollBallot objects for the given poll. The result
+        is a dict with values for yes, no and abstain, casted, valid and invalid. In this
+        case the values for casted and valid are equal, the values for invalid are zero.
+        Each entry in the result dict is a list with two enties: First the heads and second
+        the shares (heady with weights). If a head does not have a share, it will be weighted
+        by 1.
+
+        Returns the result dict. For the structure look for the `result = {` definition below.
         """
-        # Convert the ballots into a list of (delegate, vote) tuples.
+        # Convert the ballots into a list of (delegate_id, vote) tuples.
         # Example: [(1, 'Y'), (2, 'N')]
-        qs = MotionPollBallot.objects.filter(poll=self.poll)
-        votes = qs.values_list('delegate', 'vote')
+        votes = MotionPollBallot.objects.filter(poll=self.poll).values_list('delegate', 'vote')
 
         shares = None
         # try to find a voting principle
-        principle = VotingPrinciple.objects.filter(motions=self.poll.motion)
-        if principle.count() > 0:
+        principle = VotingPrinciple.objects.filter(motions=self.poll.motion).first()
+        if principle is not None:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
-            qs = VotingShare.objects.filter(principle_id=principle.all()[0])
-            shares = dict(qs.values_list('delegate', 'shares'))
+            voting_shares = VotingShare.objects.filter(principle=principle)
+            shares = dict(voting_shares.values_list('delegate', 'shares'))
 
         # Sum up the votes.
         result = {
@@ -229,31 +292,213 @@ class MotionBallot:
             'valid': [0, Decimal(0)],
             'invalid': [0, Decimal(0)]
         }
-        for vote in votes:
-            k = vote[1]
+        for delegate_id, vote in votes:
             try:
-                sh = shares[vote[0]] if shares else 1
+                delegate_share = shares[delegate_id] if shares else 1
             except KeyError:
                 # Occurs if voting share was removed after delegate cast a vote.
-                pass
-            else:
-                result[k][0] += 1
-                result[k][1] += sh
-                result['casted'][0] += 1
-                result['casted'][1] += sh
+                continue
+
+            result[vote][0] += 1
+            result[vote][1] += delegate_share
+            result['casted'][0] += 1
+            result['casted'][1] += delegate_share
         result['valid'] = result['casted']
 
         # TODO NEXT: Add 'not voted abstains' option.
         return result
 
     def _create_ballot(self, vote, delegate=None):
+        """
+        Helper function to actually create or update a ballot.
+        """
+        created = False
         if delegate is not None:
             try:
                 mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=delegate)
             except MotionPollBallot.DoesNotExist:
                 mpb = MotionPollBallot(poll=self.poll, delegate=delegate)
+                created = True
         else:
             mpb = MotionPollBallot(poll=self.poll)
+            created = True
 
         mpb.vote = vote
         mpb.save()
+        return created
+
+
+class AssignmentBallot(BaseBallot):
+    """
+    Creates, deletes, updates AssignmentPollBallot objects for a given AssignmentPoll object.
+    For more docstring read the descriptions in BaseBallot.
+    """
+    def delete_ballots(self):
+        """
+        Deletes all AssignmentPollBallot objects of the current poll.
+        """
+        deleted = []
+        collection_string = AssignmentPollBallot.get_collection_string()
+        for pk in AssignmentPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
+            deleted.append((collection_string, pk))
+        deleted_count, _ = AssignmentPollBallot.objects.filter(poll=self.poll).delete()
+        inform_deleted_data(deleted)
+        return deleted_count
+
+    def create_absentee_ballots(self, principle=None):
+        """
+        Creates or updates all assignment poll ballots for every admitted delegate that has an
+        absentee vote registered. Returns the amount of absentee votes.
+        """
+
+        # TODO: This is currently unsupported!!
+        return 0
+
+        # Allow only absentee votes of admitted delegates.
+        admitted_delegates = query_admitted_delegates(principle=principle)
+
+        # Query absentee votes for given motion.
+        absentee_votes = AssignmentAbsenteeVote.objects.filter(assignment=self.poll.assignment).filter(delegate__in=admitted_delegates)
+
+        ballots_to_create = []
+        delegate_ids = []
+        candidates_count = self.poll.options.count()
+        for absentee_vote in absentee_votes.all():
+            # Check, if the absentee vote matches the pollmethod
+            vote = absentee_vote.vote
+            if self.poll.pollmethod == 'votes':
+                try:
+                    vote = int(vote)
+                except:
+                    continue  # skip this invalid vote
+                if vote < 1 or vote > candidates_count:
+                    continue
+            elif vote not in [s.upper() for s in self.poll.pollmethod]:
+                continue
+
+            vote = {
+                'value': vote,
+            }
+
+            # Update or create ballot instance.
+            try:
+                mpb = AssignmentPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)
+            except AssignmentPollBallot.DoesNotExist:
+                mpb = AssignmentPollBallot(poll=self.poll, delegate=absentee_vote.delegate)
+            mpb.vote = vote
+            if mpb.pk:
+                mpb.save(skip_autoupdate=True)
+            else:
+                ballots_to_create.append(mpb)
+            delegate_ids.append(mpb.delegate.id)
+
+        # Bulk create ballots.
+        AssignmentPollBallot.objects.bulk_create(ballots_to_create)
+
+        # Trigger auto-update.
+        created_ballots = AssignmentPollBallot.objects.filter(poll=self.poll, delegate_id__in=delegate_ids)
+        inform_changed_data(created_ballots)
+
+        return len(delegate_ids)
+
+    def count_votes(self):
+        """
+        Counts all votes for all AssignmentPollBallots for the given poll. The result depends
+        on the used pollmethod:
+        YNA/YN:
+        result = {
+            <candidate_id_1>: {
+                'Y': [<heads>, <shares>],
+                'N': [<heads>, <shares>],
+                'A': [<heads>, <shares>],
+            },
+            ...
+            'casted': [<heads>, <shares>],
+            'valid': [<heads>, <shares>],
+            'invalid': [<heads>, <shares>],
+        }
+        (For YN the abstain-part is leaved out)
+
+        VOTES:
+        result = {
+            <candidate_id_1>: [<heads>, <shares>],
+            ...
+            'casted': [<heads>, <shares>],
+            'valid': [<heads>, <shares>],
+            'invalid': [<heads>, <shares>],
+        }
+
+        This function expects the right vote values for the poll method.
+        """
+        votes = AssignmentPollBallot.objects.filter(poll=self.poll)
+
+        shares = None
+        # try to find a voting principle
+        principle = VotingPrinciple.objects.filter(assignments=self.poll.assignment).first()
+        if principle is not None:
+            # Create a dict (key: delegate, value: shares).
+            # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
+            voting_shares = VotingShare.objects.filter(principle=principle)
+            shares = dict(voting_shares.values_list('delegate', 'shares'))
+
+        options = AssignmentOption.objects.filter(poll=self.poll).order_by('weight').all()
+        pollmethod = self.poll.pollmethod
+
+        result = {
+            'casted': [0, Decimal(0)],
+            'valid': [0, Decimal(0)],
+            'invalid': [0, Decimal(0)]
+        }
+
+        if pollmethod in ('yn', 'yna'):
+            for option in options:
+                result[str(option.candidate.id)] = {
+                    'Y': [0, Decimal(0)],  # [heads, shares]
+                    'N': [0, Decimal(0)],
+                }
+                if pollmethod == 'yna':
+                    result[str(option.candidate.id)]['A'] = [0, Decimal(0)]
+        else:  # votes
+            for option in options:
+                result[str(option.candidate.id)] = [0, Decimal(0)]
+
+        # Sum up the votes.
+        for vote in votes:
+            try:
+                delegate_share = shares[vote.delegate.pk] if shares else 1
+            except KeyError:
+                # Occurs if voting share was removed after delegate cast a vote.
+                continue
+
+            if pollmethod in ('yn', 'yna'):
+                # count every vote for each candidate
+                for candidate_id, value in vote.vote.items():
+                    result[candidate_id][value][0] += 1
+                    result[candidate_id][value][1] += delegate_share
+            else:
+                result[vote.vote][0] += 1
+                result[vote.vote][1] += delegate_share
+            result['casted'][0] += 1
+            result['casted'][1] += delegate_share
+        result['valid'] = result['casted']
+
+        return result
+
+    def _create_ballot(self, vote, delegate=None):
+        """
+        Helper function to actually create or update a ballot.
+        """
+        created = False
+        if delegate is not None:
+            try:
+                apb = AssignmentPollBallot.objects.get(poll=self.poll, delegate=delegate)
+            except AssignmentPollBallot.DoesNotExist:
+                apb = AssignmentPollBallot(poll=self.poll, delegate=delegate)
+                created = True
+        else:
+            apb = MotionPollBallot(poll=self.poll)
+            created = True
+
+        apb.vote = vote
+        apb.save()
+        return created

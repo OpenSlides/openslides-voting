@@ -23,11 +23,11 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 belongsTo: {
                     'motions/motion-poll': {
                         localField: 'motionPoll',
-                        localKey: 'motion_poll_id'
+                        localKey: 'motion_poll_id',
                     },
-                    'assignments/assignment-poll': {
+                    'assignments/poll': {
                         localField: 'assignmentPoll',
-                        localKey: 'assignment_poll_id'
+                        localKey: 'assignment_poll_id',
                     },
                 }
             },
@@ -52,7 +52,15 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     }
                     return status + ': ' + text;
                 }
-            }
+            },
+            relations: {
+                belongsTo: {
+                    'openslides_voting/voting-principle': {
+                        localField: 'principle',
+                        localKey: 'principle_id',
+                    },
+                },
+            },
         });
     }
 ])
@@ -205,13 +213,13 @@ angular.module('OpenSlidesApp.openslides_voting', [
     }
 ])
 
-.factory('AbsenteeVote', [
+.factory('MotionAbsenteeVote', [
     'DS',
     'gettextCatalog',
     'User',
     'Motion',
     function (DS, gettextCatalog, User, Motion) {
-        var name = 'openslides_voting/absentee-vote';
+        var name = 'openslides_voting/motion-absentee-vote';
         var voteOption = {
             Y: gettextCatalog.getString('Yes'),
             N: gettextCatalog.getString('No'),
@@ -228,7 +236,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
             relations: {
                 belongsTo: {
                     'users/user': {
-                        localField: 'user',
+                        localField: 'delegate',
                         localKey: 'delegate_id'
                     },
                     'motions/motion': {
@@ -242,15 +250,77 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getTitle: function () {
-                    return this.user.full_name + ', ' + this.getMotionTitle() + ', ' + this.getVote();
+                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', '
+                        + this.getVote();
                 },
-                getMotionTitle: function () {
+                getObjectTitle: function () {
                     if (this.motion) {
-                        return this.motion.identifier + ' - ' + this.motion.getTitle();
+                        return this.motion.getAgendaTitle();
                     }
                 },
                 getVote: function () {
                     return voteOption[this.vote];
+                },
+                getVoteIcon: function () {
+                    return voteIcon[this.vote];
+                },
+            },
+        });
+    }
+])
+
+.factory('AssignmentAbsenteeVote', [
+    'DS',
+    'gettextCatalog',
+    'User',
+    'Motion',
+    function (DS, gettextCatalog, User, Motion) {
+        var name = 'openslides_voting/assignment-absentee-vote';
+        var voteOption = {
+            Y: gettextCatalog.getString('Yes'),
+            N: gettextCatalog.getString('No'),
+            A: gettextCatalog.getString('Abstain')
+        };
+        var voteIcon = {
+            Y: 'thumbs-up',
+            N: 'thumbs-down',
+            A: 'ban'
+        };
+
+        return DS.defineResource({
+            name: name,
+            relations: {
+                belongsTo: {
+                    'users/user': {
+                        localField: 'delegate',
+                        localKey: 'delegate_id'
+                    },
+                    'assignments/assignment': {
+                        localField: 'assignment',
+                        localKey: 'assignment_id'
+                    }
+                }
+            },
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+                getTitle: function () {
+                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', '
+                        + this.getVote();
+                },
+                getObjectTitle: function () {
+                    if (this.assignment) {
+                        return this.assignment.getAgendaTitle();
+                    }
+                },
+                getVote: function () {
+                    var intVote = parseInt(this.vote);
+                    if (isNaN(intVote)) {
+                        return voteOption[this.vote];
+                    } else {
+                        return this.vote;
+                    }
                 },
                 getVoteIcon: function () {
                     return voteIcon[this.vote];
@@ -295,6 +365,30 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 },
                 getVoteIcon: function () {
                     return voteIcon[this.vote];
+                },
+            },
+        });
+    }
+])
+
+.factory('AssignmentPollBallot', [
+    'DS',
+    'gettextCatalog',
+    function (DS, gettextCatalog) {
+        var name = 'openslides_voting/assignment-poll-ballot';
+        return DS.defineResource({
+            name: name,
+            relations: {
+                belongsTo: {
+                    'users/user': {
+                        localField: 'user',
+                        localKey: 'delegate_id'
+                    }
+                }
+            },
+            methods: {
+                getResourceName: function () {
+                    return name;
                 },
             },
         });
@@ -358,8 +452,34 @@ angular.module('OpenSlidesApp.openslides_voting', [
     }
 ])
 
-// Dummy..
-.factory('AssignmentPollType', [function () {return {};}])
+.factory('AssignmentPollType', [
+    'DS',
+    'PollType',
+    function (DS, PollType) {
+        var name = 'openslides_voting/assignment-poll-type';
+        return DS.defineResource({
+            name: name,
+            computed: {
+                displayName: function () {
+                    return PollType.getDisplayName(this.type);
+                },
+            },
+            methods: {
+                getResourceName: function () {
+                    return name;
+                },
+            },
+            relations: {
+                belongsTo: {
+                    'assignments/assignment-poll': {
+                        localField: 'poll',
+                        localKey: 'poll_id'
+                    }
+                }
+            },
+        });
+    }
+])
 
 .factory('AttendanceLog', [
     'DS',
@@ -621,19 +741,43 @@ angular.module('OpenSlidesApp.openslides_voting', [
 ])
 
 .run([
+    'AssignmentAbsenteeVote',
+    'AssignmentPollBallot',
+    'AssignmentPollType',
+    'AttendanceLog',
     'AuthorizedVoters',
-    'VotingController',
+    'Delegate',
     'Keypad',
-    'VotingPrinciple',
-    'VotingShare',
-    'VotingProxy',
-    'AbsenteeVote',
+    'MotionAbsenteeVote',
     'MotionPollBallot',
     'MotionPollType',
-    'Delegate',
-    'AttendanceLog',
-    function (AuthorizedVoters, VotingController, Keypad, VotingPrinciple, VotingShare, VotingProxy,
-        AbsenteeVote, MotionPollBallot, MotionPollType, Delegate, AttendanceLog) {}
+    'VotingPrinciple',
+    'VotingProxy',
+    'VotingShare',
+    'VotingController',
+    function (AssignmentAbsenteeVote, AssignmentPollBallot, AssignmentPollType,
+        AuthorizedVoters, Delegate, Keypad, MotionAbsenteeVote, MotionPollBallot,
+        MotionPollType, VotingPrinciple, VotingProxy, VotingShare, VotingController) {}
+])
+
+.run([
+    '$rootScope',
+    '$http',
+    function ($rootScope, $http) {
+        $rootScope.stopAnyVoting = function () {
+            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(function (s) {
+                console.log('success', s);
+            }, function (e) {
+                console.log('error', e);
+            });
+        };
+    }
 ]);
 
 }());
+
+// DEBUGGING: If something went wrong, and an active voting has to be stopped.
+// This may happen, if you delete a poll, with a current voting.
+function stopAnyVoting () {
+    angular.element(document.body).scope().$root.stopAnyVoting();
+}

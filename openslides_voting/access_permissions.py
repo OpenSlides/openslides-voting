@@ -70,16 +70,25 @@ class VotingProxyAccessPermissions(BaseAccessPermissions):
         return VotingProxySerializer
 
 
-class AbsenteeVoteAccessPermissions(BaseAccessPermissions):
+class MotionAbsenteeVoteAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):
-        from .serializers import AbsenteeVoteSerializer
-        return AbsenteeVoteSerializer
+        from .serializers import MotionAbsenteeVoteSerializer
+        return MotionAbsenteeVoteSerializer
+
+
+class AssignmentAbsenteeVoteAccessPermissions(BaseAccessPermissions):
+    def get_serializer_class(self, user=None):
+        from .serializers import AssignmentAbsenteeVoteSerializer
+        return AssignmentAbsenteeVoteSerializer
 
 
 class MotionPollBallotAccessPermissions(OSBaseAccessPermissions):
     def check_permissions(self, user):
         if user is None or isinstance(user, AnonymousUser):
             return False
+        if has_perm(user, 'openslides_voting.can_manage'):
+            return True
+
         # The user can see this, if he is listed there.
         from .models import MotionPollBallot
         return MotionPollBallot.objects.filter(delegate__pk=user.id).exists()
@@ -108,6 +117,28 @@ class MotionPollTypeAccessPermissions(BaseAccessPermissions):
 
 
 class AssignmentPollBallotAccessPermissions(BaseAccessPermissions):
+    def check_permissions(self, user):
+        if user is None or isinstance(user, AnonymousUser):
+            return False
+        if has_perm(user, 'openslides_voting.can_manage'):
+            return True
+
+        # The user can see this, if he is listed there.
+        from .models import AssignmentPollBallot
+        return AssignmentPollBallot.objects.filter(delegate__pk=user.id).exists()
+
+    def get_restricted_data(self, full_data, user):
+        if not isinstance(user, CollectionElement):
+            return []
+
+        if has_perm(user, 'openslides_voting.can_manage'):
+            return full_data
+
+        for item in full_data:
+            if item['delegate_id'] == user.id:
+                return [item]
+        return []
+
     def get_serializer_class(self, user=None):
         from .serializers import AssignmentPollBallotSerializer
         return AssignmentPollBallotSerializer

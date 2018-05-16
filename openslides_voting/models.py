@@ -5,15 +5,17 @@ from jsonfield import JSONField
 from openslides.assignments.models import Assignment, AssignmentPoll
 from openslides.motions.models import Motion, MotionPoll
 from openslides.users.models import User
+from openslides.utils.exceptions import OpenSlidesError
 from openslides.utils.models import RESTModelMixin
 
 from .access_permissions import (
-    AbsenteeVoteAccessPermissions,
+    AssignmentAbsenteeVoteAccessPermissions,
     AssignmentPollBallotAccessPermissions,
     AssignmentPollTypeAccessPermissions,
     AttendanceLogAccessPermissions,
     AuthorizedVotersAccessPermissions,
     KeypadAccessPermissions,
+    MotionAbsenteeVoteAccessPermissions,
     MotionPollBallotAccessPermissions,
     MotionPollTypeAccessPermissions,
     VotingTokenAccessPermissions,
@@ -50,16 +52,47 @@ class OneToManyField(models.ManyToManyField):
             self.rel.through._meta.unique_together = ((self.rel.through._meta.unique_together[0][1],),)
 
 
+class VotingPrinciple(RESTModelMixin, models.Model):
+    access_permissions = VotingPrincipleAccessPermissions()
+
+    name = models.CharField(max_length=128, unique=True)
+    decimal_places = models.PositiveIntegerField()
+
+    motions = OneToManyField(Motion, blank=True)
+    assignments = OneToManyField(Assignment, blank=True)
+
+    class Meta:
+        default_permissions = ()
+
+
+class VotingShare(RESTModelMixin, models.Model):
+    access_permissions = VotingShareAccessPermissions()
+
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shares')
+    principle = models.ForeignKey(VotingPrinciple, on_delete=models.CASCADE, null=True)
+    shares = models.DecimalField(max_digits=15, decimal_places=6)
+
+    class Meta:
+        default_permissions = ()
+        unique_together = ('delegate', 'principle')
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.delegate, self.principle, self.shares)
+
+
 class AuthorizedVoters(RESTModelMixin, models.Model):
     access_permissions = AuthorizedVotersAccessPermissions()
     authorized_voters = JSONField(default=[])
 
-    motion_poll = models.OneToOneField(MotionPoll, on_delete=models.CASCADE, null=True, blank=True)
-    assignment_poll = models.OneToOneField(AssignmentPoll, on_delete=models.CASCADE, null=True, blank=True)
+    motion_poll = models.OneToOneField(MotionPoll, on_delete=models.SET_NULL, null=True, blank=True)
+    assignment_poll = models.OneToOneField(AssignmentPoll, on_delete=models.SET_NULL, null=True, blank=True)
     type = models.CharField(max_length=128, default='analog')
 
     class Meta:
         default_permissions = ()
+
+    def delete(self, *args, **kwargs):
+        raise OpenSlidesError('The AuthorizedVoters object cannot be deleted.')
 
     @classmethod
     def set_voting(cls, delegates, voting_type, motion_poll=None, assignment_poll=None):
@@ -86,15 +119,19 @@ class VotingController(RESTModelMixin, models.Model):
     voting_mode = models.CharField(max_length=50, null=True)
     voting_target = models.IntegerField(default=0)
     voting_duration = models.IntegerField(default=0)
-    voters_count = models.IntegerField(default=0)
+    votes_count = models.IntegerField(default=0)
     votes_received = models.IntegerField(default=0)
     is_voting = models.BooleanField(default=False)
+    principle = models.OneToOneField(VotingPrinciple, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         default_permissions = ()
         permissions = (
             ('can_manage', 'Can manage voting'),
         )
+
+    def delete(self, *args, **kwargs):
+        raise OpenSlidesError('The VotingController object cannot be deleted.')
 
     def __str__(self):
         return self.device_status
@@ -118,34 +155,6 @@ class Keypad(RESTModelMixin, models.Model):
         return _('Keypad %d') % self.number
 
 
-class VotingPrinciple(RESTModelMixin, models.Model):
-    access_permissions = VotingPrincipleAccessPermissions()
-
-    name = models.CharField(max_length=128, unique=True)
-    decimal_places = models.PositiveIntegerField()
-
-    motions = OneToManyField(Motion, blank=True)
-    assignments = OneToManyField(Assignment, blank=True)
-
-    class Meta:
-        default_permissions = ()
-
-
-class VotingShare(RESTModelMixin, models.Model):
-    access_permissions = VotingShareAccessPermissions()
-
-    delegate = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shares')
-    principle = models.ForeignKey(VotingPrinciple, on_delete=models.CASCADE, null=True)
-    shares = models.DecimalField(max_digits=15, decimal_places=6)
-
-    class Meta:
-        default_permissions = ()
-        unique_together = ('delegate', 'principle')
-
-    def __str__(self):
-        return '%s, %s, %s' % (self.delegate, self.category, self.shares)
-
-
 class VotingProxy(RESTModelMixin, models.Model):
     access_permissions = VotingProxyAccessPermissions()
 
@@ -159,10 +168,8 @@ class VotingProxy(RESTModelMixin, models.Model):
         return '%s >> %s' % (self.delegate, self.proxy)
 
 
-# TODO: Same for assignments. Should we do this in a second model or foreign keys
-# to motion and assignment in this model?
-class AbsenteeVote(RESTModelMixin, models.Model):
-    access_permissions = AbsenteeVoteAccessPermissions()
+class MotionAbsenteeVote(RESTModelMixin, models.Model):
+    access_permissions = MotionAbsenteeVoteAccessPermissions()
 
     motion = models.ForeignKey(Motion, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -174,6 +181,21 @@ class AbsenteeVote(RESTModelMixin, models.Model):
 
     def __str__(self):
         return '%s, %s, %s' % (self.motion, self.delegate, self.vote)
+
+
+class AssignmentAbsenteeVote(RESTModelMixin, models.Model):
+    access_permissions = AssignmentAbsenteeVoteAccessPermissions()
+
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    delegate = models.ForeignKey(User, on_delete=models.CASCADE)
+    vote = models.CharField(max_length=255)
+
+    class Meta:
+        default_permissions = ()
+        unique_together = ('assignment', 'delegate')
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.assignment, self.delegate, self.vote)
 
 
 class MotionPollBallot(RESTModelMixin, models.Model):
@@ -196,7 +218,7 @@ class AssignmentPollBallot(RESTModelMixin, models.Model):
 
     poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    vote = models.CharField(max_length=1, blank=True)
+    vote = JSONField(default={})
     resultToken = models.PositiveIntegerField(default=0)
 
     class Meta:

@@ -1,4 +1,4 @@
-from openslides.utils.rest_api import ModelSerializer, JSONField
+from openslides.utils.rest_api import ModelSerializer, JSONField, ValidationError
 
 from . import models
 
@@ -8,11 +8,12 @@ class AuthorizedVotersSerializer(ModelSerializer):
     class Meta:
         model = models.AuthorizedVoters
         fields = (
-                'id',
-                'authorized_voters',
-                'type',
-                'motion_poll',
-                'assignment_poll')
+            'id',
+            'authorized_voters',
+            'type',
+            'motion_poll',
+            'assignment_poll',
+        )
 
 
 class VotingControllerSerializer(ModelSerializer):
@@ -24,9 +25,10 @@ class VotingControllerSerializer(ModelSerializer):
             'voting_mode',
             'voting_target',
             'voting_duration',
-            'voters_count',
+            'votes_count',
             'votes_received',
             'is_voting',
+            'principle',
         )
 
 
@@ -54,10 +56,33 @@ class VotingProxySerializer(ModelSerializer):
         fields = ('id', 'delegate', 'proxy', )
 
 
-class AbsenteeVoteSerializer(ModelSerializer):
+class MotionAbsenteeVoteSerializer(ModelSerializer):
     class Meta:
-        model = models.AbsenteeVote
+        model = models.MotionAbsenteeVote
         fields = ('id', 'motion', 'delegate', 'vote', )
+
+    def validate(self, data):
+        if data['vote'] not in ('Y', 'N', 'A'):
+            raise ValidationError({'detail': 'The vote intention for motions can only be Y, N or A.'})
+        return data
+
+
+class AssignmentAbsenteeVoteSerializer(ModelSerializer):
+    class Meta:
+        model = models.AssignmentAbsenteeVote
+        fields = ('id', 'assignment', 'delegate', 'vote', )
+
+    def validate(self, data):
+        is_valid_int = False
+        try:
+            int_vote = int(data['vote'])
+            if int_vote > 0:
+                is_valid_int = True
+        except:
+            pass
+        if data['vote'] not in ('Y', 'N', 'A') and not is_valid_int:
+            raise ValidationError({'detail': 'The vote intention for assignments can only be Y, N, A or an integer greater then 0.'})
+        return data
 
 
 class MotionPollBallotSerializer(ModelSerializer):
@@ -73,6 +98,7 @@ class MotionPollTypeSerializer(ModelSerializer):
 
 
 class AssignmentPollBallotSerializer(ModelSerializer):
+    vote = JSONField()
     class Meta:
         model = models.AssignmentPollBallot
         fields = ('id', 'poll', 'delegate', 'vote', )

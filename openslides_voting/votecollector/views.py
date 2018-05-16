@@ -156,8 +156,6 @@ class SubmitVotes(ValidationView):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
-        # TODO: Isn't this redundant? Why does the users/votecollector have to give the
-        # poll_id, if the id of the current voting is saved in the votingcontroller
         if poll_id != vc.voting_target:
             raise ValidationError({'detail': 'The given poll id is not the current voting target.'})
 
@@ -296,8 +294,6 @@ class SubmitCandidates(ValidationView):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
-        # TODO: Isn't this redundant? Why does the users/votecollector have to give the
-        # poll_id, if the id of the current voting is saved in the votingcontroller
         if poll_id != vc.voting_target:
             raise ValidationError({'detail': 'The given poll id is not the current voting target.'})
 
@@ -345,14 +341,12 @@ class SubmitCandidates(ValidationView):
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
 
                 # Write ballot.
-                ballots_created = ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+                candidate_id = options[vote['value'] - 1].candidate_id
+                ballots_created = ballot.register_vote(candidate_id, voter=user, principle=vc.principle)
                 if ballots_created > 0:
                     keypad_set.add(keypad.id)
                     vc.votes_received += ballots_created
                     vc.save()
-
-                    # TODO: Save candidates
-                    candidate_id = options[value - 1].candidate_id
 
         return HttpResponse()
 """

@@ -1236,26 +1236,20 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$scope',
     'Keypad',
     'KeypadForm',
-    function ($scope, Keypad, KeypadForm) {
+    'ErrorMessage',
+    function ($scope, Keypad, KeypadForm, ErrorMessage) {
+        $scope.alert = {};
         $scope.model = {};
         $scope.formFields = KeypadForm.getFormFields();
 
         // Save keypad.
         $scope.save = function (keypad) {
             // Create a new keypad.
-            Keypad.create(keypad).then(
-                function (success) {
-                    $scope.closeThisDialog();
-                },
-                function (error) {
-                    var message = '';
-                    // TODO: Replace e with localized field label.
-                    for (var e in error.data) {
-                        message += e + ': ' + error.data[e] + ' ';
-                    }
-                    $scope.alert = {type: 'danger', msg: message, show: true};
-                }
-            );
+            Keypad.create(keypad).then(function (success) {
+                $scope.closeThisDialog();
+            }, function (error) {
+                $scope.alert = ErrorMessage.forAlert(error);
+            });
         };
     }
 ])
@@ -1706,7 +1700,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.users = [];
         $scope.delegateVotes = [];
         $scope.onCsvChange = function (csv) {
-            throw "todo";
             var users = User.getAll(),
                 motions = Motion.getAll(),
                 records = [];
@@ -1760,7 +1753,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     record.vote_error = gettext('Error: Vote must be one of Y, N, A.');
                 }
                 // Temporarily create absentee vote instance to look up vote properties.
-                var av = AbsenteeVote.createInstance({vote: record.vote});
+                var av = MotionAbsenteeVote.createInstance({vote: record.vote});
                 record.vote_name = av.getVote();
                 record.vote_icon = av.getVoteIcon();
 
@@ -1788,20 +1781,20 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             angular.forEach($scope.delegateVotes, function (delegateVote) {
                 if (delegateVote.selected && !delegateVote.importerror) {
                     // Look for an existing vote.
-                    var avs = AbsenteeVote.filter({
+                    var avs = MotionAbsenteeVote.filter({
                         delegate_id: delegateVote.user_id,
                         motion_id: delegateVote.motion_id
                     });
                     if (avs.length == 1) {
                         // Update vote.
                         avs[0].vote = delegateVote.vote;
-                        AbsenteeVote.save(avs[0]).then(function (success) {
+                        Motion.AbsenteeVote.save(avs[0]).then(function (success) {
                             delegateVote.imported = true;
                         });
                     }
                     else {
                         // Create vote.
-                        AbsenteeVote.create({
+                        Motion.AbsenteeVote.create({
                             delegate_id: delegateVote.user_id,
                             motion_id: delegateVote.motion_id,
                             vote: delegateVote.vote
@@ -1876,44 +1869,36 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // Stop votingcontroller.
             $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
                 function (success) {
-                    // TODO: Use ErrorMessage factory
-                    if (success.data.error) {
-                        $scope.$parent.$parent.$parent.alert = { type: 'danger',
-                            msg: success.data.error, show: true };
-                    } else {
-                        $http.post('/rest/openslides_voting/voting-controller/1/results_motion_votes/', {
-                            poll_id: $scope.poll.id,
-                        }).then(
-                            function (success) {
-                                if (success.data.error) {
-                                    $scope.$parent.$parent.$parent.alert = { type: 'danger',
-                                        msg: success.data.error, show: true };
-                                } else {
-                                    // Store result in DS model; updates form inputs.
-                                    $scope.poll.yes = success.data.Y[1];
-                                    $scope.poll.no = success.data.N[1];
-                                    $scope.poll.abstain = success.data.A[1];
-                                    $scope.poll.votesvalid = success.data.valid[1]
-                                    $scope.poll.votesinvalid = success.data.invalid[1];
-                                    $scope.poll.votescast = success.data.casted[1];
+                    $http.post('/rest/openslides_voting/voting-controller/1/results_motion_votes/', {
+                        poll_id: $scope.poll.id,
+                    }).then(function (success) {
+                        if (success.data.error) {
+                            $scope.$parent.$parent.$parent.alert = { type: 'danger',
+                                msg: success.data.error, show: true };
+                        } else {
+                            // Store result in DS model; updates form inputs.
+                            $scope.poll.yes = success.data.Y[1];
+                            $scope.poll.no = success.data.N[1];
+                            $scope.poll.abstain = success.data.A[1];
+                            $scope.poll.votesvalid = success.data.valid[1]
+                            $scope.poll.votesinvalid = success.data.invalid[1];
+                            $scope.poll.votescast = success.data.casted[1];
 
-                                    // Prompt user to save result.
-                                    $scope.$parent.$parent.$parent.alert = {
-                                        type: 'info',
-                                        msg: gettextCatalog.getString('Motion voting has finished.') + ' ' +
-                                             gettextCatalog.getString('Save this result now!'),
-                                        show: true
-                                    };
-                                }
-                            }
-                        );
-                    }
+                            // Prompt user to save result.
+                            $scope.$parent.$parent.$parent.alert = {
+                                type: 'info',
+                                msg: gettextCatalog.getString('Motion voting has finished.') + ' ' +
+                                     gettextCatalog.getString('Save this result now!'),
+                                show: true
+                            };
+                        }
+                    },
+                    function (error) {
+                        $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                    });
                 },
-                function (failure) {
-                    $scope.$parent.$parent.$parent.alert = {
-                        type: 'danger',
-                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
-                        show: true };
+                function (error) {
+                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
                 }
             );
         };
@@ -2051,53 +2036,43 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // Stop voting.
             $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
                 function (success) {
-                    if (success.data.error) {
-                        $scope.$parent.$parent.$parent.alert = { type: 'danger',
-                            msg: success.data.error, show: true };
-                    } else {
-                        // Get votecollector result.
-                        $http.post('/rest/openslides_voting/voting-controller/1/results_assignment_votes/', {
-                            poll_id: $scope.poll.id,
-                        }).then(
-                            function (success) {
-                                _.forEach(success.data, function (value, key) {
-                                    if (key === 'casted') {
-                                        $scope.poll.votescast = value[0];
-                                    } else if (key === 'valid') {
-                                        $scope.poll.votesvalid = value[0];
-                                    } else if (key === 'invalid') {
-                                        $scope.poll.votesinvalid = value[0];
-                                    } else { // a candidate
-                                        if ($scope.poll.pollmethod === 'votes') {
-                                            $scope.poll['vote_' + key] = value[1];
-                                        } else {
-                                            $scope.poll['yes_' + key] = value.Y[1];
-                                            $scope.poll['no_' + key] = value.N[1];
-                                            if ($scope.poll.pollmethod === 'yna') {
-                                                $scope.poll['abstain_' + key] = value.A[1];
-                                            }
-                                        }
+                    // Get votecollector result.
+                    $http.post('/rest/openslides_voting/voting-controller/1/results_assignment_votes/', {
+                        poll_id: $scope.poll.id,
+                    }).then(function (success) {
+                        _.forEach(success.data, function (value, key) {
+                            if (key === 'casted') {
+                                $scope.poll.votescast = value[0];
+                            } else if (key === 'valid') {
+                                $scope.poll.votesvalid = value[0];
+                            } else if (key === 'invalid') {
+                                $scope.poll.votesinvalid = value[0];
+                            } else { // a candidate
+                                if ($scope.poll.pollmethod === 'votes') {
+                                    $scope.poll['vote_' + key] = value[1];
+                                } else {
+                                    $scope.poll['yes_' + key] = value.Y[1];
+                                    $scope.poll['no_' + key] = value.N[1];
+                                    if ($scope.poll.pollmethod === 'yna') {
+                                        $scope.poll['abstain_' + key] = value.A[1];
                                     }
-                                });
-
-                                // Prompt user to save result.
-                                $scope.$parent.$parent.$parent.alert = {
-                                    type: 'info',
-                                    msg: gettextCatalog.getString('Election voting has finished.') + ' ' +
-                                         gettextCatalog.getString('Save this result now!'),
-                                    show: true
-                                };
-                            }, function (error) {
-                                $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                                }
                             }
-                        );
-                    }
+                        });
+
+                        // Prompt user to save result.
+                        $scope.$parent.$parent.$parent.alert = {
+                            type: 'info',
+                            msg: gettextCatalog.getString('Election voting has finished.') + ' ' +
+                                 gettextCatalog.getString('Save this result now!'),
+                            show: true
+                        };
+                    }, function (error) {
+                        $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                    });
                 },
-                function (failure) {
-                    $scope.$parent.$parent.$parent.alert = {
-                        type: 'danger',
-                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
-                        show: true };
+                function (error) {
+                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
                 }
             );
         };

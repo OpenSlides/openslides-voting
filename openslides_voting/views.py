@@ -550,10 +550,11 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
     queryset = MotionPollBallot.objects.all()
 
 
-class MotionPollTypeViewSet(ModelViewSet):
-    access_permissions = MotionPollTypeAccessPermissions()
-    queryset = MotionPollType.objects.all()
-
+class BasePollTypeViewSet(ModelViewSet):
+    """
+    Base class for the PollTypeViewSets. Checks for permissions and validate
+    the type on creation.
+    """
     def check_view_permissions(self):
         """
         Just allow list and creation. Do not allow updates and deletes.
@@ -577,26 +578,19 @@ class MotionPollTypeViewSet(ModelViewSet):
         return super().create(request, *args, **kwargs)
 
 
+class MotionPollTypeViewSet(BasePollTypeViewSet):
+    access_permissions = MotionPollTypeAccessPermissions()
+    queryset = MotionPollType.objects.all()
+
+
 class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
     access_permissions = AssignmentPollBallotAccessPermissions()
     queryset = AssignmentPollBallot.objects.all()
 
 
-class AssignmentPollTypeViewSet(ModelViewSet):
+class AssignmentPollTypeViewSet(BasePollTypeViewSet):
     access_permissions = AssignmentPollTypeAccessPermissions()
     queryset = AssignmentPollType.objects.all()
-
-    def check_view_permissions(self):
-        """
-        Just allow list and creation. Do not allow updates and deletes.
-        """
-        if self.action in ('list', 'retrieve', 'create'):
-            return self.get_access_permissions().check_permissions(self.request.user)
-        return False
-
-    def create(self, request, *args, **kwargs):
-        # TODO: check for a valid type option
-        return super().create(request, *args, **kwargs)
 
 
 class AttendanceLogViewSet(PermissionMixin, ModelViewSet):

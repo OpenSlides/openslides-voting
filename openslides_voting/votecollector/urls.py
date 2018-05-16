@@ -3,6 +3,11 @@ from django.views.decorators.csrf import csrf_exempt
 
 from . import views
 
+# Info: The client always has to give the poll id. THis isn't redundant to the
+# poll id saved in the votingcontroller, because the server can check, if the request
+# is really for the current poll. Maybe the request is late and the clients votes for
+# the wrong poll. This must be permitted.
+
 urlpatterns = [
     url(r'^votingcontroller/vote/(?P<poll_id>\d+)/$',
         views.SubmitVotes.as_view(),

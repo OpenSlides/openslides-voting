@@ -1,6 +1,7 @@
 from django.utils.translation import ugettext_noop
 
 from openslides.core.config import ConfigVariable
+from .models import POLLTYPES
 
 
 def get_config_variables():
@@ -17,16 +18,13 @@ def get_config_variables():
         group='Voting',
         subgroup='General'
     )
+    choices = [{'value': c[0], 'display_name': c[1]} for c in POLLTYPES]
     yield ConfigVariable(
         name='voting_default_voting_type',
         default_value='analog',
         input_type='choice',
         label='Default voting type',
-        choices=(
-            {'value': 'analog', 'display_name': 'Analog voting'},
-            {'value': 'named_electronic', 'display_name': 'Named electronic voting'},
-            {'value': 'token_electronic', 'display_name': 'Token-based electronic voting'},
-            {'value': 'votecollector', 'display_name': 'Votecollector'}),
+        choices=choices,
         weight=620,
         group='Voting',
         subgroup='General'

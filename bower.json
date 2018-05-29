@@ -2,6 +2,6 @@
   "name": "openslides-voting",
   "private": true,
   "dependencies": {
-    "angular-gettext": "~2.3.6"
+      "jsbarcode": "~3.9.0"
   }
 }

@@ -1,0 +1,121 @@
+<div class="details">
+  <div uib-alert ng-show="alert.show" ng-class="'alert-' + alert.type" close="alert={}">
+    {{ alert.msg }}
+  </div>
+
+  <h1 ng-if="!isTokenVoting" translate>
+    No active token voting
+  </h1>
+
+  <div ng-if="votingState === 'scan' && isTokenVoting">
+    <h1 ng-if="av.motionPoll">
+      <translate>Vote for</translate>
+      {{ av.motionPoll.motion.getAgendaTitle() }}
+    </h1>
+    <h1 ng-if="av.assignmentPoll">
+      <translate>Vote for</translate>
+      {{ av.assignmentPoll.assignment.getAgendaTitle() }}
+    </h1>
+
+    <form ng-submit="scan()" class="row" ng-if="av.motionPoll || av.assignmentPoll">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label for="tokenInput" translate>Enter token</label>
+          <input type="text" class="form-control" id="tokenInput"
+            ng-model="$parent.$parent.tokenInput" ng-disabled="tokenInputDisabled" autofocus>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary" translate>
+          Vote now!
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div ng-if="votingState === 'enter'">
+    <div ng-if="av.motionPoll">
+      <h1>
+        <translate>Vote for</translate>
+        {{ av.motionPoll.motion.getAgendaTitle() }}
+      </h1>
+      <h3 ng-if="mpbVote.value">
+        <translate>Your vote:</translate>
+        <strong ng-if="mpbVote.value == 'Y'" translate>
+          Yes
+        </strong>
+        <strong ng-if="mpbVote.value == 'N'" translate>
+          No
+        </strong>
+        <strong ng-if="mpbVote.value == 'A'" translate>
+          Abstain
+        </strong>
+      </h3>
+      <ng-include src="'static/templates/openslides_voting/submit-motion-poll-buttons.html'"></ng-include>
+      <button type="button" class="btn btn-primary spacer-top-lg" ng-click="submitVote()"
+        ng-disabled="!mpbVote" translate>
+        Submit vote
+      </button>
+    </div>
+    <div ng-if="av.assignmentPoll">
+      <h1>
+        <translate>Vote for</translate>
+        {{ av.assignmentPoll.assignment.getAgendaTitle() }}
+      </h1>
+      <ng-include src="'static/templates/openslides_voting/submit-assignment-poll-buttons.html'"></ng-include>
+      <button type="button" class="btn btn-primary spacer-top-lg" ng-click="submitVote()"
+        ng-disabled="vote.candidateIndex < 0 && poll.pollmethod === 'votes'" translate>
+        Submit vote
+      </button>
+    </div>
+  </div>
+
+  <div ng-if="votingState === 'submitted'">
+    <h1>
+      <translate>The vote was registered successfully!</translate>
+    </h1>
+    <p ng-if="av.motionPoll">
+      <translate>Your vote:</translate>
+      <strong ng-if="resultVote == 'Y'" translate>
+        Yes
+      </strong>
+      <strong ng-if="resultVote == 'N'" translate>
+        No
+      </strong>
+      <strong ng-if="resultVote == 'A'" translate>
+        Abstain
+      </strong>
+    </p><p ng-if="av.assignmentPoll && av.assignmentPoll.pollmethod === 'votes'">
+      <translate>Your vote:</translate>
+      <strong>
+        {{ getResultCandidate() }}
+      </strong>
+    </p><p ng-if="av.assignmentPoll && av.assignmentPoll.pollmethod !== 'votes'">
+      <translate>Your vote:</translate>
+      <div ng-repeat="option in av.assignmentPoll.options | orderBy: 'weight'">
+        <strong>{{ option.candidate.full_name }}</strong>:
+        <span ng-if="resultVote[option.candidate.id] === 'Y'" translate>
+          Yes
+        </span>
+        <span ng-if="resultVote[option.candidate.id] === 'N'" translate>
+          No
+        </span>
+        <span ng-if="resultVote[option.candidate.id] === 'A'" translate>
+          Abstain
+        </span>
+      </div>
+    </p><p>
+      <translate>You can validate your vote using your personal result token:</translate>
+      <strong>
+        {{ resultToken }}
+      </strong>
+    </p>
+    <button type="button" class="btn btn-primary" ng-click="reset()" translate>
+      Continue
+    </button>
+    <p class="spacer-top" ng-if="timeout > 0">
+      <translate>Continue in</translate>
+      {{ timeout }}
+      <translate>seconds</translate>...
+    </p>
+  </div>
+
+</div>

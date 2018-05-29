@@ -88,7 +88,7 @@ class AssignmentAbsenteeVoteSerializer(ModelSerializer):
 class MotionPollBallotSerializer(ModelSerializer):
     class Meta:
         model = models.MotionPollBallot
-        fields = ('id', 'poll', 'delegate', 'vote', )
+        fields = ('id', 'poll', 'delegate', 'vote', 'result_token', )
 
 
 class MotionPollTypeSerializer(ModelSerializer):
@@ -101,7 +101,7 @@ class AssignmentPollBallotSerializer(ModelSerializer):
     vote = JSONField()
     class Meta:
         model = models.AssignmentPollBallot
-        fields = ('id', 'poll', 'delegate', 'vote', )
+        fields = ('id', 'poll', 'delegate', 'vote', 'result_token', )
 
 
 class AssignmentPollTypeSerializer(ModelSerializer):

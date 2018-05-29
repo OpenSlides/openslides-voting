@@ -15,6 +15,7 @@ from openslides.core.config import config
 from openslides.core.models import Projector, Countdown
 from openslides.motions.models import Category, Motion, MotionPoll
 from openslides.users.models import User
+from openslides.utils.auth import has_perm
 from openslides.utils.autoupdate import inform_deleted_data
 from openslides.utils.rest_api import (
     detail_route,
@@ -231,12 +232,19 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
             # Limit voters count to length of admitted delegates list.
             votes_count, admitted_delegates = get_admitted_delegates_with_keypads(principle)
-        else:
+
+            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
+            # of votes we expect to come in and the absentee votes.
+        elif voting_type == 'named_electronic':
             # Limit voters count to length of admitted delegates list.
             votes_count, admitted_delegates = get_admitted_delegates(principle)
 
-        vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
-        # of votes we expect to come in and the absentee votes.
+            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
+            # of votes we expect to come in and the absentee votes.
+        else:  # 'token_based_electronic'
+            admitted_delegates = []
+            vc.votes_count = 0  # We do not know, how many votes will come..
+
         vc.voting_mode = model.__name__
         vc.voting_target = poll_id
         vc.votes_received = absentee_ballots_created
@@ -618,9 +626,12 @@ class VotingTokenViewSet(ModelViewSet):
         """
         Just allow list, creation and generation. Do not allow updates and deletes.
         """
-        print(self.action)
         if self.action in ('list', 'retrieve', 'create', 'generate'):
             return self.get_access_permissions().check_permissions(self.request.user)
+        if self.action == 'check_token':
+            # To prevent guessing and brute forcing valid tokens, just the voting machines are
+            # allowed to check tokens
+            return has_perm(self.request.user, 'openslides_voting.can_see_token_voting')
         return False
 
     @list_route(methods=['post'])
@@ -638,6 +649,28 @@ class VotingTokenViewSet(ModelViewSet):
         choices = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrsuvwxyz123456789'
         tokens = [(''.join(random.choice(choices) for _ in range(12))) for _ in range(n)]
         return Response(tokens)
+
+    @list_route(methods=['post'])
+    def check_token(self, request):
+        """
+        Returns True or False, if the token is valid.
+        The token has to be given as {token: <token>}.
+        """
+        # Check, if there is a token voting active.
+        av = AuthorizedVoters.objects.get()
+        if (not av.motion_poll and not av.assignment_poll) or av.type != 'token_based_electronic':
+            raise ValidationError({'detail': 'No active token voting.'})
+        if not isinstance(request.data, dict):
+            raise ValidationError({'detail': 'The request data has to be a dict'})
+        token = request.data.get('token')
+        if not isinstance(token, str):
+            raise ValidationError({'detail': 'The token has to be a string'})
+        if len(token) > 128:
+            raise ValidationError({'detail': 'The token must be shorter then 128 characters'})
+
+        token_valid = VotingToken.objects.filter(token=token).exists()
+
+        return Response(token_valid)
 
 
 @method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')

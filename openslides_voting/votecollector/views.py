@@ -9,11 +9,19 @@ from openslides.assignments.models import AssignmentOption, AssignmentPoll
 from openslides.core.exceptions import OpenSlidesError
 from openslides.motions.models import MotionPoll
 from openslides.users.models import User
+from openslides.utils.auth import has_perm
 from openslides.utils import views as utils_views
 from openslides.utils.autoupdate import inform_changed_data
 
 from . import rpc
-from ..models import AuthorizedVoters, Keypad, VotingController, MotionPollBallot, VotingShare
+from ..models import (
+    AuthorizedVoters,
+    Keypad,
+    VotingController,
+    MotionPollBallot,
+    VotingShare,
+    VotingToken,
+)
 from ..voting import AssignmentBallot, MotionBallot
 
 
@@ -34,20 +42,25 @@ class ValidationView(utils_views.View):
         # Raise a validationerror if the decryption fails!!
         return message
 
-    def validate_input_data(self, data, votecollector):
+    def validate_input_data(self, data, voting_type, user):
         """
         returns the validated data or raises a ValidationError. The correct
         format is [{<vote>}, {<vote>}, ...], where vote is a dict with
         {
-            value: <has to be there and has to be checked separatly>,
+            value: <has to be there, but has to be checked separatly>,
             id: <keypad_number, not id!>,
             keypad: <keypad_instance>,
-            bl: <keypad_battery_level>
+            bl: <keypad_battery_level>,
+            token: <token_string>,
+            token_instance: <token>,
         }
-        id and bl are required if votecollector is true and permitted if votecollector
-        is False.
+        id and bl are required if the voting type is votecollector and permitted
+        if the type is not votecollector. The keypad is added during the validation.
+        The token has to be given, if the voting type is token_based_electronic. The
+        token_instance is queried during the validation. Also, the user has to have the
+        'can_see_token_voting' permission.
         Additional fields in the dict are not cleared.
-        If votecollector is False, the length of the list has to be one.
+        If the voting type is not votecollector, the length of the list has to be one.
         """
         try:
             votes = json.loads(data.decode('utf-8'))
@@ -56,7 +69,7 @@ class ValidationView(utils_views.View):
         if not isinstance(votes, list):
             votes = [votes]
 
-        if not votecollector and len(votes) != 1:
+        if voting_type != 'votecollector' and len(votes) != 1:
             raise ValidationError({'detail': 'Just one vote has to be given'})
 
         for vote in votes:
@@ -65,7 +78,7 @@ class ValidationView(utils_views.View):
             if 'value' not in vote:
                 raise ValidationError({'detail': 'A vote value is missing'})
 
-            if votecollector:
+            if voting_type == 'votecollector':  # Check, if bl and id is given and valid
                 if not 'bl' in vote or not 'id' in vote:
                     raise ValidationError({'detail': 'bl and id are necessary for the votecollector'})
                 if not isinstance(vote['bl'], int) or not isinstance(vote['id'], int):
@@ -76,6 +89,20 @@ class ValidationView(utils_views.View):
                     raise ValidationError({
                         'detail': 'The keypad with id {} does not exist'.format(vote['id'])})
                 vote['keypad'] = keypad
+            elif voting_type == 'token_based_electronic':  # Check, if a valid token is given
+                if not has_perm(user, 'openslides_voting.can_see_token_voting'):
+                    raise ValidationError({'detail': 'The user does not have the permission to vote with tokens.'})
+                token = vote.get('token')
+                if not isinstance(token, str):
+                    raise ValidationError({'detail': 'The token has to be a string.'})
+                if len(token) > 128:
+                    raise ValidationError({'detail': 'The token length must be lesser then 128.'})
+                try:
+                    token_instance = VotingToken.objects.get(token=token)
+                except VotingToken.DoesNotExist:
+                    raise ValidationError({'detail': 'The token is not valid.'})
+                vote['token_instance'] = token_instance
+
         return votes
 
 
@@ -163,7 +190,7 @@ class SubmitVotes(ValidationView):
         body = request.body
         if votecollector:
             body = self.decrypt_votecollector_message(body)
-        votes = self.validate_input_data(body, votecollector)
+        votes = self.validate_input_data(body, av.type, request.user)
 
         if vc.voting_mode == 'MotionPoll':
             try:
@@ -203,16 +230,28 @@ class SubmitVotes(ValidationView):
 
         # we can now operate for motions and assignment equally, because the logic is
         # encapsulated in the ballot objects
+        result_token = 0
+        result_vote = None
         if av.type in ('named_electronic', 'token_based_electronic'):
+            vote = votes[0]
             user = None
             if av.type == 'named_electronic':
                 user = request.user
+                if user.id not in av.authorized_voters:
+                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+            else:
+                token_instance = vote['token_instance']
+                token_instance.delete()
 
-            if user.id not in av.authorized_voters:
-                raise ValidationError({'detail': 'The user is not authorized to vote.'})
+                # Generate resultToken
+                result_token = ballot.get_next_result_token()
+                result_vote = vote['value']
 
-            vote = votes[0]
-            vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+            vc.votes_received += ballot.register_vote(
+                vote['value'],
+                voter=user,
+                principle=vc.principle,
+                result_token=result_token)
         else:  # votecollector
             for vote in votes:
                 # Mark keypad as in range and update battery level.
@@ -238,7 +277,9 @@ class SubmitVotes(ValidationView):
                 vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
         vc.save()
 
-        return HttpResponse()
+        return JsonResponse({
+            'result_token': result_token,
+            'result_vote': result_vote})
 
 
 class SubmitCandidates(ValidationView):
@@ -308,20 +349,31 @@ class SubmitCandidates(ValidationView):
         body = request.body
         if votecollector:
             body = self.decrypt_votecollector_message(body)
-        votes = self.validate_input_data(body, votecollector)
+        votes = self.validate_input_data(body, av.type, request.user)
         votes = self.validate_candidates_votes(votes, options)
 
+        result_token = 0
+        result_vote = None
         if av.type in ('named_electronic', 'token_based_electronic'):
+            vote = votes[0]
             user = None
             if av.type == 'named_electronic':
                 user = request.user
+                if user.id not in av.authorized_voters:
+                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+            else:
+                token_instance = vote['token_instance']
+                token_instance.delete()
 
-            if user.id not in av.authorized_voters:
-                raise ValidationError({'detail': 'The user is not authorized to vote.'})
+                # Generate resultToken
+                result_token = ballot.get_next_result_token()
+                result_vote = vote['value']
 
-            vote = votes[0]
-            vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
-            vc.save()
+            vc.votes_received += ballot.register_vote(
+                vote['value'],
+                voter=user,
+                principle=vc.principle,
+                result_token=result_token)
         else:  # votecollector
             keypad_set = set()
             for vote in votes:
@@ -346,9 +398,12 @@ class SubmitCandidates(ValidationView):
                 if ballots_created > 0:
                     keypad_set.add(keypad.id)
                     vc.votes_received += ballots_created
-                    vc.save()
 
-        return HttpResponse()
+        vc.save()
+        return JsonResponse({
+            'result_token': result_token,
+            'result_vote': result_vote})
+
 """
 class VotingCallbackView(utils_views.View):
     http_method_names = ['post']

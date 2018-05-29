@@ -150,7 +150,90 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
         };
 
         return {
-            createInstance: createInstance
+            createInstance: createInstance,
+        };
+    }
+])
+
+.factory('Barcode', [
+    function () {
+        return {
+            getBase64: function (text, options) {
+                options = options || {};
+                var canvas = document.createElement('canvas');
+                JsBarcode(canvas, text, options);
+                return canvas.toDataURL();
+            },
+        };
+    }
+])
+
+.factory('TokenContentProvider', [
+    'PDFLayout',
+    'Barcode',
+    'gettextCatalog',
+    function (PDFLayout, Barcode, gettextCatalog) {
+        var createInstance = function (tokens) {
+             // Title
+            var pdfTitle = PDFLayout.createTitle(gettextCatalog.getString('Tokens'));
+
+            var tokenTable = function () {
+                var tableBody = [
+                    [
+                        {
+                            text: gettextCatalog.getString('Tokens'),
+                            style: 'tableHeader'
+                        },
+                        {
+                            text: gettextCatalog.getString('Barcodes'),
+                            style: 'tableHeader'
+                        }
+                    ]
+                ];
+                _.forEach(tokens, function (token, index) {
+                    tableBody.push([
+                        {
+                            text: token,
+                            style: PDFLayout.flipTableRowStyle(index),
+                            fontSize: 16,
+                            margin: [5, 35, 0, 0],
+                        },
+                        {
+                            image: Barcode.getBase64(token, {
+                                fontSize: 10,
+                                height: 50,
+                                width: 1,
+                                text: ' ',
+                                background: (index % 2 === 0) ? '#fff' : '#eee',
+                            }),
+                            style: PDFLayout.flipTableRowStyle(index),
+                            margin: [0, 10, 0, 0],
+                        }
+                    ]);
+                });
+
+                return {
+                    table: {
+                        widths: ['*', '*'],
+                        headerRows: 1,
+                        body: tableBody
+                    },
+                    layout: 'headerLineOnly'
+                };
+            };
+
+            return {
+                getContent: function () {
+                    return [
+                        pdfTitle,
+                        tokenTable()
+                    ];
+                }
+            };
+        };
+
+        return {
+            createInstance: createInstance,
         };
     }
 ]);

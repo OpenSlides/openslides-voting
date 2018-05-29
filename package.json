@@ -10,7 +10,11 @@
     "gulp": "~3.9.1",
     "gulp-angular-gettext": "~2.2.0",
     "gulp-angular-templatecache": "~2.0.0",
+    "gulp-if": "^2.0.2",
     "gulp-jshint": "~2.0.4",
+    "gulp-sourcemaps": "^2.6.0",
+    "gulp-uglify": "^2.1.2",
+    "main-bower-files": "^2.13.1",
     "jshint": "~2.9.4",
     "po2json": "~0.4.5"
   }

@@ -556,6 +556,37 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
     access_permissions = MotionPollBallotAccessPermissions()
     queryset = MotionPollBallot.objects.all()
 
+    @list_route(methods=['post'])
+    def recount_votes(self, request):
+        """
+        Recounts all votes from a given poll. Request data: {poll_id: <poll_id>}
+        """
+        if not isinstance(request.data, dict):
+            raise ValidationError({'detail': 'The data has to be a dict.'})
+        poll_id = request.data.get('poll_id')
+        if not isinstance(poll_id, int):
+            raise ValidationError({'detail': 'The poll_id has to be an int.'})
+        try:
+            poll = MotionPoll.objects.get(pk=poll_id)
+        except MotionPoll.DoesNotExist:
+            raise ValidationError({'detail': 'The poll with id {} does not exist.'.format(
+                poll_id)})
+
+        # Count ballot votes.
+        ballot = MotionBallot(poll)
+        result = ballot.count_votes()
+
+        # Update motion poll.
+        votes = {
+            'Yes': int(result['Y'][1]),
+            'No': int(result['N'][1]),
+            'Abstain': int(result['A'][1])
+        }
+        poll.set_vote_objects_with_values(poll.get_options().get(), votes, skip_autoupdate=True)
+        poll.votescast = poll.votesvalid = int(result['casted'][1])
+        poll.votesinvalid = 0
+        poll.save()
+        return HttpResponse()
 
 class BasePollTypeViewSet(ModelViewSet):
     """
@@ -638,6 +669,8 @@ class VotingTokenViewSet(ModelViewSet):
         """
         Generate n tokens. Provide N (1<=N<=4096) as the only argument: {N: <n>}
         """
+        if not isinstance(request.data, dict):
+            raise ValidationError({'detail': 'The data has to be a dict.'})
         n = request.data.get('N')
         if not isinstance(n, int):
             raise ValidationError({'detail': 'N has to be an int.'})
@@ -726,27 +759,3 @@ class AttendanceView(View):
             log.save()
 
         return JsonResponse(total_shares)
-
-
-@method_decorator(permission_required('openslides_voting.can_manage'), name='dispatch')
-class CountVotesView(View):
-    http_method_names = ['post']
-
-    def post(self, request, poll_id):
-        poll = get_object_or_404(MotionPoll, id=poll_id)
-
-        # Count ballot votes.
-        ballot = MotionBallot(poll)
-        result = ballot.count_votes()
-
-        # Update motion poll.
-        votes = {
-            'Yes': int(result['Y'][1]),
-            'No': int(result['N'][1]),
-            'Abstain': int(result['A'][1])
-        }
-        poll.set_vote_objects_with_values(poll.get_options().get(), votes, skip_autoupdate=True)
-        poll.votescast = poll.votesvalid = int(result['casted'][1])
-        poll.votesinvalid = 0
-        poll.save()
-        return HttpResponse()

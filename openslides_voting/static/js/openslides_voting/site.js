@@ -1236,52 +1236,59 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Motion',
     'MotionPoll',
     'MotionPollBallot',
+    'MotionPollType',
+    'osTableFilter',
+    'osTableSort',
+    'osTablePagination',
     'MotionPollContentProvider',
     'PdfMakeDocumentProvider',
     'PdfCreate',
-    function ($scope, $stateParams, gettextCatalog, Motion, MotionPoll, MotionPollBallot, MotionPollContentProvider,
-                PdfMakeDocumentProvider, PdfCreate) {
+    function ($scope, $stateParams, gettextCatalog, Motion, MotionPoll, MotionPollBallot,
+            MotionPollType, osTableFilter, osTableSort, osTablePagination,
+            MotionPollContentProvider, PdfMakeDocumentProvider, PdfCreate) {
         var pollId = $stateParams.id;
         var motion = MotionPoll.get(pollId).motion;
         Motion.bindOne(motion.id, $scope, 'motion');
         MotionPoll.bindOne(pollId, $scope, 'poll');
         MotionPollBallot.bindAll({poll_id: pollId}, $scope, 'ballots');
 
-        // Set up pagination.
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 50,
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        // Get poll type for motion
+        var pollTypes = MotionPollType.filter({poll_id: pollId});
+        $scope.pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
 
         // Handle table column sorting.
-        $scope.sortColumn = 'user.full_name';
-        $scope.reverse = false;
-        $scope.toggleSort = function (column) {
-            if ( $scope.sortColumn === column ) {
-                $scope.reverse = !$scope.reverse;
-            }
-            $scope.sortColumn = column;
-        };
+        $scope.filter = osTableFilter.createInstance('MotionPollDetailFilter');
+        $scope.filter.propertyFunctionList = [
+            function (ballot) { return ballot.getVote(); },
+            function (ballot) { return ballot.user ? ballot.user.full_name : ''; },
+            function (ballot) { return ballot.result_token !== 0 ? ballot.result_token : ''; }
+        ];
 
-        // Define custom search filter string.
-        $scope.getFilterString = function (ballot) {
-            return [
-                ballot.user.full_name,
-                ballot.getVote()
-            ].join(' ');
-        };
+        $scope.sort = osTableSort.createInstance('MotionPollDetailSort');
+        if (!$scope.sort.column) {
+            if ($scope.pollType === 'token_based_electronic') {
+                $scope.sort.column = 'result_token';
+            } else {
+                $scope.sort.column = 'user.full_name';
+            }
+        }
+
+        $scope.pagination = osTablePagination.createInstance('MotionPollDetailPagination');
 
         // PDF export
         $scope.pdfExport = function () {
-            var filename = gettextCatalog.getString('Motion') + '-' + motion.identifier + '-' +
-                gettextCatalog.getString('SingleVotes') + '.pdf';
-            var contentProvider = MotionPollContentProvider.createInstance(motion, $scope.poll);
-            var documentProvider = PdfMakeDocumentProvider.createInstance(contentProvider);
-            PdfCreate.download(documentProvider.getDocument(), filename);
+            var filename = gettextCatalog.getString('Motion') + ' ';
+            if ($scope.motion.identifier) {
+                filename += $scope.motion.identifier;
+            } else {
+                filename += $scope.motion.getTitle();
+            }
+            filename += ' ' + gettextCatalog.getString('SingleVotes') + '.pdf';
+            var contentProvider = MotionPollContentProvider.createInstance(
+                $scope.motion, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
+            PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
+                PdfCreate.download(documentProvider, filename);
+            });
         };
     }
 ])
@@ -1452,12 +1459,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                         $scope.device = success.data.error;
                                     }
                                     else {
-                                        // Stop test after 1 min.
+                                        // Stop test after 30 sec.
                                         $timeout(function () {
                                             if ($scope.vc.is_voting && $scope.vc.voting_mode == 'ping') {
                                                 $scope.stopSysTest();
                                             }
-                                        }, 60000);
+                                        }, 30000);
                                     }
                                 }
                             );

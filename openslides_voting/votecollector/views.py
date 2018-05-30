@@ -274,7 +274,10 @@ class SubmitVotes(ValidationView):
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
 
                 # Write ballot.
-                vc.votes_received += ballot.register_vote(vote['value'], voter=user, principle=vc.principle)
+                vc.votes_received += ballot.register_vote(
+                    vote['value'],
+                    voter=user,
+                    principle=vc.principle)
         vc.save()
 
         return JsonResponse({
@@ -394,7 +397,10 @@ class SubmitCandidates(ValidationView):
 
                 # Write ballot.
                 candidate_id = options[vote['value'] - 1].candidate_id
-                ballots_created = ballot.register_vote(candidate_id, voter=user, principle=vc.principle)
+                ballots_created = ballot.register_vote(
+                    candidate_id,
+                    voter=user,
+                    principle=vc.principle)
                 if ballots_created > 0:
                     keypad_set.add(keypad.id)
                     vc.votes_received += ballots_created

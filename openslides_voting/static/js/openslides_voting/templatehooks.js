@@ -36,7 +36,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             scope: function (scope) {
                 // Recalculate vote result.
                 scope.countVotes = function () {
-                    $http.post('/voting/count/' + scope.poll.id + '/');
+                    $http.post('/rest/openslides_voting/motion-poll-ballot/recount_votes/', {poll_id: scope.poll.id});
                 };
                 scope.$watch(function () {
                     return MotionPollType.lastModified();

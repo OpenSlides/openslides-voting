@@ -164,11 +164,13 @@ class BaseBallot:
     def register_vote(self, vote, voter=None, principle=None, result_token=0):
         """
         Register a vote by creating ballot objects for the voter and all proxies represented
-        by the voter. Just delegates can vote, if they do have a shares > 0 for the given
-        principle. THis check is ommitted, if no principle is given. If voter is none, just
-        the vote is registered, because we do not know the proxy chain.
+        by the voter. The shares will not be checked here. Fot the voter and every proxy the
+        vote will be registered. During count_votes, the shares will be included. If voter
+        is none, just the vote is registered, because we do not know the proxy chain.
+        The return value is the count of created or update ballots **respecting the principle**.
+        If some of the users doesn't have a share, they are not counted!
 
-        ballot objects will not be created for any delegate who submitted an absentee vote. For
+        Ballot objects will not be created for any delegate who submitted an absentee vote. For
         this see the create_absentee_ballots function.
 
         vote: Vote, typically 'Y', 'N', 'A' or an ID
@@ -180,20 +182,20 @@ class BaseBallot:
             if self._create_ballot(vote, result_token=result_token):
                 created += 1
         else:
-            principle_id = principle.pk if principle is not None else None
-
+            principle_id = principle.id if principle is not None else None
             # Register the vote and proxy votes.
             delegates_to_create_ballot = [voter]
             while len(delegates_to_create_ballot) > 0:
                 delegate = delegates_to_create_ballot.pop()
                 delegates_to_create_ballot.extend([proxy.delegate for proxy in delegate.mandates.all()])
-                if principle_id is not None:
-                    shares = delegate.shares.filter(principle__pk=principle_id)
-                    if shares.count() == 0 or shares.first().shares <= 0:
-                        continue  # skip creating a ballot for this delegate: it does
-                                  # not have any shares (or zero)
                 if self._create_ballot(vote, delegate=delegate, result_token=result_token):
-                    created += 1
+                    # Just count the ballot, if the user has voting shares
+                    if principle_id is not None:
+                        shares = delegate.shares.filter(principle__pk=principle_id)
+                        if shares.count() != 0 and shares.first().shares > 0:
+                            created += 1
+                    else:
+                        created += 1
 
         return created
 
@@ -282,6 +284,7 @@ class MotionBallot(BaseBallot):
         Each entry in the result dict is a list with two enties: First the heads and second
         the shares (heady with weights). If a head does not have a share, it will be weighted
         by 1.
+        Just the ballot are counted, that does not have a user or the user must have shares >0.
 
         Returns the result dict. For the structure look for the `result = {` definition below.
         """
@@ -456,6 +459,7 @@ class AssignmentBallot(BaseBallot):
         }
 
         This function expects the right vote values for the poll method.
+        Just the ballot are counted, that does not have a user or the user must have shares >0.
         """
         votes = AssignmentPollBallot.objects.filter(poll=self.poll)
 

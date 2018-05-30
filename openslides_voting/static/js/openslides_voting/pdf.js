@@ -9,7 +9,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
     'MotionPollBallot',
     'PDFLayout',
     function(gettextCatalog, MotionPollBallot, PDFLayout) {
-        var createInstance = function(motion, poll) {
+        var createInstance = function(motion, poll, ballots, pollType) {
 
             // Title
             var pdfTitle = PDFLayout.createTitle(motion.getTitle() + ' - ' +
@@ -17,52 +17,49 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
 
             // Subtitle
             var i = _.findIndex(motion.polls, function (p) { return p.id == poll.id;  });
-            var pdfSubtitle = PDFLayout.createSubtitle([ i + 1 + '. ' + gettextCatalog.getString('Vote')]);
+            var pdfSubtitle = PDFLayout.createSubtitle([ (i + 1) + '. ' + gettextCatalog.getString('Vote')]);
 
             // TODO: Add vote result table. See MotionContentProvider.
 
             // Create single votes table. Order by user fullname.
-            var ballots = MotionPollBallot.filter({poll_id: poll.id, orderBy: 'user.full_name'}),
-                voteStr = {Y: 'Yes', N: 'No', A: 'Abstain'},
-                tableBody = [],
-                column1 = [],
-                column2 = [],
-                column3 = [];
-            _.forEach(ballots, function (ballot, index) {
-                column1.push(index + 1 + '.');
-                column2.push(ballot.user.full_name);
-                column3.push(gettextCatalog.getString(voteStr[ballot.vote]));
-            });
+            var voteStr = {Y: 'Yes', N: 'No', A: 'Abstain'};
 
-            tableBody.push([
-                {
-                    columns: [
-                        {
-                            text: column1.join('\n'),
-                            width: 'auto',
-                            alignment: 'right'
-                        },
-                        {
-                            text: column2.join('\n'),
-                            width: 'auto'
-                        },
-                        {
-                            text: column3.join('\n'),
-                            width: 'auto'
-                        }
-                        // TODO: Add voting shares column
-                    ],
-                    columnGap: 10
-                    // style: 'grey'
-                }
-            ]);
+            var tableBody = [
+                [
+                    {
+                        text: (pollType === 'token_based_electronic'
+                            ? gettextCatalog.getString('Result token')
+                            : gettextCatalog.getString('Delegate')),
+                        style: 'tableHeader'
+                    },
+                    {
+                        text: gettextCatalog.getString('Vote'),
+                        style: 'tableHeader'
+                    }
+                ]
+            ];
+            _.forEach(ballots, function (ballot, index) {
+                tableBody.push([
+                    {
+                        text: (pollType === 'token_based_electronic'
+                            ? ballot.result_token
+                            : ballot.user.full_name),
+                        style: PDFLayout.flipTableRowStyle(index),
+                    },
+                    {
+                        text: gettextCatalog.getString(voteStr[ballot.vote]),
+                        style: PDFLayout.flipTableRowStyle(index),
+                    }
+                ]);
+            });
 
             var pdfTable = {
                 table: {
+                    widths: ['*', '*'],
+                    headerRows: 1,
                     body: tableBody
                 },
-                // TODO: Replace layout placeholder with static values for LineWidth and LineColor.
-                layout: '{{motion-placeholder-to-insert-functions-here}}'
+                layout: 'headerLineOnly',
             };
 
             return {
@@ -72,7 +69,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         pdfSubtitle,
                         pdfTable
                     ];
-                }
+                },
             };
         };
 

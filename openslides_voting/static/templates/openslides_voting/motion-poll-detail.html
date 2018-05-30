@@ -26,7 +26,7 @@
       </a>
     </div>
     <h1>{{ motion.agenda_item.getTitle() || motion.getTitle() }}</h1>
-    <h2><translate>Motion</translate> {{ motion.identifier }} |
+    <h2><translate>Motion</translate> {{ motion.identifier }} &middot;
       <translate>Voting result</translate></h2>
   </div>
 </div>
@@ -67,53 +67,94 @@
     <div class="col-sm-6"> <h3 translate>Single votes</h3></div>
     <div class="col-sm-4 pull-right">
       <!-- Search/filter -->
-      <input type="text" ng-model="filter.search" class="form-control"
+      <input type="text" ng-model="filter.filterString" class="form-control"
+          ng-change="filter.save()"
           placeholder="{{ 'Search' | translate }}">
     </div>
   </div>
 
-  <div class="italic">
-    <div ng-repeat="b in ballotsFiltered = (ballots | osFilter:filter.search:getFilterString |
-        orderBy:sortColumn:reverse)"></div>
-    {{ ballotsFiltered.length }} / {{ ballots.length }} {{ "ballots" | translate }}
+  <div class="italic row">
+    <div class="col-md-6">
+      {{ ballotsFiltered.length }} / {{ ballots.length }} {{ "ballots" | translate }}
+    </div>
+
+    <div class="col-md-6" ng-show="ballotsFiltered.length > pagination.itemsPerPage">
+      <span class="pull-right">
+        <a href="" class="pagination-arrow" ng-click="pagination.prevPage()"
+          ng-if="pagination.showPrevPageArrow()">
+          &laquo;
+        </a>
+        <translate>Page</translate> {{ pagination.currentPage }} /
+        {{ pagination.getPageCount(ballotsFiltered) }}
+        <a href="" class="pagination-arrow" ng-click="pagination.nextPage(ballotsFiltered)"
+          ng-if="pagination.showNextPageArrow(ballotsFiltered)">
+          &raquo;
+        </a>
+      </span>
+    </div>
   </div>
 
   <table class="table table-striped table-bordered table-hover">
     <thead>
       <tr>
         <!-- Delegate column -->
-        <th ng-click="toggleSort('user.full_name')" class="sortable">
+        <th ng-click="toggleSort('user.full_name')" class="sortable"
+          ng-if="pollType !== 'token_based_electronic'">
           <translate>Delegate</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
+          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name'"
               ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
+        </th>
+
+        <!-- Result token column -->
+        <th ng-click="toggleSort('result_token')" class="sortable"
+          ng-if="pollType === 'token_based_electronic'">
+          <translate>Result token</translate>
+          <i class="pull-right fa" ng-show="sortColumn === 'result_token'"
+              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+        </th>
 
         <!-- Vote column -->
         <th ng-click="toggleSort('vote')" class="sortable">
           <translate>Casted vote</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'vote' && header.sortable != false"
+          <i class="pull-right fa" ng-show="sortColumn === 'vote'"
               ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
+        </th>
+    </thead>
 
     <tbody>
-      <tr ng-repeat="ballot in ballotsFiltered | limitTo:pg.itemsPerPage:pg.firstItem"
+      <tr ng-repeat="ballot in (ballotsFiltered = (ballots
+        | osFilter : filter.filterString : filter.getObjectQueryString
+        | orderBy : sort.column : sort.reverse)
+        | limitTo : pagination.itemsPerPage : pagination.limitBegin)"
         class="animate-item" ng-class="{'selected':ballot.selected}">
 
         <!-- Delegate -->
-        <td>
-            <a href="" ui-sref="users.user.detail({id: ballot.user.id})">{{ ballot.user.full_name }}</a>
+        <td ng-if="pollType !== 'token_based_electronic'">
+            <a href="" ui-sref="users.user.detail({id: ballot.user.id})">
+              {{ ballot.user.full_name }}
+            </a>
+        </td>
+
+        <!-- Result token-->
+        <td ng-if="pollType === 'token_based_electronic'">
+          {{ ballot.result_token }}
+        </td>
 
         <!-- Vote -->
         <td>
           <i class="fa fa-{{ ballot.getVoteIcon() }}"></i>
           <span style="margin-left: 5px">{{ ballot.getVote() | translate }}</span>
+        </td>
   </table>
   <ul uib-pagination
-      ng-show="ballotsFiltered.length > pg.itemsPerPage"
+      ng-show="ballotsFiltered.length > pagination.itemsPerPage"
       total-items="ballotsFiltered.length"
-      items-per-page="pg.itemsPerPage"
-      ng-model="pg.currentPage"
-      ng-change="pg.pageChanged()"
+      items-per-page="pagination.itemsPerPage"
+      ng-model="pagination.currentPage"
+      ng-change="pagination.pageChanged()"
       class="pagination-sm"
       direction-links="false"
       boundary-links="true"

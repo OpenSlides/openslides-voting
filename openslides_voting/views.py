@@ -342,10 +342,9 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
         if vc.voting_mode == 'MotionPoll':
             ballot = MotionBallot(poll)
-            result = ballot.count_votes()
         else:
             ballot = AssignmentBallot(poll)
-            result = ballot.count_votes()
+        result = ballot.count_votes()
 
         return Response(result)
 

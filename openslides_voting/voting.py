@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from openslides.assignments.models import AssignmentOption
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
@@ -112,14 +113,15 @@ def query_admitted_delegates(principle=None):
     """
     Returns a queryset of admitted delegates.
 
-    Admitted delegates are users belonging to the Delegates group (id = 2), AND
-    who have ANY voting rights (shares) if voting shares exist, AND
-    who have voting rights for a given voting principle (principle_id).
+    Admitted delegates are users belonging to the Delegates group (default id is
+    2), AND who have ANY voting rights (shares) if voting shares exist, AND who
+    have voting rights for a given voting principle (principle_id).
 
     :param principle: Principle or None.
     :return: queryset
     """
-    qs = User.objects.filter(groups=2)
+    delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2);
+    qs = User.objects.filter(groups=delegate_group_id)
     if VotingShare.objects.exists():
         qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
     if principle:

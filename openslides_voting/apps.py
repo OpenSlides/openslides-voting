@@ -105,6 +105,7 @@ class VotingAppConfig(AppConfig):
         # Custom settings
         voting_settings_dict = {
             'votingResultTokenTimeout': getattr(settings, 'VOTING_RESULT_TOKEN_TIMEOUT', 30),
+            'delegateGroupId': getattr(settings, 'DELEGATE_GROUP_ID', 2),
         }
         voting_settings = {
             'name': 'VotingSettings',

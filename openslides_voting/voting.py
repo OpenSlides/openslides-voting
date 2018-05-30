@@ -208,6 +208,12 @@ class BaseBallot:
         """
         raise NotImplementedError('This function needs to be implemented')
 
+    def pseudoanonymize_votes(self):
+        """
+        Delete all user references for all ballots for this poll.
+        """
+        raise NotImplementedError('This function needs to be implemented')
+
     def _create_ballot(self, vote, delegate=None, result_token=0):
         """
         Helper function to actually create or update a ballot.
@@ -329,6 +335,15 @@ class MotionBallot(BaseBallot):
 
         # TODO NEXT: Add 'not voted abstains' option.
         return result
+
+    def pseudoanonymize_votes(self):
+        """
+        Delete all user references for all ballots for this poll.
+        """
+        ballots = MotionPollBallot.objects.filter(poll=self.poll)
+        for mpb in ballots:
+            mpb.delegate = None
+            mpb.save()
 
     def _create_ballot(self, vote, delegate=None, result_token=0):
         """

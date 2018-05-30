@@ -263,7 +263,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         projector.config[self.prompt_key] = {
             'name': 'voting/prompt',
             'message': projector_message,
-            'visible': True,
             'stable': True
         }
 

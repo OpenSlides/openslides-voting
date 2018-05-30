@@ -24,6 +24,14 @@
         <i class="fa fa-file-pdf-o fa-lg"></i>
         <translate>PDF</translate>
       </a>
+      <!-- Anonymize -->
+      <a os-perms="openslides_voting.can_manage"
+        class="btn btn-sm btn-default"
+        ng-bootbox-confirm="{{ 'Are you sure you want to anonymize all votes?' | translate }}"
+        ng-bootbox-confirm-action="anonymizeVotes()">
+        <i class="fa fa-exclamation-triangle fa-lg"></i>
+        <translate>Anonymize votes</translate>
+      </a>
     </div>
     <h1>{{ motion.agenda_item.getTitle() || motion.getTitle() }}</h1>
     <h2><translate>Motion</translate> {{ motion.identifier }} &middot;
@@ -133,9 +141,12 @@
 
         <!-- Delegate -->
         <td ng-if="pollType !== 'token_based_electronic'">
-            <a href="" ui-sref="users.user.detail({id: ballot.user.id})">
+            <a href="" ng-if="ballot.user" ui-sref="users.user.detail({id: ballot.user.id})">
               {{ ballot.user.full_name }}
             </a>
+            <span ng-if="!ballot.user" translate>
+              anonym
+            </span>
         </td>
 
         <!-- Result token-->

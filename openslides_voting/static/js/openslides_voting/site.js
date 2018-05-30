@@ -1232,25 +1232,62 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 .controller('MotionPollVoteDetailCtrl', [
     '$scope',
     '$stateParams',
+    '$http',
     'gettextCatalog',
     'Motion',
     'MotionPoll',
     'MotionPollBallot',
     'MotionPollType',
+    'VotingPrinciple',
+    'VotingShare',
     'osTableFilter',
     'osTableSort',
     'osTablePagination',
     'MotionPollContentProvider',
     'PdfMakeDocumentProvider',
     'PdfCreate',
-    function ($scope, $stateParams, gettextCatalog, Motion, MotionPoll, MotionPollBallot,
-            MotionPollType, osTableFilter, osTableSort, osTablePagination,
-            MotionPollContentProvider, PdfMakeDocumentProvider, PdfCreate) {
+    function ($scope, $stateParams, $http, gettextCatalog, Motion, MotionPoll,
+        MotionPollBallot, MotionPollType, VotingPrinciple, VotingShare, osTableFilter,
+        osTableSort, osTablePagination, MotionPollContentProvider, PdfMakeDocumentProvider,
+        PdfCreate) {
+
         var pollId = $stateParams.id;
         var motion = MotionPoll.get(pollId).motion;
-        Motion.bindOne(motion.id, $scope, 'motion');
         MotionPoll.bindOne(pollId, $scope, 'poll');
-        MotionPollBallot.bindAll({poll_id: pollId}, $scope, 'ballots');
+        $scope.$watch(function () {
+            return Motion.lastModified(motion.id);
+        }, function () {
+            $scope.motion = Motion.get(motion.id);
+            var principles = VotingPrinciple.filter({motions_id: motion.id});
+            if (principles.length > 0) {
+                $scope.principle = principles[0];
+            } else {
+                $scope.principle = void 0;
+            }
+            reloadMotionPollBallots();
+        });
+        $scope.$watch(function () {
+            return MotionPollBallot.lastModified();
+        }, reloadMotionPollBallots);
+
+        // Just show all users, that have shares.
+        var reloadMotionPollBallots = function () {
+            var mpbs = MotionPollBallot.filter({poll_id: pollId});
+            if ($scope.principle) {
+                $scope.ballots = _.filter(mpbs, function (mpb) {
+                    if (!mpb.user) {
+                        return true;
+                    }
+                    var shares = VotingShare.filter({
+                        principle_id: $scope.principle.id,
+                        delegate_id: mpb.user.id
+                    });
+                    return shares.length > 0 && shares[0].shares > 0;
+                });
+            } else {
+                $scope.ballots = mpbs;
+            }
+        }
 
         // Get poll type for motion
         var pollTypes = MotionPollType.filter({poll_id: pollId});
@@ -1289,6 +1326,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
                 PdfCreate.download(documentProvider, filename);
             });
+        };
+
+        $scope.anonymizeVotes = function () {
+            $http.post('/rest/openslides_voting/motion-poll-ballot/pseudoanonymize_votes/', {poll_id: pollId});
         };
     }
 ])

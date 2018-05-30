@@ -556,11 +556,7 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
     access_permissions = MotionPollBallotAccessPermissions()
     queryset = MotionPollBallot.objects.all()
 
-    @list_route(methods=['post'])
-    def recount_votes(self, request):
-        """
-        Recounts all votes from a given poll. Request data: {poll_id: <poll_id>}
-        """
+    def get_poll(self, request):
         if not isinstance(request.data, dict):
             raise ValidationError({'detail': 'The data has to be a dict.'})
         poll_id = request.data.get('poll_id')
@@ -571,6 +567,14 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
         except MotionPoll.DoesNotExist:
             raise ValidationError({'detail': 'The poll with id {} does not exist.'.format(
                 poll_id)})
+        return poll
+
+    @list_route(methods=['post'])
+    def recount_votes(self, request):
+        """
+        Recounts all votes from a given poll. Request data: {poll_id: <poll_id>}
+        """
+        poll = self.get_poll(request)
 
         # Count ballot votes.
         ballot = MotionBallot(poll)
@@ -586,6 +590,18 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
         poll.votescast = poll.votesvalid = int(result['casted'][1])
         poll.votesinvalid = 0
         poll.save()
+        return HttpResponse()
+
+    @list_route(methods=['post'])
+    def pseudoanonymize_votes(self, request):
+        """
+        Pseudoanonymize all votes from a given poll. Request data: {poll_id: <poll_id>}
+        """
+        poll = self.get_poll(request)
+
+        # Pseudoanonymize ballot votes.
+        ballot = MotionBallot(poll)
+        ballot.pseudoanonymize_votes()
         return HttpResponse()
 
 class BasePollTypeViewSet(ModelViewSet):

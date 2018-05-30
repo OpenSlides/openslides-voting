@@ -22,9 +22,10 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'MotionPollType',
     'AssignmentPollType',
     'Voter',
+    'VotingSettings',
     function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
         UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
-        AssignmentPollType, Voter) {
+        AssignmentPollType, Voter, VotingSettings) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
@@ -75,7 +76,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             scope: function (scope) {
                 return {
                     updateTableStats: function () {
-                        var delegateCount = User.filter({groups_id: 2}).length;
+                        var delegateCount = User.filter({groups_id: VotingSettings.delegateGroupId}).length;
                         scope.attendingCount = Keypad.filter({ 'user.is_present': true }).length;
                         scope.representedCount = VotingProxy.getAll().length;
                         scope.absentCount = Math.max(0,
@@ -87,7 +88,8 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
         templateHooks.registerHook({
             id: 'userListSubmenuRight',
             template: '<button class="btn btn-default btn-sm spacer-right pull-right"' +
-                        'ng-click="filter.multiselectFilters.group = [2]" type="button">' +
+                        'ng-click="filter.multiselectFilters.group = [' +
+                        VotingSettings.delegateGroupId + ']" type="button">' +
                         '<translate>Show delegates</translate>' +
                       '</button>',
         });

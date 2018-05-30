@@ -308,7 +308,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'UserForm',
     'VotingPrinciple',
     'User',
-    function (gettextCatalog, UserForm, VotingPrinciple, User) {
+    'VotingSettings',
+    function (gettextCatalog, UserForm, VotingPrinciple, User, VotingSettings) {
         return {
             getDialog: function (user) {
                 return {
@@ -332,7 +333,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                             id: {
                                 '!=': user.id
                             },
-                            groups_id : 2
+                            groups_id : VotingSettings.delegateGroupId,
                         },
                         orderBy: 'full_name'
                     });
@@ -1017,9 +1018,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Delegate',
     'PrincipleForm',
     'ngDialog',
+    'VotingSettings',
     function ($scope, $filter, User, VotingPrinciple, VotingShare, Delegate, PrincipleForm,
-        ngDialog) {
-        User.bindAll({where: {groups_id: 2}}, $scope, 'delegates');
+        ngDialog, VotingSettings) {
+        User.bindAll({where: {groups_id: VotingSettings.delegateGroupId}}, $scope, 'delegates');
 
         $scope.$watch(function () {
             return VotingShare.lastModified();
@@ -1287,7 +1289,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 .factory('KeypadForm', [
     'gettextCatalog',
     'User',
-    function (gettextCatalog, User) {
+    'VotingSettings',
+    function (gettextCatalog, User, VotingSettings) {
         return {
             getDialog: function (keypad) {
                 var resolve = {};
@@ -1323,7 +1326,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     type: 'select-single',
                     templateOptions: {
                         label: gettextCatalog.getString('Participant'),
-                        options:  User.filter({where: {groups_id: 2}, orderBy: 'full_name'}),
+                        options:  User.filter({where: {
+                            groups_id: VotingSettings.delegateGroupId,
+                        }, orderBy: 'full_name'}),
                         ngOptions: 'option.id as option.full_name for option in to.options',
                         placeholder: '(' + gettextCatalog.getString('Anonymous') + ')',
                     },
@@ -1655,7 +1660,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'User',
     'Motion',
     'Assignment',
-    function (gettextCatalog, User, Motion, Assignment,) {
+    'VotingSettings',
+    function (gettextCatalog, User, Motion, Assignment, VotingSettings) {
         return {
             getDialog: function (absenteeVote) {
                 return {
@@ -1691,7 +1697,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         type: 'select-single',
                         templateOptions: {
                             label: gettextCatalog.getString('Participant'),
-                            options: User.filter({where: {groups_id: 2}, orderBy: 'full_name'}),
+                            options: User.filter({where: {
+                                groups_id: VotingSettings.delegateGroupId,
+                            }, orderBy: 'full_name'}),
                             ngOptions: 'option.id as option.full_name for option in to.options',
                             required: true,
                         },

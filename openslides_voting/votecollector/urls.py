@@ -20,7 +20,7 @@ urlpatterns = [
     url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/$',
         views.SubmitCandidates.as_view(),
         name='votingcontroller_candidates'),
-    url(r'^votingcontroller/candidate/(?P<poll_id>\d+)/$',
+    url(r'^votingcontroller/votecollector/candidate/(?P<poll_id>\d+)/$',
         csrf_exempt(views.SubmitCandidates.as_view()), {
             'votecollector': True,
         },

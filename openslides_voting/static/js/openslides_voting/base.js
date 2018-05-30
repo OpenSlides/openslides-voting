@@ -516,11 +516,12 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'VotingProxy',
     'VotingShare',
     'Config',
-    function ($q, User, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config) {
+    'VotingSettings',
+    function ($q, User, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config, VotingSettings) {
         return {
             isDelegate: function (user) {
                 if (user) {
-                    return _.includes(user.groups_id, 2);
+                    return _.includes(user.groups_id, VotingSettings.delegateGroupId);
                 }
             },
             getCellName: function (user) {

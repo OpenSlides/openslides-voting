@@ -23,7 +23,7 @@ def move_voting_principles_from_category_to_own_model(apps, schema_editor):
 
     regex = re.compile("^(.+)\.([1-6])$")
     for category in Category.objects.all():
-        # check, if VotingShares exist for this category. If not, skip ist.
+        # check, if VotingShares exist for this category. If not, skip it.
         shares = VotingShare.objects.filter(category=category)
         if len(shares) == 0:
             continue
@@ -36,6 +36,10 @@ def move_voting_principles_from_category_to_own_model(apps, schema_editor):
         else:
             name = category.name
             places = 0
+
+        # check, if voting principles with the name already exists
+        if VotingPrinciple.objects.filter(name=name).exists():
+            continue  # Skip duplicates
 
         # Create VotingPrinciple and assign it to each share
         principle = VotingPrinciple(name=name, decimal_places=places)
@@ -51,7 +55,6 @@ def move_voting_principles_from_category_to_own_model(apps, schema_editor):
         for motion in category.motion_set.all():
             principle.motions.add(motion)
         principle.save(skip_autoupdate=True)
-
 
 
 class Migration(migrations.Migration):

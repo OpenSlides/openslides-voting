@@ -28,7 +28,6 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         // Add it to the corresponding get_requirements method of the ProjectorElement
         // class.
         $scope.message = $scope.element.message;
-        $scope.visible = $scope.element.visible;
     }
 ])
 

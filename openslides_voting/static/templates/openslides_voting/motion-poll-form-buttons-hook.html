@@ -5,10 +5,15 @@
     <i class="fa fa-wifi" aria-hidden="true"></i> 
     {{ 'Start voting' | translate }}</button> 
   <button type="button"
-    ng-if="canStopVoting()" ng-click="stopVoting()"
+    ng-if="canStopVoting() && isThisPollActive()" ng-click="stopVoting()"
     class="btn btn-primary">
     <i class="fa fa-wifi" aria-hidden="true"></i>
     {{ 'Stop voting' | translate }}</button> 
+  <button type="button"
+    ng-if="canStopVoting() && !isThisPollActive()" ng-click="stopVoting()"
+    class="btn btn-danger">
+    <i class="fa fa-wifi" aria-hidden="true"></i>
+    {{ 'Stop another voting' | translate }}</button> 
   <button type="button"
     ng-if="canClearVotes()" ng-click="clearVotes()"
     class="btn btn-default">

@@ -2111,21 +2111,141 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
+.factory('PollFormVotingCtrlBase', [
+    '$http',
+    'gettextCatalog',
+    'Projector',
+    'ProjectHelper',
+    'ErrorMessage',
+    function ($http, gettextCatalog, Projector, ProjectHelper, ErrorMessage) {
+        return {
+            populateScope: function ($scope, modelName, projectorName, startUrl, resultsUrl,
+                clearUrl) {
+                $scope.canStopVoting = function () {
+                    return $scope.vc && $scope.vc.is_voting;
+                };
+
+                $scope.isThisPollActive = function () {
+                    return $scope.vc.voting_mode == modelName &&
+                        $scope.vc.voting_target == $scope.poll.id;
+                };
+
+                $scope.canClearVotes = function () {
+                    return $scope.vc && !$scope.vc.is_voting && $scope.poll.votescast !== null;
+                };
+
+                $scope.startVoting = function () {
+                    $scope.$parent.$parent.$parent.alert = {};
+
+                    $http.post('/rest/openslides_voting/voting-controller/1/' + startUrl + '/', {
+                        poll_id: $scope.poll.id,
+                    }).then(null, function (error) {
+                        $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                    });
+                };
+
+                $scope.stopVoting = function () {
+                    $scope.$parent.$parent.$parent.alert = {};
+
+                    var thisPollActive = $scope.isThisPollActive();
+
+                    // Stop votingcontroller.
+                    $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
+                        function (success) {
+                            if (thisPollActive)  {
+                                $http.post('/rest/openslides_voting/voting-controller/1/' + resultsUrl + '/', {
+                                    poll_id: $scope.poll.id,
+                                }).then($scope.enterResults, function (error) {
+                                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                                });
+                            }
+                        },
+                        function (error) {
+                            $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                        }
+                    );
+                };
+
+                $scope.clearVotes = function () {
+                    $scope.$parent.$parent.$parent.alert = {};
+                    $http.post('/rest/openslides_voting/voting-controller/1/' + clearUrl + '/', {
+                        poll_id: $scope.poll.id,
+                    }).then($scope.clearForm);
+                };
+
+                $scope.getDefaultVotingStatus = function () {
+                    if ($scope.vc.voting_mode == 'ping') {
+                        return gettextCatalog.getString('System test is running.');
+                    }
+                    if ($scope.vc.voting_mode == 'Item') {
+                        return gettextCatalog.getString('Speakers voting is running for agenda item') + ' ' +
+                            $scope.vc.voting_target + '.';
+                    }
+                    if ($scope.vc.voting_mode == 'AssignmentPoll') {
+                        return gettextCatalog.getString('An election is running.');
+                    }
+                    if ($scope.vc.voting_mode == 'MotionPoll') {
+                        return gettextCatalog.getString('A motion voting is running.');
+                    }
+                };
+
+                $scope.projectModel = {
+                    project: function (projectorId) {
+                        var isProjectedIds = this.isProjected();
+                        var requestData = {
+                            clear_ids: isProjectedIds,
+                        };
+                        if (_.indexOf(isProjectedIds, projectorId) == -1) {
+                            requestData.prune = {
+                                id: projectorId,
+                                element: {
+                                    name: projectorName,
+                                    id: $scope.poll.id,
+                                },
+                            };
+                        }
+                        ProjectHelper.project(requestData);
+                    },
+                    isProjected: function () {
+                        var self = this;
+                        var predicate = function (element) {
+                            return element.name === projectorName &&
+                                typeof element.id !== 'undefined' &&
+                                element.id === $scope.poll.id;
+                        };
+
+                        var isProjectedIds = [];
+                        Projector.getAll().forEach(function (projector) {
+                            if (typeof _.findKey(projector.elements, predicate) === 'string') {
+                                isProjectedIds.push(projector.id);
+                            }
+                        });
+                        return isProjectedIds;
+                    },
+                };
+            },
+        };
+    }
+])
+
 .controller('MotionPollFormVotingCtrl', [
     '$scope',
     '$http',
     'gettextCatalog',
     'MotionPollBallot',
     'Projector',
-    'ProjectHelper',
     'VotingController',
+    'PollFormVotingCtrlBase',
     'ErrorMessage',
-    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector, ProjectHelper,
-        VotingController, ErrorMessage) {
+    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector,
+        VotingController, PollFormVotingCtrlBase, ErrorMessage) {
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
-        var clearForm = function () {
+        PollFormVotingCtrlBase.populateScope($scope, 'MotionPoll', 'voting/motion-poll',
+            'start_motion', 'results_motion_votes', 'clear_motion_votes');
+
+        $scope.clearForm = function () {
             $scope.poll.yes = null;
             $scope.poll.no = null;
             $scope.poll.abstain = null;
@@ -2139,89 +2259,27 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode == 'ping');
         };
 
-        $scope.canStopVoting = function () {
-            return $scope.vc && $scope.vc.is_voting && $scope.vc.voting_mode == 'MotionPoll' &&
-                $scope.vc.voting_target == $scope.poll.id;
-        };
+        $scope.enterResults = function (success) {
+            // Store result in DS model; updates form inputs.
+            $scope.poll.yes = success.data.Y[1];
+            $scope.poll.no = success.data.N[1];
+            $scope.poll.abstain = success.data.A[1];
+            $scope.poll.votesvalid = success.data.valid[1]
+            $scope.poll.votesinvalid = success.data.invalid[1];
+            $scope.poll.votescast = success.data.casted[1];
 
-        $scope.canClearVotes = function () {
-            return $scope.vc && !$scope.vc.is_voting && $scope.poll.votescast !== null;
-        };
-
-        $scope.startVoting = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-
-            $http.post('/rest/openslides_voting/voting-controller/1/start_motion/', {
-                poll_id: $scope.poll.id,
-            }).then(null, function (error) {
-                $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
-            });
-        };
-
-        $scope.stopVoting = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-
-            // Stop votingcontroller.
-            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
-                function (success) {
-                    $http.post('/rest/openslides_voting/voting-controller/1/results_motion_votes/', {
-                        poll_id: $scope.poll.id,
-                    }).then(function (success) {
-                        if (success.data.error) {
-                            $scope.$parent.$parent.$parent.alert = { type: 'danger',
-                                msg: success.data.error, show: true };
-                        } else {
-                            // Store result in DS model; updates form inputs.
-                            $scope.poll.yes = success.data.Y[1];
-                            $scope.poll.no = success.data.N[1];
-                            $scope.poll.abstain = success.data.A[1];
-                            $scope.poll.votesvalid = success.data.valid[1]
-                            $scope.poll.votesinvalid = success.data.invalid[1];
-                            $scope.poll.votescast = success.data.casted[1];
-
-                            // Prompt user to save result.
-                            $scope.$parent.$parent.$parent.alert = {
-                                type: 'info',
-                                msg: gettextCatalog.getString('Motion voting has finished.') + ' ' +
-                                     gettextCatalog.getString('Save this result now!'),
-                                show: true
-                            };
-                        }
-                    },
-                    function (error) {
-                        $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
-                    });
-                },
-                function (error) {
-                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
-                }
-            );
-        };
-
-        $scope.clearVotes = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-            $http.post('/rest/openslides_voting/voting-controller/1/clear_motion_votes/', {
-                poll_id: $scope.poll.id,
-            }).then(
-                function (success) {
-                    clearForm();
-                }
-            );
+            // Prompt user to save result.
+            $scope.$parent.$parent.$parent.alert = {
+                type: 'info',
+                msg: gettextCatalog.getString('Motion voting has finished.') + ' ' +
+                     gettextCatalog.getString('Save this result now!'),
+                show: true
+            };
         };
 
         $scope.getVotingStatus = function () {
             if (!$scope.vc || !$scope.vc.is_voting) {
                 return '';
-            }
-            if ($scope.vc.voting_mode == 'ping') {
-                return gettextCatalog.getString('System test is running.');
-            }
-            if ($scope.vc.voting_mode == 'Item') {
-                return gettextCatalog.getString('Speakers voting is running for agenda item') + ' ' +
-                    $scope.vc.voting_target + '.';
-            }
-            if ($scope.vc.voting_mode == 'AssignmentPoll') {
-                return gettextCatalog.getString('An election is running.');
             }
             if ($scope.vc.voting_mode == 'MotionPoll') {
                 if ($scope.vc.voting_target != $scope.poll.id) {
@@ -2233,43 +2291,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     msg += ' / ' + $scope.vc.votes_count;
                 }
                 return msg;
+            } else {
+                return $scope.getDefaultVotingStatus();
             }
         };
 
-        $scope.projectModel = {
-            project: function (projectorId) {
-                var isProjectedIds = this.isProjected();
-                var requestData = {
-                    clear_ids: isProjectedIds,
-                };
-                if (_.indexOf(isProjectedIds, projectorId) == -1) {
-                    requestData.prune = {
-                        id: projectorId,
-                        element: {
-                            name: 'voting/motion-poll',
-                            id: $scope.poll.id,
-                        },
-                    };
-                }
-                ProjectHelper.project(requestData);
-            },
-            isProjected: function () {
-                var self = this;
-                var predicate = function (element) {
-                    return element.name == 'voting/motion-poll' &&
-                        typeof element.id !== 'undefined' &&
-                        element.id == $scope.poll.id;
-                };
-
-                var isProjectedIds = [];
-                Projector.getAll().forEach(function (projector) {
-                    if (typeof _.findKey(projector.elements, predicate) === 'string') {
-                        isProjectedIds.push(projector.id);
-                    }
-                });
-                return isProjectedIds;
-            },
-        };
     }
 ])
 .controller('AssignmentPollFormVotingCtrl', [
@@ -2280,14 +2306,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'VotingController',
     'AssignmentPollType',
     'AssignmentPollBallot',
+    'PollFormVotingCtrlBase',
     'ErrorMessage',
     function ($scope, $http, gettextCatalog, Projector, VotingController, AssignmentPollType,
-        AssignmentPollBallot, ErrorMessage) {
+        AssignmentPollBallot, PollFormVotingCtrlBase, ErrorMessage) {
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
+        PollFormVotingCtrlBase.populateScope($scope, 'AssignmentPoll', 'voting/assignment-poll',
+            'start_assignment', 'results_assignment_votes', 'clear_assignment_votes');
 
-        var clearForm = function () {
+        $scope.clearForm = function () {
             _.forEach($scope.poll.options, function (option) {
                 var id = option.candidate.id;
                 $scope.poll['yes_' + id] = null;
@@ -2310,96 +2339,39 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode === 'ping');
         };
 
-        $scope.canStopVoting = function () {
-            return $scope.vc && $scope.vc.is_voting && $scope.vc.voting_mode == 'AssignmentPoll' &&
-                $scope.vc.voting_target == $scope.poll.id;
-        };
-
-        $scope.canClearVotes = function () {
-            return $scope.vc && !$scope.vc.is_voting && $scope.poll.votescast !== null;
-        };
-
-        $scope.startVoting = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-
-            $http.post('/rest/openslides_voting/voting-controller/1/start_assignment/', {
-                poll_id: $scope.poll.id,
-            }).then(null, function (error) {
-                $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+        $scope.enterResults = function (success) {
+            _.forEach(success.data, function (value, key) {
+                if (key === 'casted') {
+                    $scope.poll.votescast = value[0];
+                } else if (key === 'valid') {
+                    $scope.poll.votesvalid = value[0];
+                } else if (key === 'invalid') {
+                    $scope.poll.votesinvalid = value[0];
+                } else { // a candidate
+                    if ($scope.poll.pollmethod === 'votes') {
+                        $scope.poll['vote_' + key] = value[1];
+                    } else {
+                        $scope.poll['yes_' + key] = value.Y[1];
+                        $scope.poll['no_' + key] = value.N[1];
+                        if ($scope.poll.pollmethod === 'yna') {
+                            $scope.poll['abstain_' + key] = value.A[1];
+                        }
+                    }
+                }
             });
-        };
 
-        $scope.stopVoting = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-
-            // Stop voting.
-            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
-                function (success) {
-                    // Get votecollector result.
-                    $http.post('/rest/openslides_voting/voting-controller/1/results_assignment_votes/', {
-                        poll_id: $scope.poll.id,
-                    }).then(function (success) {
-                        _.forEach(success.data, function (value, key) {
-                            if (key === 'casted') {
-                                $scope.poll.votescast = value[0];
-                            } else if (key === 'valid') {
-                                $scope.poll.votesvalid = value[0];
-                            } else if (key === 'invalid') {
-                                $scope.poll.votesinvalid = value[0];
-                            } else { // a candidate
-                                if ($scope.poll.pollmethod === 'votes') {
-                                    $scope.poll['vote_' + key] = value[1];
-                                } else {
-                                    $scope.poll['yes_' + key] = value.Y[1];
-                                    $scope.poll['no_' + key] = value.N[1];
-                                    if ($scope.poll.pollmethod === 'yna') {
-                                        $scope.poll['abstain_' + key] = value.A[1];
-                                    }
-                                }
-                            }
-                        });
-
-                        // Prompt user to save result.
-                        $scope.$parent.$parent.$parent.alert = {
-                            type: 'info',
-                            msg: gettextCatalog.getString('Election voting has finished.') + ' ' +
-                                 gettextCatalog.getString('Save this result now!'),
-                            show: true
-                        };
-                    }, function (error) {
-                        $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
-                    });
-                },
-                function (error) {
-                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
-                }
-            );
-        };
-
-        $scope.clearVotes = function () {
-            $scope.$parent.$parent.$parent.alert = {};
-            $http.post('/rest/openslides_voting/voting-controller/1/clear_assignment_votes/', {
-                poll_id: $scope.poll.id,
-            }).then(
-                function (success) {
-                    clearForm();
-                }
-            );
+            // Prompt user to save result.
+            $scope.$parent.$parent.$parent.alert = {
+                type: 'info',
+                msg: gettextCatalog.getString('Election voting has finished.') + ' ' +
+                     gettextCatalog.getString('Save this result now!'),
+                show: true
+            };
         };
 
         $scope.getVotingStatus = function () {
             if (!$scope.vc || !$scope.vc.is_voting) {
                 return '';
-            }
-            if ($scope.vc.voting_mode == 'ping') {
-                return gettextCatalog.getString('System test is running.');
-            }
-            if ($scope.vc.voting_mode == 'Item') {
-                return gettextCatalog.getString('Speakers voting is running for agenda item') + ' ' +
-                    $scope.vc.voting_target + '.';
-            }
-            if ($scope.vc.voting_mode == 'MotionPoll') {
-                return gettextCatalog.getString('A motion voting is running.');
             }
             if ($scope.vc.voting_mode == 'AssignmentPoll') {
                 if ($scope.vc.voting_target != $scope.poll.id) {
@@ -2411,42 +2383,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     msg += ' / ' + $scope.vc.votes_count;
                 }
                 return msg;
+            } else {
+                return $scope.getDefaultVotingStatus();
             }
-        };
-
-        $scope.projectModel = {
-            project: function (projectorId) {
-                var isProjectedIds = this.isProjected();
-                var requestData = {
-                    clear_ids: isProjectedIds,
-                };
-                if (_.indexOf(isProjectedIds, projectorId) == -1) {
-                    requestData.prune = {
-                        id: projectorId,
-                        element: {
-                            name: 'voting/assignment-poll',
-                            id: $scope.poll.id,
-                        },
-                    };
-                }
-                ProjectHelper.project(requestData);
-            },
-            isProjected: function () {
-                var self = this;
-                var predicate = function (element) {
-                    return element.name == 'voting/assignment-poll' &&
-                        typeof element.id !== 'undefined' &&
-                        element.id == $scope.poll.id;
-                };
-
-                var isProjectedIds = [];
-                Projector.getAll().forEach(function (projector) {
-                    if (typeof _.findKey(projector.elements, predicate) === 'string') {
-                        isProjectedIds.push(projector.id);
-                    }
-                });
-                return isProjectedIds;
-            },
         };
     }
 ])

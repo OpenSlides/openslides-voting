@@ -588,7 +588,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
             // Returns a promise from the save or create call.
             updateKeypad: function (user, newNumber) {
                 if (newNumber) {
-                    if (user.keypad) {
+                    if (user.keypad && user.keypad.id) {
                         // Update keypad. Must get keypad from store!
                         var keypad = Keypad.get(user.keypad.id);
                         keypad.number = newNumber;
@@ -604,7 +604,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         // Create item.keypad.
                         return Keypad.create({
                             user_id: user.id,
-                            number: newNumber
+                            number: newNumber,
                         });
                     }
                 } else if (user.keypad) {

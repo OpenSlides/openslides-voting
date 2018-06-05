@@ -258,7 +258,7 @@ class MotionBallot(BaseBallot):
             try:
                 mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)
             except MotionPollBallot.DoesNotExist:
-                mpb = MotionPollBallot(poll=self.poll, delegate=absentee_vote.delegate)
+                mpb = MotionPollBallot(poll=self.poll, delegate=absentee_vote.delegate, result_token=0)
             mpb.vote = absentee_vote.vote
             if mpb.pk:
                 mpb.save(skip_autoupdate=True)
@@ -422,7 +422,7 @@ class AssignmentBallot(BaseBallot):
             try:
                 mpb = AssignmentPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)
             except AssignmentPollBallot.DoesNotExist:
-                mpb = AssignmentPollBallot(poll=self.poll, delegate=absentee_vote.delegate)
+                mpb = AssignmentPollBallot(poll=self.poll, delegate=absentee_vote.delegate, result_token=0)
             mpb.vote = vote
             if mpb.pk:
                 mpb.save(skip_autoupdate=True)

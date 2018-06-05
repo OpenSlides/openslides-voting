@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                         ('analog', 'Analog voting'),
                         ('named_electronic', 'Named electronic voting'),
                         ('token_based_electronic', 'Token-based electronic voting'),
-                        ('votecollector', 'Votecollector')],
+                        ('votecollector', 'VoteCollector')],
                     default='analog',
                     max_length=32)),
                 ('poll', models.OneToOneField(
@@ -77,6 +77,7 @@ class Migration(migrations.Migration):
                 ('poll', models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE, to='assignments.AssignmentPoll')),
                 ('result_token', models.PositiveIntegerField()),
+                ('proxy_protected', models.BooleanField(default=False)),
             ],
             options={
                 'default_permissions': (),
@@ -93,7 +94,7 @@ class Migration(migrations.Migration):
                         ('analog', 'Analog voting'),
                         ('named_electronic', 'Named electronic voting'),
                         ('token_based_electronic', 'Token-based electronic voting'),
-                        ('votecollector', 'Votecollector')],
+                        ('votecollector', 'VoteCollector')],
                     default='analog',
                     max_length=32)),
                 ('poll', models.OneToOneField(
@@ -108,6 +109,11 @@ class Migration(migrations.Migration):
             model_name='motionpollballot',
             name='result_token',
             field=models.PositiveIntegerField(),
+        ),
+        migrations.AddField(
+            model_name='motionpollballot',
+            name='proxy_protected',
+            field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
             model_name='motionpollballot',

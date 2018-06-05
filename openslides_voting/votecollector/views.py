@@ -263,13 +263,8 @@ class SubmitVotes(ValidationView):
                 # Get delegate the keypad is assigned to.
                 user = keypad.user
                 if user is None:
-                    continue
-                    # TODO: Design decision. Keypads can vote, if they are not connected to users.
-                    # Should we allow this, or not. If not, should we do it silent (like now with
-                    # the continue statement) or raise an error?
-                    # Info: Adapt this decision also in the CandidateSubmit-View.
-                    #raise ValidationError({
-                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
+                    continue  # This keypad has no user, so it is not allowed to vote!
+
                 if user.id not in av.authorized_voters:
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
 
@@ -389,9 +384,8 @@ class SubmitCandidates(ValidationView):
                 # Get delegate the keypad is assigned to.
                 user = keypad.user
                 if user is None:
-                    continue
-                    #raise ValidationError({
-                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
+                    continue  # This keypad has no user, so it is not allowed to vote!
+
                 if user.id not in av.authorized_voters:
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
 

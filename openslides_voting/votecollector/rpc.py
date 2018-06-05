@@ -69,14 +69,17 @@ def get_device_status():
     return status
 
 
-def start_voting(mode, callback_url, options=None):
+def start_voting(mode, callback_url, options=None, keypad_numbers=None):
     server = get_server()
-    keypads = Keypad.objects.exclude(user__is_present=False).values_list(
-        'number', flat=True).order_by('number')
-    # NOTE: Keypads not belonging to a user are included here for the purpose of doing a system test
-    # but motion or assignment polling is not possible.
 
-    if not keypads.exists():
+    if keypad_numbers is None:
+        keypad_numbers = list(Keypad.objects.exclude(user__is_present=False).values_list(
+            'number', flat=True))
+        # NOTE: Keypads not belonging to a user are included here for the purpose
+        # of doing a system test.
+    keypad_numbers.sort()
+
+    if len(keypad_numbers) == 0:
         raise VoteCollectorError(_('No keypads exists for active users.'))
 
     try:
@@ -86,7 +89,7 @@ def start_voting(mode, callback_url, options=None):
 
     ext_mode = options + ';' + callback_url if options else callback_url
     try:
-        count = server.voteCollector.prepareVoting(mode + '-' + ext_mode, 0, 0, list(keypads))
+        count = server.voteCollector.prepareVoting(mode + '-' + ext_mode, 0, 0, keypad_numbers)
     except Exception as e:
         raise VoteCollectorError(_('No connection to VoteCollector.'))
     if count < 0:

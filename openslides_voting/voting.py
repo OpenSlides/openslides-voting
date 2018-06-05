@@ -76,7 +76,7 @@ def get_admitted_delegates_with_keypads(principle, *order_by):
 
     :param principle: Principle or None.
     :param order_by: User fields the list should be ordered by.
-    :return: (list, int)
+    :return: (int, list): expected votes count and admitted_delegates with keypads
     """
     # Get delegates who have voting rights (shares) for the given principle.
     admitted = query_admitted_delegates(principle=principle)
@@ -92,21 +92,6 @@ def get_admitted_delegates_with_keypads(principle, *order_by):
             if auth_voter not in admitted_list:
                 admitted_list.append(auth_voter)
     return (votes_count, admitted_list)
-
-    """
-    admitted_dict = {}
-    count = 0
-    for delegate in admitted:
-        if hasattr(delegate, 'keypad'):
-            key = delegate.keypad.number
-            if key in admitted_dict:
-                admitted_dict[key].append(delegate.id)
-            else:
-                admitted_dict[key] = [delegate.id]
-            count += 1
-
-    return admitted_dict, count
-    """
 
 
 def query_admitted_delegates(principle=None):

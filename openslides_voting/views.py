@@ -123,6 +123,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         voting_type = None
         # Get candidate name (if is an election with one candidate only)
         candidate_str = ''
+        # This is used as an argument for the get_admitted_delegate calls.
+        get_admitted_delegates_args = {}
         # projector message and images
         projector_message = _(config['voting_start_prompt'])
         projector_yes = '<img src="/static/img/button-yes.png">'
@@ -153,6 +155,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
             votecollector_mode = 'YesNoAbstain'
             votecollector_resource = '/vote/'
+
+            get_admitted_delegates_args['motion_poll'] = poll
 
             absentee_ballots_created = MotionBallot(poll).create_absentee_ballots(principle=principle)
         elif type(poll) == AssignmentPoll:
@@ -209,6 +213,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                         votecollector_mode = 'MultiDigit'
                     votecollector_resource = '/candidate/'
 
+            get_admitted_delegates_args['assignment_poll'] = poll
+
             absentee_ballots_created = AssignmentBallot(poll).create_absentee_ballots()
         else:
             raise ValidationError({'detail': 'Not supported type {}.'.format(type(poll))})
@@ -231,16 +237,14 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 raise ValidationError({'detail': e.value})
 
             # Limit voters count to length of admitted delegates list.
-            votes_count, admitted_delegates = get_admitted_delegates_with_keypads(principle)
+            vc.votes_count, admitted_delegates = get_admitted_delegates_with_keypads(
+                principle, **get_admitted_delegates_args)
 
-            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
-            # of votes we expect to come in and the absentee votes.
         elif voting_type == 'named_electronic':
             # Limit voters count to length of admitted delegates list.
-            votes_count, admitted_delegates = get_admitted_delegates(principle)
+            vc.votes_count, admitted_delegates = get_admitted_delegates(
+                principle, **get_admitted_delegates_args)
 
-            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
-            # of votes we expect to come in and the absentee votes.
         else:  # 'token_based_electronic'
             admitted_delegates = []
             vc.votes_count = 0  # We do not know, how many votes will come..
@@ -743,7 +747,7 @@ class AttendanceView(View):
             total_shares['heads'][0] += 1
 
             # Find the authorized voter.
-            auth_voter = find_authorized_voter(delegate)
+            auth_voter, _not_used = find_authorized_voter(delegate)
 
             # If auth_voter is delegate himself set index to 2 (in person) else 3 (represented).
             i = 2 if auth_voter == delegate else 3

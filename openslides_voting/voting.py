@@ -16,15 +16,21 @@ from .models import (
 )
 
 
-def find_authorized_voter(delegate):
+def find_authorized_voter(delegate, keypad=False, motion_poll=None, assignment_poll=None):
     """
     Find the authorized voter of a delegate by stepping through the proxy chain.
+    If any of the delegates in the chain (containing the requested delegate and the
+    autorized voter) is present (and have a keypad, if keypad=True) or has an absentee vote,
+    count_vote will be True.
+    This is usefull for checking, how many votes will be recieved.
 
     :param delegate: User object
-    :return: authorized user (the last one in the proxy chain)
+    :return: (user, bool): authorized user, count vote
     """
     # List of proxy IDs found so far, used to eliminate circular references
     proxies = []
+    count_vote = (delegate.is_present and (not keypad or hasattr(delegate, 'keypad')) or
+        has_absentee_vote(delegate, motion_poll, assignment_poll))
     # NOTE: Function might be slow with many db hits.
     while hasattr(delegate, 'votingproxy'):
         representation = delegate.votingproxy.proxy
@@ -38,19 +44,27 @@ def find_authorized_voter(delegate):
         proxies.append(delegate.id)
         delegate = representation
 
-    return delegate
+        if not count_vote and ((delegate.is_present and (not keypad or hasattr(delegate, 'keypad'))) or
+                has_absentee_vote(delegate, motion_poll, assignment_poll)):
+            count_vote = True
+
+    return delegate, count_vote
 
 
-def get_admitted_delegates(principle, *order_by):
+def get_admitted_delegates(principle, motion_poll=None, assignment_poll=None, keypad=False, *order_by):
     """
     Returns a list of admitted delegates and the count of all possible votes.
+    Possible votes are if an authorized voter is present, or has an absentee vote.
+    So there might be more votes possible then admitted delegates, because all Proxies
+    gets counted, that have a valid authorized user.
     Admitted delegates are users in the delegate group that do not have a proxy
-    AND are present. The votes count also counts proxies. If A is a proxy of B and
-    A is present, the list contains only A, but the count would be 2.
+    AND are present.
+    If keypad=True is provided, it is also checked, that every authorized voter has a keypad and
+    the possible votes also respects keypads
 
     :param principle: Principle or None.
     :param order_by: User fields the list should be ordered by.
-    :return: (list, int)
+    :return: (int, list)
     """
     # Get delegates who have voting rights (shares) for the given principle.
     admitted = query_admitted_delegates(principle=principle)
@@ -60,15 +74,17 @@ def get_admitted_delegates(principle, *order_by):
     admitted_list = []
     votes_count = 0
     for delegate in admitted.select_related('votingproxy').all():
-        auth_voter = find_authorized_voter(delegate)
-        if auth_voter is not None and auth_voter.is_present:
+        auth_voter, count_vote = find_authorized_voter(delegate, keypad=keypad,
+            motion_poll=motion_poll, assignment_poll=assignment_poll)
+        if auth_voter.is_present and auth_voter not in admitted_list and (
+                not keypad or hasattr(delegate, 'keypad')):
+            admitted_list.append(auth_voter)
+        if count_vote:
             votes_count += 1
-            if auth_voter not in admitted_list:
-                admitted_list.append(auth_voter)
     return (votes_count, admitted_list)
 
 
-def get_admitted_delegates_with_keypads(principle, *order_by):
+def get_admitted_delegates_with_keypads(principle, motion_poll=None, assignment_poll=None, *order_by):
     """
     Returns a list of admitted delegates and the votes_count similar
     to get_admitted_delegates(). Admitted delegates are users in the
@@ -78,35 +94,21 @@ def get_admitted_delegates_with_keypads(principle, *order_by):
     :param order_by: User fields the list should be ordered by.
     :return: (list, int)
     """
-    # Get delegates who have voting rights (shares) for the given principle.
-    admitted = query_admitted_delegates(principle=principle)
-    if order_by:
-        admitted = admitted.order_by(*order_by)
+    return get_admitted_delegates(principle, keypad=True,
+        motion_poll=motion_poll, assignment_poll=assignment_poll)
 
-    admitted_list = []
-    votes_count = 0
-    for delegate in admitted.select_related('votingproxy').all():
-        auth_voter = find_authorized_voter(delegate)
-        if auth_voter is not None and auth_voter.is_present and hasattr(auth_voter, 'keypad'):
-            votes_count += 1
-            if auth_voter not in admitted_list:
-                admitted_list.append(auth_voter)
-    return (votes_count, admitted_list)
 
-    """
-    admitted_dict = {}
-    count = 0
-    for delegate in admitted:
-        if hasattr(delegate, 'keypad'):
-            key = delegate.keypad.number
-            if key in admitted_dict:
-                admitted_dict[key].append(delegate.id)
-            else:
-                admitted_dict[key] = [delegate.id]
-            count += 1
-
-    return admitted_dict, count
-    """
+def has_absentee_vote(delegate, motion_poll=None, assignment_poll=None):
+    if motion_poll is not None:
+        return MotionAbsenteeVote.objects.filter(
+            motion=motion_poll.motion,
+            delegate=delegate).exists()
+    elif assignment_poll is not None:
+        return AssignmentAbsenteeVote.objects.filter(
+            assignment=assignment_poll.assignment,
+            delegate=delegate).exists()
+    else:
+        return False
 
 
 def query_admitted_delegates(principle=None):
@@ -151,7 +153,7 @@ class BaseBallot:
         """
         Creates ballot objects for all voting delegates who have cast an absentee vote.
         Objects are created even if the delegate is present or whether or not a proxy
-        is present. Returns the number of absentee ballots.
+        is present. Returns the number of absentee ballots created.
         """
         raise NotImplementedError('This function needs to be implemented')
 
@@ -165,10 +167,11 @@ class BaseBallot:
         """
         Register a vote by creating ballot objects for the voter and all proxies represented
         by the voter. The shares will not be checked here. Fot the voter and every proxy the
-        vote will be registered. During count_votes, the shares will be included. If voter
-        is none, just the vote is registered, because we do not know the proxy chain.
-        The return value is the count of created or update ballots **respecting the principle**.
-        If some of the users doesn't have a share, they are not counted!
+        vote will be registered, if the proxy do not have a protected ballot yet. During count_votes,
+        the shares will be included. If voter is none, just the vote is registered, because we
+        do not know the proxy chain. The return value is the count of created or update ballots
+        **respecting the principle**. If some of the users doesn't have a share, they are not counted!
+        The initial voter's ballot will be protected.
 
         Ballot objects will not be created for any delegate who submitted an absentee vote. For
         this see the create_absentee_ballots function.
@@ -177,27 +180,36 @@ class BaseBallot:
         voter: User, may be None
         Returns th number of ballots created (and NOT updated).
         """
-        created = 0
+        created_ballots = 0
         if voter is None:
-            if self._create_ballot(vote, result_token=result_token):
-                created += 1
+            ballot, created = self._create_ballot(vote, result_token=result_token, proxy_protected=True)
+            if created:
+                created_bllots += 1
         else:
+            first_delegate = True  # protect the ballot of the initial voter
             principle_id = principle.id if principle is not None else None
             # Register the vote and proxy votes.
             delegates_to_create_ballot = [voter]
             while len(delegates_to_create_ballot) > 0:
                 delegate = delegates_to_create_ballot.pop()
-                delegates_to_create_ballot.extend([proxy.delegate for proxy in delegate.mandates.all()])
-                if self._create_ballot(vote, delegate=delegate, result_token=result_token):
+                # protect for the initial voter and skip creation vor all others, if they have protected ballots
+                ballot, created = self._create_ballot(vote, delegate=delegate,
+                    result_token=result_token, proxy_protected=first_delegate, skip_protected=not first_delegate)
+                if created:
                     # Just count the ballot, if the user has voting shares
                     if principle_id is not None:
                         shares = delegate.shares.filter(principle__pk=principle_id)
                         if shares.count() != 0 and shares.first().shares > 0:
-                            created += 1
+                            created_ballots += 1
                     else:
-                        created += 1
+                        created_ballots += 1
+                if first_delegate or not ballot.proxy_protected:
+                    # Do not extend the tree, if the ballot was protected. Note: The first one created is
+                    # protected (because it is the initial voter), but there we explicit want to expand the tree.
+                    delegates_to_create_ballot.extend([proxy.delegate for proxy in delegate.mandates.all()])
+                first_delegate = False
 
-        return created
+        return created_ballots
 
 
     def count_votes(self):
@@ -214,10 +226,12 @@ class BaseBallot:
         """
         raise NotImplementedError('This function needs to be implemented')
 
-    def _create_ballot(self, vote, delegate=None, result_token=0):
+    def _create_ballot(self, vote, delegate=None, result_token=0, proxy_protected=None, skip_protected=False):
         """
-        Helper function to actually create or update a ballot.
-        Returns True, if a ballot was created.
+        Helper function to actually create or update a ballot. If proxy_protected is True or False,
+        it will be set when creating or updating a ballot. If skip_protected is True, an update of an
+        existing and protected ballot will be skipped and False is returned.
+        Returns (ballot, boolean): The ballot, True, if a ballot was created, else False.
         """
         raise NotImplementedError('This function needs to be implemented')
 
@@ -245,35 +259,20 @@ class MotionBallot(BaseBallot):
         Creates or updates all motion poll ballots for every admitted delegate that has an
         absentee vote registered. Returns the amount of absentee votes.
         """
-        # Allow only absentee votes of admitted delegates.
-        admitted_delegates = query_admitted_delegates(principle=principle)
+        # Allow only absentee votes of delegates.
+        delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2);
+        delegates = User.objects.filter(groups=delegate_group_id)
 
         # Query absentee votes for given motion.
-        absentee_votes = MotionAbsenteeVote.objects.filter(motion=self.poll.motion).filter(delegate__in=admitted_delegates)
+        absentee_votes = MotionAbsenteeVote.objects.filter(motion=self.poll.motion).filter(delegate__in=delegates)
 
-        ballots_to_create = []
-        delegate_ids = []
+        ballots_created = 0
         for absentee_vote in absentee_votes.all():
-            # Update or create ballot instance.
-            try:
-                mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)
-            except MotionPollBallot.DoesNotExist:
-                mpb = MotionPollBallot(poll=self.poll, delegate=absentee_vote.delegate, result_token=0)
-            mpb.vote = absentee_vote.vote
-            if mpb.pk:
-                mpb.save(skip_autoupdate=True)
-            else:
-                ballots_to_create.append(mpb)
-            delegate_ids.append(mpb.delegate.id)
+            bc= self.register_vote(absentee_vote.vote,
+                voter=absentee_vote.delegate, principle=principle)
+            ballots_created += bc
 
-        # Bulk create ballots.
-        MotionPollBallot.objects.bulk_create(ballots_to_create)
-
-        # Trigger auto-update.
-        created_ballots = MotionPollBallot.objects.filter(poll=self.poll, delegate_id__in=delegate_ids)
-        inform_changed_data(created_ballots)
-
-        return len(delegate_ids)
+        return ballots_created
 
     def get_next_result_token(self):
         """
@@ -345,7 +344,7 @@ class MotionBallot(BaseBallot):
             mpb.delegate = None
             mpb.save()
 
-    def _create_ballot(self, vote, delegate=None, result_token=0):
+    def _create_ballot(self, vote, delegate=None, result_token=0, proxy_protected=None, skip_protected=False):
         """
         Helper function to actually create or update a ballot.
         """
@@ -360,10 +359,15 @@ class MotionBallot(BaseBallot):
             mpb = MotionPollBallot(poll=self.poll)
             created = True
 
+        if skip_protected and mpb.proxy_protected:
+            return mpb, False
+
         mpb.vote = vote
         mpb.result_token = result_token
+        if proxy_protected is not None:
+            mpb.proxy_protected = proxy_protected
         mpb.save()
-        return created
+        return mpb, created
 
 
 class AssignmentBallot(BaseBallot):
@@ -392,6 +396,7 @@ class AssignmentBallot(BaseBallot):
         # TODO: This is currently unsupported!!
         return 0
 
+        """
         # Allow only absentee votes of admitted delegates.
         admitted_delegates = query_admitted_delegates(principle=principle)
 
@@ -438,6 +443,7 @@ class AssignmentBallot(BaseBallot):
         inform_changed_data(created_ballots)
 
         return len(delegate_ids)
+        """
 
     def get_next_result_token(self):
         """
@@ -533,7 +539,7 @@ class AssignmentBallot(BaseBallot):
 
         return result
 
-    def _create_ballot(self, vote, delegate=None, result_token=0):
+    def _create_ballot(self, vote, delegate=None, result_token=0, proxy_protected=None, skip_protected=False):
         """
         Helper function to actually create or update a ballot.
         """
@@ -548,7 +554,12 @@ class AssignmentBallot(BaseBallot):
             apb = AssignmentPollBallot(poll=self.poll)
             created = True
 
+        if skip_protected and apb.proxy_protected:
+            return apb, False
+
         apb.vote = vote
         apb.result_token = result_token
+        if proxy_protected is not None:
+            apb.proxy_protected = proxy_protected
         apb.save()
-        return created
+        return apb, created

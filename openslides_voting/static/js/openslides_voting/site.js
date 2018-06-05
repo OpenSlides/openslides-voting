@@ -1768,7 +1768,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                             },
                         },
                     },
-                    {
+                    // TODO: Make absentee votes for assignments possible
+                    /*{
                         key: 'assignment_id',
                         type: 'select-single',
                         templateOptions: {
@@ -1783,7 +1784,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                 }
                             },
                         },
-                    },
+                    },*/
                     voteField
                     ];
                 }

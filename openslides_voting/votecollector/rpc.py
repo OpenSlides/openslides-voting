@@ -17,6 +17,7 @@ VOTECOLLECTOR_ERROR_MESSAGES = {
     -6: ugettext_noop('No voting device connected.'),
     -7: ugettext_noop('Failed to set up voting device.'),
     -8: ugettext_noop('Voting device not ready.'),
+    -9: ugettext_noop('Voting device not licensed.'),
 }
 
 # For cert authentification see:

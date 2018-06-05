@@ -712,7 +712,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 var number;
                 if (user.keypad.newNumber) {
                     number = parseInt(user.keypad.newNumber);
-                    if (isNaN(number) && number <= 0) {
+                    if (isNaN(number) || number <= 0) {
                         return;
                     }
                 }

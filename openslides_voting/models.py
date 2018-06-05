@@ -143,7 +143,7 @@ class VotingController(RESTModelMixin, models.Model):
 class Keypad(RESTModelMixin, models.Model):
     access_permissions = KeypadAccessPermissions()
 
-    user = models.OneToOneField(User, null=True, blank=True)
+    user = models.OneToOneField(User, null=True, blank=True, on_delete=models.SET_NULL)
     number = models.IntegerField(unique=True)
     battery_level = models.SmallIntegerField(default=-1)  # -1 = unknown
     in_range = models.BooleanField(default=False)

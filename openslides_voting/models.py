@@ -256,7 +256,7 @@ POLLTYPES = [
     ('analog', 'Analog voting'),
     ('named_electronic', 'Named electronic voting'),
     ('token_based_electronic', 'Token-based electronic voting'),
-    ('votecollector', 'Votecollector')
+    ('votecollector', 'VoteCollector')
 ]
 
 

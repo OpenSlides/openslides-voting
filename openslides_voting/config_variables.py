@@ -13,7 +13,7 @@ def get_config_variables():
         name='voting_enable_votecollector',
         default_value=False,
         input_type='boolean',
-        label='Enable Votecollector',
+        label='Enable VoteCollector',
         weight=615,
         group='Voting',
         subgroup='General'

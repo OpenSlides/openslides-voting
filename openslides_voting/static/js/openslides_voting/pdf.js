@@ -174,57 +174,80 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
              // Title
             var pdfTitle = PDFLayout.createTitle(gettextCatalog.getString('Tokens'));
 
-            var tokenTable = function () {
-                var tableBody = [
-                    [
-                        {
-                            text: gettextCatalog.getString('Tokens'),
-                            style: 'tableHeader'
-                        },
-                        {
-                            text: gettextCatalog.getString('Barcodes'),
-                            style: 'tableHeader'
-                        }
-                    ]
-                ];
+            var tokenTables = function () {
+                var tokensPerPage = 6; // This needs to be fitted to the dimensions of
+                // the barcode below. If there are more barcodes then a page can
+                // take, the text will be shifted up or down, because pagebreaks
+                // in the columns are different.
+                var tables = [];
+                var currentTableBody;
                 _.forEach(tokens, function (token, index) {
-                    tableBody.push([
-                        {
-                            text: token,
-                            style: PDFLayout.flipTableRowStyle(index),
-                            fontSize: 16,
-                            margin: [5, 35, 0, 0],
-                        },
-                        {
-                            image: Barcode.getBase64(token, {
-                                fontSize: 10,
-                                height: 50,
-                                width: 1,
-                                text: ' ',
-                                background: (index % 2 === 0) ? '#fff' : '#eee',
-                            }),
-                            style: PDFLayout.flipTableRowStyle(index),
-                            margin: [0, 10, 0, 0],
+                    if ((index % (tokensPerPage+1)) === 0) {
+                        if (currentTableBody) {
+                            tables.push({
+                                table: {
+                                    widths: ['*', '*'],
+                                    headerRows: 1,
+                                    body: currentTableBody,
+                                },
+                                layout: 'headerLineOnly'
+                            });
+                            tables.push({
+                                text: '',
+                                pageBreak: 'after',
+                            });
                         }
-                    ]);
+                        currentTableBody = [
+                            [
+                                {
+                                    text: gettextCatalog.getString('Tokens'),
+                                    style: 'tableHeader'
+                                },
+                                {
+                                    text: gettextCatalog.getString('Barcodes'),
+                                    style: 'tableHeader'
+                                }
+                            ]
+                        ];
+                    } else {
+                        currentTableBody.push([
+                            {
+                                text: token,
+                                style: PDFLayout.flipTableRowStyle(index),
+                                fontSize: 16,
+                                margin: [5, 35, 0, 0], // left, top, right, bottom
+                            },
+                            {
+                                image: Barcode.getBase64(token, {
+                                    fontSize: 10,
+                                    height: 50,
+                                    width: 1,
+                                    text: ' ',
+                                    background: (index % 2 === 0) ? '#fff' : '#eee',
+                                }),
+                                style: PDFLayout.flipTableRowStyle(index),
+                                margin: [0, 10, 0, 0],
+                            }
+                        ]);
+                    }
                 });
+                if (currentTableBody.length > 1) {
+                    tables.push({
+                        table: {
+                            widths: ['*', '*'],
+                            headerRows: 1,
+                            body: currentTableBody,
+                        },
+                        layout: 'headerLineOnly'
+                    });
+                }
 
-                return {
-                    table: {
-                        widths: ['*', '*'],
-                        headerRows: 1,
-                        body: tableBody
-                    },
-                    layout: 'headerLineOnly'
-                };
+                return tables;
             };
 
             return {
                 getContent: function () {
-                    return [
-                        pdfTitle,
-                        tokenTable()
-                    ];
+                    return _.concat([pdfTitle], tokenTables());
                 }
             };
         };

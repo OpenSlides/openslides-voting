@@ -225,13 +225,17 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
             print(votecollector_mode)
 
-            try:
-                vc.votes_count, vc.device_status = rpc.start_voting(votecollector_mode, url)
-            except rpc.VoteCollectorError as e:
-                raise ValidationError({'detail': e.value})
-
             # Limit voters count to length of admitted delegates list.
             votes_count, admitted_delegates = get_admitted_delegates_with_keypads(principle)
+            keypad_numbers = list(map(lambda u: u.keypad.number, admitted_delegates))
+
+            try:
+                _not_used, vc.device_status = rpc.start_voting(
+                        votecollector_mode,
+                        url,
+                        keypad_numbers=keypad_numbers)
+            except rpc.VoteCollectorError as e:
+                raise ValidationError({'detail': e.value})
 
             vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
             # of votes we expect to come in and the absentee votes.

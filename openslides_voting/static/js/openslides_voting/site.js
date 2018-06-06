@@ -1911,12 +1911,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     $scope.alert = ErrorMessage.forAlert(error);
                 });
             } else {
-                AssignmentAbsenteeVote.create(absenteeVote).then(function (success) {
+                /*AssignmentAbsenteeVote.create(absenteeVote).then(function (success) {
                     $scope.closeThisDialog();
                 },
                 function (error) {
                     $scope.alert = ErrorMessage.forAlert(error);
-                });
+                });*/
             }
         };
 
@@ -1950,14 +1950,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 });
             } else {
                 // Inject the changed absentee vote (copy) object back into DS store.
-                AssignmentAbsenteeVote.inject(absenteeVote);
+                /*AssignmentAbsenteeVote.inject(absenteeVote);
                 AssignmentAbsenteeVote.save(absenteeVote).then(function (success) {
                     $scope.closeThisDialog();
                 },
                 function (error) {
                     AssignmentAbsenteeVote.refresh(absenteeVote);
                     $scope.alert = ErrorMessage.forAlert(error);
-                });
+                });*/
             }
         };
     }

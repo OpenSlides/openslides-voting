@@ -64,3 +64,21 @@ new group id can be choosen here.
 closed dureng token voting. This is important, so the next one cannot get the
 result token, if the user didn't click on continue. This can be disabled, when
 setting the timeout to 0.
+
+## Development
+For development the easiest way is to set up Openslides as described for
+development. Then fork this repository and clone it next to OpenSlides. Create a
+symlink from the `openslides_voting` folder into the `OpenSlides` folder from
+the main OpenSlides repo:
+```
+ls -s /<full path>/openslides-voting/openslides_voting /<full path>/OpenSlides/openslides_voting
+```
+Add `openslides_voting` in your `settings.py` to `INSTALLED_PLUGINS`.
+
+Then, from the `openslides-voting` directory, run `yarn` and for further
+development a watcher:
+```
+node_modules/.bin/gulp watch
+```
+
+Happy Contributing!

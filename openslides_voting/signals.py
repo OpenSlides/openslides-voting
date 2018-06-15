@@ -4,10 +4,7 @@ from openslides.users.models import Group
 from openslides.utils.autoupdate import inform_deleted_data
 
 from .models import Keypad, AuthorizedVoters, VotingController
-from .voting import (
-    get_admitted_delegates,
-    get_admitted_delegates_with_keypads
-)
+from .voting import get_admitted_delegates
 
 
 def add_permissions_to_builtin_groups(**kwargs):
@@ -35,17 +32,11 @@ def update_authorized_voters(sender, instance, **kwargs):
 
     admitted_delegates = None
     if av.type == 'votecollector':
-        vc.votes_count, admitted_delegates = get_admitted_delegates_with_keypads(
-            vc.principle,
-            motion_poll=av.motion_poll,
-            assignment_poll=av.assignment_poll)
+        vc.votes_count, admitted_delegates = get_admitted_delegates(vc.principle, keypad=True)
     elif av.type == 'named_electronic':
-        vc.votes_count, admitted_delegates = get_admitted_delegates(
-            vc.principle,
-            motion_poll=av.motion_poll,
-            assignment_poll=av.assignment_poll)
+        vc.votes_count, admitted_delegates = get_admitted_delegates(vc.principle)
 
-    if admitted_delegates is not None:  # Something changed
+    if admitted_delegates:  # Something changed
         AuthorizedVoters.update_delegates(admitted_delegates)
         vc.save()
 

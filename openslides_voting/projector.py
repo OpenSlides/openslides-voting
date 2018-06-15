@@ -4,6 +4,7 @@ from openslides.users.models import User
 from openslides.utils.projector import ProjectorElement
 
 from .models import (
+    AuthorizedVoters,
     AssignmentPollBallot,
     Keypad,
     MotionPollBallot,
@@ -33,6 +34,7 @@ class MotionPollSlide(ProjectorElement):
             yield motionpoll.motion
             yield motionpoll.motion.agenda_item
             # TODO: yield motionpoll.motion.category causes failure in function below
+            yield AuthorizedVoters.objects.get()
             yield from User.objects.filter(groups=2)
             yield from Keypad.objects.all()
             yield from VotingProxy.objects.all()

@@ -81,12 +81,13 @@ class VotingAppConfig(AppConfig):
             dispatch_uid='voting_add_permissions_to_builtin_groups'
         )
 
-        post_save.connect(update_authorized_voters, sender=User)
-        post_save.connect(update_authorized_voters, sender=Group)
-        post_save.connect(update_authorized_voters, sender=VotingShare)
-        post_save.connect(update_authorized_voters, sender=Keypad)
-        post_delete.connect(update_authorized_voters, sender=VotingShare)
-        post_delete.connect(update_authorized_voters, sender=Keypad)
+        # TODO: Review if it's necessary or even desired to update authorized voters during voting.
+        # post_save.connect(update_authorized_voters, sender=User)
+        # post_save.connect(update_authorized_voters, sender=Group)
+        # post_save.connect(update_authorized_voters, sender=VotingShare)
+        # post_save.connect(update_authorized_voters, sender=Keypad)
+        # post_delete.connect(update_authorized_voters, sender=VotingShare)
+        # post_delete.connect(update_authorized_voters, sender=Keypad)
         post_delete.connect(inform_keypad_deleted, sender=Keypad)
 
         # Register viewsets.

@@ -65,7 +65,6 @@ from .voting import (
     MotionBallot,
     find_authorized_voter,
     get_admitted_delegates,
-    get_admitted_delegates_with_keypads
 )
 
 
@@ -123,8 +122,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         voting_type = None
         # Get candidate name (if is an election with one candidate only)
         candidate_str = ''
-        # This is used as an argument for the get_admitted_delegate calls.
-        get_admitted_delegates_args = {}
         # projector message and images
         projector_message = _(config['voting_start_prompt'])
         projector_yes = '<img src="/static/img/button-yes.png">'
@@ -156,9 +153,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             votecollector_mode = 'YesNoAbstain'
             votecollector_resource = '/vote/'
 
-            get_admitted_delegates_args['motion_poll'] = poll
-
-            absentee_ballots_created = MotionBallot(poll).create_absentee_ballots(principle=principle)
+            absentee_ballots_created = MotionBallot(poll, principle).create_absentee_ballots()
         elif type(poll) == AssignmentPoll:
             try:
                 principle = VotingPrinciple.objects.get(assignments=poll.assignment)
@@ -213,8 +208,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                         votecollector_mode = 'MultiDigit'
                     votecollector_resource = '/candidate/'
 
-            get_admitted_delegates_args['assignment_poll'] = poll
-
             absentee_ballots_created = AssignmentBallot(poll).create_absentee_ballots()
         else:
             raise ValidationError({'detail': 'Not supported type {}.'.format(type(poll))})
@@ -237,16 +230,14 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 raise ValidationError({'detail': e.value})
 
             # Limit voters count to length of admitted delegates list.
-            vc.votes_count, admitted_delegates = get_admitted_delegates_with_keypads(
-                principle, **get_admitted_delegates_args)
+            vc.votes_count, admitted_delegates = get_admitted_delegates(principle, keypad=True)
 
         elif voting_type == 'named_electronic':
             # Limit voters count to length of admitted delegates list.
-            vc.votes_count, admitted_delegates = get_admitted_delegates(
-                principle, **get_admitted_delegates_args)
+            vc.votes_count, admitted_delegates = get_admitted_delegates(principle)
 
         else:  # 'token_based_electronic'
-            admitted_delegates = []
+            admitted_delegates = None
             vc.votes_count = 0  # We do not know, how many votes will come..
 
         vc.voting_mode = model.__name__
@@ -344,7 +335,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             raise ValidationError({'detail': _('Another voting is active.')})
 
         if vc.voting_mode == 'MotionPoll':
-            ballot = MotionBallot(poll)
+            ballot = MotionBallot(poll, vc.principle)
         else:
             ballot = AssignmentBallot(poll)
         result = ballot.count_votes()
@@ -492,6 +483,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             except rpc.VoteCollectorError as e:
                 pass
 
+
 class KeypadViewSet(PermissionMixin, ModelViewSet):
     access_permissions = KeypadAccessPermissions()
     queryset = Keypad.objects.all()
@@ -580,7 +572,8 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
         poll = self.get_poll(request)
 
         # Count ballot votes.
-        ballot = MotionBallot(poll)
+        principle = VotingPrinciple.objects.filter(motions=poll.motion).first()
+        ballot = MotionBallot(poll, principle)
         result = ballot.count_votes()
 
         # Update motion poll.
@@ -604,8 +597,9 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
 
         # Pseudoanonymize ballot votes.
         ballot = MotionBallot(poll)
-        ballot.pseudoanonymize_votes()
+        ballot.pseudo_anonymize_votes()
         return HttpResponse()
+
 
 class BasePollTypeViewSet(ModelViewSet):
     """

@@ -99,7 +99,7 @@ class AuthorizedVoters(RESTModelMixin, models.Model):
     @classmethod
     def set_voting(cls, delegates, voting_type, motion_poll=None, assignment_poll=None):
         instance = cls.objects.get()
-        instance.authorized_voters = [delegate.id for delegate in delegates]
+        instance.authorized_voters = delegates
         instance.type = voting_type
         instance.motion_poll = motion_poll
         instance.assignment_poll = assignment_poll
@@ -109,7 +109,7 @@ class AuthorizedVoters(RESTModelMixin, models.Model):
     def update_delegates(cls, delegates):
         instance = cls.objects.get()
         print(delegates)
-        instance.authorized_voters = [delegate.id for delegate in delegates]
+        instance.authorized_voters = delegates
         print(instance.authorized_voters)
         instance.save()
 

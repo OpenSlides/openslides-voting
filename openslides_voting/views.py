@@ -65,7 +65,6 @@ from .voting import (
     MotionBallot,
     find_authorized_voter,
     get_admitted_delegates,
-    get_admitted_delegates_with_keypads
 )
 
 
@@ -154,7 +153,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             votecollector_mode = 'YesNoAbstain'
             votecollector_resource = '/vote/'
 
-            absentee_ballots_created = MotionBallot(poll).create_absentee_ballots(principle=principle)
+            absentee_ballots_created = MotionBallot(poll, principle).create_absentee_ballots()
         elif type(poll) == AssignmentPoll:
             try:
                 principle = VotingPrinciple.objects.get(assignments=poll.assignment)
@@ -231,18 +230,14 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 raise ValidationError({'detail': e.value})
 
             # Limit voters count to length of admitted delegates list.
-            votes_count, admitted_delegates = get_admitted_delegates_with_keypads(principle)
+            vc.votes_count, admitted_delegates = get_admitted_delegates(principle, keypad=True)
 
-            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
-            # of votes we expect to come in and the absentee votes.
         elif voting_type == 'named_electronic':
             # Limit voters count to length of admitted delegates list.
-            votes_count, admitted_delegates = get_admitted_delegates(principle)
+            vc.votes_count, admitted_delegates = get_admitted_delegates(principle)
 
-            vc.votes_count = votes_count + absentee_ballots_created  # the amount of votes is the number
-            # of votes we expect to come in and the absentee votes.
         else:  # 'token_based_electronic'
-            admitted_delegates = []
+            admitted_delegates = None
             vc.votes_count = 0  # We do not know, how many votes will come..
 
         vc.voting_mode = model.__name__
@@ -340,7 +335,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             raise ValidationError({'detail': _('Another voting is active.')})
 
         if vc.voting_mode == 'MotionPoll':
-            ballot = MotionBallot(poll)
+            ballot = MotionBallot(poll, vc.principle)
         else:
             ballot = AssignmentBallot(poll)
         result = ballot.count_votes()
@@ -488,6 +483,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             except rpc.VoteCollectorError as e:
                 pass
 
+
 class KeypadViewSet(PermissionMixin, ModelViewSet):
     access_permissions = KeypadAccessPermissions()
     queryset = Keypad.objects.all()
@@ -576,7 +572,8 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
         poll = self.get_poll(request)
 
         # Count ballot votes.
-        ballot = MotionBallot(poll)
+        principle = VotingPrinciple.objects.filter(motions=poll.motion).first()
+        ballot = MotionBallot(poll, principle)
         result = ballot.count_votes()
 
         # Update motion poll.
@@ -600,8 +597,9 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
 
         # Pseudoanonymize ballot votes.
         ballot = MotionBallot(poll)
-        ballot.pseudoanonymize_votes()
+        ballot.pseudo_anonymize_votes()
         return HttpResponse()
+
 
 class BasePollTypeViewSet(ModelViewSet):
     """
@@ -743,7 +741,7 @@ class AttendanceView(View):
             total_shares['heads'][0] += 1
 
             # Find the authorized voter.
-            auth_voter = find_authorized_voter(delegate)
+            auth_voter, _not_used = find_authorized_voter(delegate)
 
             # If auth_voter is delegate himself set index to 2 (in person) else 3 (represented).
             i = 2 if auth_voter == delegate else 3

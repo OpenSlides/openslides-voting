@@ -200,11 +200,11 @@ class SubmitVotes(ValidationView):
 
             self.validate_simple_yna_votes(votes)
 
-            ballot = MotionBallot(poll)
+            ballot = MotionBallot(poll, vc.principle)
         elif vc.voting_mode == 'AssignmentPoll':
             try:
                 poll = AssignmentPoll.objects.get(id=poll_id)
-            except AssigmentPoll.DoesNotExist:
+            except AssignmentPoll.DoesNotExist:
                 raise ValidationError({'detail': 'The AssignmentPoll does not exist.'})
 
             # Here, just yna and yn methods are allowed:
@@ -224,7 +224,7 @@ class SubmitVotes(ValidationView):
                     poll.pollmethod,
                     options)
 
-            ballot = AssignmentBallot(poll)
+            ballot = AssignmentBallot(poll, vc.principle)
         else:
             raise ValidationError({'detail': 'The voting mode is neiher MotionPoll nor AssignmentPoll.'})
 
@@ -237,7 +237,7 @@ class SubmitVotes(ValidationView):
             user = None
             if av.type == 'named_electronic':
                 user = request.user
-                if user.id not in av.authorized_voters:
+                if user.id not in av.authorized_voters.keys():
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
             else:
                 token_instance = vote['token_instance']
@@ -247,11 +247,7 @@ class SubmitVotes(ValidationView):
                 result_token = ballot.get_next_result_token()
                 result_vote = vote['value']
 
-            vc.votes_received += ballot.register_vote(
-                vote['value'],
-                voter=user,
-                principle=vc.principle,
-                result_token=result_token)
+            vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
         else:  # votecollector
             for vote in votes:
                 # Mark keypad as in range and update battery level.
@@ -270,14 +266,9 @@ class SubmitVotes(ValidationView):
                     # Info: Adapt this decision also in the CandidateSubmit-View.
                     #raise ValidationError({
                     #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
-                if user.id not in av.authorized_voters:
-                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
 
                 # Write ballot.
-                vc.votes_received += ballot.register_vote(
-                    vote['value'],
-                    voter=user,
-                    principle=vc.principle)
+                vc.votes_received += ballot.register_vote(vote['value'], voter=user)
         vc.save()
 
         return JsonResponse({
@@ -362,7 +353,7 @@ class SubmitCandidates(ValidationView):
             user = None
             if av.type == 'named_electronic':
                 user = request.user
-                if user.id not in av.authorized_voters:
+                if user.id not in av.authorized_voters.keys():
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
             else:
                 token_instance = vote['token_instance']
@@ -392,7 +383,7 @@ class SubmitCandidates(ValidationView):
                     continue
                     #raise ValidationError({
                     #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
-                if user.id not in av.authorized_voters:
+                if user.id not in av.authorized_voters.keys():
                     raise ValidationError({'detail': 'The user is not authorized to vote.'})
 
                 # Write ballot.

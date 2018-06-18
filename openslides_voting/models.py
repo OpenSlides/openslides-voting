@@ -99,10 +99,18 @@ class AuthorizedVoters(RESTModelMixin, models.Model):
     @classmethod
     def set_voting(cls, delegates, voting_type, motion_poll=None, assignment_poll=None):
         instance = cls.objects.get()
-        instance.authorized_voters = [delegate.id for delegate in delegates]
+        instance.authorized_voters = delegates
         instance.type = voting_type
         instance.motion_poll = motion_poll
         instance.assignment_poll = assignment_poll
+        instance.save()
+
+    @classmethod
+    def update_delegates(cls, delegates):
+        instance = cls.objects.get()
+        print(delegates)
+        instance.authorized_voters = delegates
+        print(instance.authorized_voters)
         instance.save()
 
     @classmethod
@@ -229,6 +237,7 @@ class MotionPollBallot(RESTModelMixin, models.Model, PollBallot):
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = models.CharField(max_length=1, blank=True)
     result_token = models.PositiveIntegerField()
+    proxy_protected = models.BooleanField(default=False)
 
     class Meta:
         default_permissions = ()
@@ -244,6 +253,7 @@ class AssignmentPollBallot(RESTModelMixin, models.Model, PollBallot):
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = JSONField(default={})
     result_token = models.PositiveIntegerField()
+    proxy_protected = models.BooleanField(default=False)
 
     class Meta:
         default_permissions = ()

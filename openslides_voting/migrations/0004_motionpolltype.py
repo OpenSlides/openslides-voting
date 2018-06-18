@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 ('poll', models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE, to='assignments.AssignmentPoll')),
                 ('result_token', models.PositiveIntegerField()),
-                ('proxy_protected', models.BooleanField(default=False)),
+                ('is_dummy', models.BooleanField(default=False)),
             ],
             options={
                 'default_permissions': (),
@@ -112,7 +112,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='motionpollballot',
-            name='proxy_protected',
+            name='is_dummy',
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(

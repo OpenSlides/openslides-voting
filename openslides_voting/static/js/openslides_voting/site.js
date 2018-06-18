@@ -512,7 +512,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 return;
             }
 
-            var included = operator.user && _.includes(av.authorized_voters, operator.user.id);
+            var included = operator.user
+                && _.includes(_.keys(av.authorized_voters), operator.user.id.toString());
             // This user is not affected by the current voting.
             if (!included) {
                 Messaging.deleteMessage(messageId);
@@ -587,7 +588,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if (!av || !motion || !av.motionPoll || motion.id !== av.motionPoll.motion.id) {
                     return;
                 }
-                if (_.includes(av.authorized_voters, operator.user.id)) {
+                if (_.includes(_.keys(av.authorized_voters), operator.user.id.toString())) {
                     return av.motion_poll_id;
                 }
             },
@@ -613,7 +614,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if (!av || !assignment || !av.assignmentPoll || assignment.id !== av.assignmentPoll.assignment.id) {
                     return;
                 }
-                if (_.includes(av.authorized_voters, operator.user.id)) {
+                if (_.includes(_.keys(av.authorized_voters), operator.user.id.toString())) {
                     return av.assignmnt_poll_id;
                 }
             },

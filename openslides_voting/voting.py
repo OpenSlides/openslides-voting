@@ -111,7 +111,6 @@ class BaseBallot:
         self.poll = poll
         self.principle = principle
         self.admitted_delegates = self._query_admitted_delegates()
-        self.updated = 0
 
     def delete_ballots(self):
         """
@@ -145,11 +144,11 @@ class BaseBallot:
         :param vote: Vote, typically 'Y', 'N', 'A'
         :param voter: User or None for anonymous user
         :param result_token: Token
-        :return: Number of ballots created or updated.
+        :return: Number of ballots created
         """
-        self.updated = 0
-        self._register_vote_and_proxy_votes(vote, voter, result_token)
-        return self.updated
+        self.created = 0
+        self._register_vote_and_proxy_votes(vote, voter, result_token, is_authorized_voter=True)
+        return self.created
 
     def count_votes(self):
         """
@@ -171,16 +170,16 @@ class BaseBallot:
         """
         raise NotImplementedError()
 
-    def _register_vote_and_proxy_votes(self, vote, voter, result_token):
+    def _register_vote_and_proxy_votes(self, vote, voter, result_token, is_authorized_voter=False):
         """
         Helper function that recursively creates ballots for a voter and his mandates.
         """
-        self._create_ballot(vote, voter, result_token)
+        self._create_ballot(vote, voter, result_token, is_authorized_voter)
         if voter:
             for proxy in voter.mandates.all():
                 self._register_vote_and_proxy_votes(vote, proxy.delegate, result_token)
 
-    def _create_ballot(self, vote, delegate=None, result_token=0):
+    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
         """
         Helper function that creates or updates a poll ballot.
         """
@@ -202,9 +201,9 @@ class MotionBallot(BaseBallot):
         collection_string = MotionPollBallot.get_collection_string()
         for pk in MotionPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
             deleted.append((collection_string, pk))
-        self.updated, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
+        self.deleted, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
         inform_deleted_data(deleted)
-        return self.updated
+        return self.deleted
 
     def create_absentee_ballots(self):
         """
@@ -256,12 +255,12 @@ class MotionBallot(BaseBallot):
     def count_votes(self):
         """
         Counts the votes of all MotionPollBallot objects for the given poll.
-        
-        The result is a dict with values for yes, no and abstain, casted, valid and invalid. 
+
+        The result is a dict with values for yes, no and abstain, casted, valid and invalid.
         The values for casted and valid are equal, the values for invalid are zero.
-        Each entry in the result dict is a list with two entries: [heads, shares]. 
+        Each entry in the result dict is a list with two entries: [heads, shares].
         For anonymous votes shares are  set to 1.
-        
+
         :return result dict.
         """
         # Convert the ballots into a list of (delegate_id, vote) tuples.
@@ -321,26 +320,32 @@ class MotionBallot(BaseBallot):
         qs = query_admitted_delegates(self.principle).exclude(motionabsenteevote__motion=self.poll.motion)
         return qs.values_list('id', flat=True)
 
-    def _create_ballot(self, vote, delegate=None, result_token=0):
+    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
         """
         Creates or updates a motion poll ballot.
         """
+        created = False
         if not delegate:
             # Anonymous delegate
             mpb = MotionPollBallot(poll=self.poll)
-        elif delegate.id in self.admitted_delegates:
+            created = True
+        elif delegate.id in self.admitted_delegates or is_authorized_voter:
             try:
                 mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=delegate)
             except MotionPollBallot.DoesNotExist:
                 mpb = MotionPollBallot(poll=self.poll, delegate=delegate)
+                created = True
+            # Check, if this is a dummy vote. It is, if the delegate is not admitted, but authorized to vote
+            mpb.is_dummy = delegate.id not in self.admitted_delegates and is_authorized_voter
         else:
-            # Delegate not admitted.
+            # Delegate not admitted nor authorized.
             return
 
         mpb.vote = vote
         mpb.result_token = result_token
         mpb.save()
-        self.updated += 1
+        if created and not mpb.is_dummy:  # do not count dummies..
+            self.created += 1
 
 
 class AssignmentBallot(BaseBallot):

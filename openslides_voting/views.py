@@ -138,7 +138,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             except MotionPollType.DoesNotExist:
                 voting_type = config['voting_default_voting_type']
 
-            if voting_type == 'votecollector':
+            if voting_type in ('votecollector', 'votecollector_anonym'):
                 if 'Interact' in vc.device_status:
                     projector_abstain = '2 = '
                 elif 'Reply' in vc.device_status:
@@ -168,7 +168,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             options = AssignmentOption.objects.filter(poll=poll).order_by('weight')
             # check, if the pollmethod is supported by the votecollector
             # If so, calculate the projector message for the voting prompt
-            if voting_type == 'votecollector':
+            if voting_type in ('votecollector', 'votecollector_anonym'):
                 if poll.pollmethod == 'yn' or (poll.pollmethod == 'yna' and options.count() is not 1):
                     raise ValidationError({'detail':
                         'The votecollector does not support the pollmethod {} (with {} candidates).'.format(
@@ -212,7 +212,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         else:
             raise ValidationError({'detail': 'Not supported type {}.'.format(type(poll))})
 
-        if voting_type == 'votecollector':
+        if voting_type in ('votecollector', 'votecollector_anonym'):
             if not config['voting_enable_votecollector']:
                 raise ValidationError({'detail': 'The VoteCollector is not enabled'})
 

@@ -741,7 +741,7 @@ class AttendanceView(View):
             total_shares['heads'][0] += 1
 
             # Find the authorized voter.
-            auth_voter, _not_used = find_authorized_voter(delegate)
+            auth_voter = find_authorized_voter(delegate)
 
             # If auth_voter is delegate himself set index to 2 (in person) else 3 (represented).
             i = 2 if auth_voter == delegate else 3

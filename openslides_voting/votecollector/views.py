@@ -137,7 +137,6 @@ class SubmitVotes(ValidationView):
             }
         return votes
 
-
     def validate_candidates_votes(self, votes, pollmethod, options):
         """
         Check, if the votes values matches the given pollmethod. It can either be
@@ -161,7 +160,7 @@ class SubmitVotes(ValidationView):
     @transaction.atomic()
     def post(self, request, poll_id, votecollector=False):
         """
-        Takes requests for incomming votes. They should have the format given in
+        Takes requests for incoming votes. They should have the format given in
         self.validate_input_data. For a single vote, the list can be omitted.
         """
         poll_id = int(poll_id)
@@ -276,21 +275,23 @@ class SubmitVotes(ValidationView):
 class SubmitCandidates(ValidationView):
     http_method_names = ['post']
 
-    def validate_candidates_votes(self, votes, options):
+    def validate_candidates_votes(self, votes, options, range_exception):
         """
         Validates, that the vote values are integers with 0 < value <= len(options).
-        replaves this index with the actual candidate id.
+        Replaces this index with the actual candidate id.
         """
         for vote in votes:
             value = vote['value']
             try:
                 value = int(value)
-            except:
+            except ValueError:
                 raise ValidationError({'detail': 'Value has to be an int.'})
             if value > len(options) or value <= 0:
-                raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
-
-            vote['value'] = str(options[value - 1].candidate.id)  # save the actual candidate id
+                vote['value'] = None  # invalid vote
+                if range_exception:
+                    raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
+            else:
+                vote['value'] = str(options[value - 1].candidate.id)  # save the actual candidate id
         return votes
 
     @transaction.atomic()
@@ -341,7 +342,7 @@ class SubmitCandidates(ValidationView):
         if votecollector:
             body = self.decrypt_votecollector_message(body)
         votes = self.validate_input_data(body, av.type, request.user)
-        votes = self.validate_candidates_votes(votes, options)
+        votes = self.validate_candidates_votes(votes, options, not votecollector)
 
         result_token = 0
         result_vote = None
@@ -381,13 +382,13 @@ class SubmitCandidates(ValidationView):
                         continue
 
                 # Write ballot.
-                candidate_id = options[vote['value'] - 1].candidate_id
-                ballots_created = ballot.register_vote(
-                    candidate_id,
-                    voter=user)
-                if ballots_created > 0:
-                    keypad_set.add(keypad.id)
-                    vc.votes_received += ballots_created
+                if vote['value']:
+                    ballots_created = ballot.register_vote(
+                        vote['value'],
+                        voter=user)
+                    if ballots_created > 0:
+                        keypad_set.add(keypad.id)
+                        vc.votes_received += ballots_created
 
         vc.save()
         return JsonResponse({

@@ -142,7 +142,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 if 'Interact' in vc.device_status:
                     projector_abstain = '2 = '
                 elif 'Reply' in vc.device_status:
-                    projectoryes = '1 = '
+                    projector_yes = '1 = '
                     projector_no = '2 = '
                     projector_abstain = '3 = '
                 projector_message += '&nbsp;' + \
@@ -151,6 +151,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 '<span class="nobr">' + projector_abstain + _('Abstain') + '</span>'
 
             votecollector_mode = 'YesNoAbstain'
+            votecollector_options = None
             votecollector_resource = '/vote/'
 
             ballot = MotionBallot(poll, principle)
@@ -178,7 +179,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 if 'Interact' in vc.device_status:
                     projector_abstain = '2 = '
                 elif 'Reply' in vc.device_status:
-                    projectoryes = '1 = '
+                    projector_yes = '1 = '
                     projector_no = '2 = '
                     projector_abstain = '3 = '
 
@@ -192,6 +193,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                         '<div class="spacer candidate">' + candidate + '</div>'
 
                     votecollector_mode = 'YesNoAbstain'
+                    votecollector_options = None
                     votecollector_resource = '/vote/'
                 else:  # votes
                     projector_message += '<div><ul class="columns" data-columns="3">'
@@ -204,8 +206,10 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
                     if options.count() < 10:
                         votecollector_mode = 'SingleDigit'
+                        votecollector_options = '10'  # unlock all keys 0 to 9
                     else:
                         votecollector_mode = 'MultiDigit'
+                        votecollector_options = '2'  # limit votes to 2 digits, only applies to simulator
                     votecollector_resource = '/candidate/'
 
             ballot = AssignmentBallot(poll)
@@ -229,7 +233,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             print(votecollector_mode)
 
             try:
-                vc.votes_count, vc.device_status = rpc.start_voting(votecollector_mode, url)
+                vc.votes_count, vc.device_status = rpc.start_voting(votecollector_mode, url, votecollector_options)
             except rpc.VoteCollectorError as e:
                 raise ValidationError({'detail': e.value})
 

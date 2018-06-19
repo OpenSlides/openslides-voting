@@ -2335,9 +2335,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // check for support from votecollector.
             var pollTypes = AssignmentPollType.filter({poll_id: $scope.poll.id});
             var pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog_voting';
-            var vc_ok = (pollType !== 'votecollector' || $scope.poll.pollmethod === 'votes' ||
+            var pollTypeIsVc = (pollType === 'votecollector' || pollType === 'votecollector_anonym');
+            var vcOk = (!pollTypeIsVc || $scope.poll.pollmethod === 'votes' ||
                 ($scope.poll.pollmethod === 'yna' && $scope.poll.options.length === 1));
-            return vc_ok && $scope.vc && $scope.poll.votescast === null &&
+            return vcOk && $scope.vc && $scope.poll.votescast === null &&
                     (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode === 'ping');
         };
 

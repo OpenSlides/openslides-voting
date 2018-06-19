@@ -69,7 +69,7 @@ class ValidationView(utils_views.View):
         if not isinstance(votes, list):
             votes = [votes]
 
-        if voting_type != 'votecollector' and len(votes) != 1:
+        if voting_type not in ('votecollector', 'votecollector_anonym') and len(votes) != 1:
             raise ValidationError({'detail': 'Just one vote has to be given'})
 
         for vote in votes:
@@ -78,7 +78,8 @@ class ValidationView(utils_views.View):
             if 'value' not in vote:
                 raise ValidationError({'detail': 'A vote value is missing'})
 
-            if voting_type == 'votecollector':  # Check, if bl and id is given and valid
+            if voting_type in ('votecollector', 'votecollector_anonym'):
+                # Check, if bl and id is given and valid
                 if not 'bl' in vote or not 'id' in vote:
                     raise ValidationError({'detail': 'bl and id are necessary for the votecollector'})
                 if not isinstance(vote['bl'], int) or not isinstance(vote['id'], int):
@@ -177,9 +178,9 @@ class SubmitVotes(ValidationView):
             raise ValidationError({'detail': 'Analog voting does not support votes.'})
 
         # Only allow votecollector requests if the type is right and the other way around
-        if votecollector and not av.type == 'votecollector':
+        if votecollector and av.type not in ('votecollector', 'votecollector_anonym'):
             raise ValidationError({'detail': 'The type is not votecollector!'})
-        if not votecollector and av.type == 'votecollector':
+        if not votecollector and av.type in ('votecollector', 'votecollector_anonym'):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
@@ -248,7 +249,7 @@ class SubmitVotes(ValidationView):
                 result_vote = vote['value']
 
             vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
-        else:  # votecollector
+        else:  # votecollector or votecollector_anonym
             for vote in votes:
                 # Mark keypad as in range and update battery level.
                 keypad = vote['keypad']
@@ -256,16 +257,13 @@ class SubmitVotes(ValidationView):
                 keypad.battery_level = vote['bl']
                 keypad.save()
 
-                # Get delegate the keypad is assigned to.
-                user = keypad.user
-                if user is None:
-                    continue
-                    # TODO: Design decision. Keypads can vote, if they are not connected to users.
-                    # Should we allow this, or not. If not, should we do it silent (like now with
-                    # the continue statement) or raise an error?
-                    # Info: Adapt this decision also in the CandidateSubmit-View.
-                    #raise ValidationError({
-                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
+                user = None
+                if av.type == 'votecollector':  # vc with user
+                    # Get delegate the keypad is assigned to.
+                    user = keypad.user
+                    if user is None or str(user.id) not in av.authorized_voters:
+                        # no or no valid user, skip the vote
+                        continue
 
                 # Write ballot.
                 vc.votes_received += ballot.register_vote(vote['value'], voter=user)
@@ -323,9 +321,9 @@ class SubmitCandidates(ValidationView):
             raise ValidationError({'detail': 'Analog voting does not support votes.'})
 
         # Only allow votecollector requests if the type is right and the other way around
-        if votecollector and not av.type == 'votecollector':
+        if votecollector and av.type not in ('votecollector', 'votecollector_anonym'):
             raise ValidationError({'detail': 'The type is not votecollector!'})
-        if not votecollector and av.type == 'votecollector':
+        if not votecollector and av.type in ('votecollector', 'votecollector_anonym'):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
@@ -367,7 +365,7 @@ class SubmitCandidates(ValidationView):
                 voter=user,
                 principle=vc.principle,
                 result_token=result_token)
-        else:  # votecollector
+        else:  # votecollector or votecollector_anonym
             keypad_set = set()
             for vote in votes:
                 # Mark keypad as in range and update battery level.
@@ -376,14 +374,13 @@ class SubmitCandidates(ValidationView):
                 keypad.battery_level = vote['bl']
                 keypad.save()
 
-                # Get delegate the keypad is assigned to.
-                user = keypad.user
-                if user is None:
-                    continue
-                    #raise ValidationError({
-                    #    'detail': 'The user with the keypad id {} does not exist'.format(keypad.id)})
-                if user.id not in av.authorized_voters.keys():
-                    raise ValidationError({'detail': 'The user is not authorized to vote.'})
+                user = None
+                if av.type == 'votecollector':  # vc with user
+                    # Get delegate the keypad is assigned to.
+                    user = keypad.user
+                    if user is None or str(user.id) not in av.authorized_voters:
+                        # no or no valid user, skip the vote
+                        continue
 
                 # Write ballot.
                 candidate_id = options[vote['value'] - 1].candidate_id

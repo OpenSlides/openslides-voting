@@ -71,8 +71,8 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         table = '<table>',
                         i = 0;
 
-                    angular.forEach(voters, function (delegates, voterId) {
-                        angular.forEach(delegates, function (id) {
+                    _.forEach(voters, function (delegates, voterId) {
+                        _.forEach(delegates, function (id) {
                             var user = User.get(id),
                                 mpbs = MotionPollBallot.filter({poll_id: pollId, delegate_id: id});
                             var cls = '';
@@ -84,7 +84,11 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                                 table += '<tr>';
                             }
                             // Cell label is keypad number + user name.
-                            var label = Delegate.getKeypad(voterId).number + '<br/>' + Delegate.getCellName(user);
+                            var keypad = Delegate.getKeypad(voterId);
+                            var label = Delegate.getCellName(user);
+                            if (keypad) {
+                                label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                            }
                             table += '<td class="seat ' + cls + '">' + label + '</td>';
                             i++;
                         });

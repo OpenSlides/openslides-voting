@@ -409,7 +409,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         return {key: key, displayName: value};
                     })
                     .filter(function (item) {
-                        return item.key !== 'votecollector' || includeVoteCollector;
+                        var isVc = (item.key === 'votecollector' || item.key === 'votecollector_anonym');
+                        return !isVc || includeVoteCollector;
                     })
                     .value();
             },

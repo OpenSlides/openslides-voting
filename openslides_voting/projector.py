@@ -1,5 +1,3 @@
-from django.conf import settings
-
 from openslides.assignments.models import AssignmentPoll
 from openslides.core.exceptions import ProjectorException
 from openslides.motions.models import MotionPoll
@@ -34,12 +32,10 @@ class MotionPollSlide(ProjectorElement):
             # MotionPoll does not exist. Just do nothing.
             pass
         else:
-            delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2)
-            yield motionpoll
             yield motionpoll.motion
             yield motionpoll.motion.agenda_item
             yield AuthorizedVoters.objects.get()
-            yield from User.objects.filter(groups=delegate_group_id)
+            yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
             yield from VotingProxy.objects.all()
             yield from VotingShare.objects.all()
@@ -75,11 +71,9 @@ class AssignmentPollSlide(ProjectorElement):
             # AssignmentPoll does not exist. Just do nothing.
             pass
         else:
-            delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2)
-            yield assignmentpoll
             yield assignmentpoll.assignment
             yield assignmentpoll.assignment.agenda_item
-            yield from User.objects.filter(groups=delegate_group_id)
+            yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
             yield from VotingProxy.objects.all()
             yield from VotingShare.objects.all()

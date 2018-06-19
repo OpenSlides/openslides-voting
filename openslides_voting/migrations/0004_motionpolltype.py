@@ -170,7 +170,8 @@ class Migration(migrations.Migration):
                 'default_permissions': (),
                 'permissions': (
                     ('can_manage', 'Can manage voting'),
-                    ('can_see_token_voting', 'Can see the token voting interface')
+                    ('can_see_token_voting', 'Can see the token voting interface'),
+                    ('can_vote', 'Can vote')
                 )
             },
         ),

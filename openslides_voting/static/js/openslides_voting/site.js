@@ -10,7 +10,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
 .config([
     '$stateProvider',
-    function ($stateProvider) {
+    'gettext',
+    function ($stateProvider, gettext) {
         $stateProvider
         .state('openslides_voting', {
             url: '/voting',
@@ -20,17 +21,26 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         })
         .state('openslides_voting.attendance', {
             url: '/attendance',
-            controller: 'AttendanceCtrl'
+            controller: 'AttendanceCtrl',
+            data: {
+                title: gettext('Attendance'),
+            },
         })
         .state('openslides_voting.tokens', {
             url: '/tokens',
             templateUrl: '/static/templates/openslides_voting/tokens.html',
             controller: 'TokensCtrl',
+            data: {
+                title: gettext('Voting tokens'),
+            },
         })
         .state('openslides_voting.shares', {
             url: '/shares',
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('Shares'),
+            },
         })
         .state('openslides_voting.shares.list', {})
         .state('openslides_voting.shares.import', {
@@ -41,6 +51,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             url: '/keypad',
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('Keypads'),
+            },
         })
         .state('openslides_voting.keypad.list', {})
         .state('openslides_voting.keypad.import', {
@@ -51,6 +64,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             url: '/absenteevote',
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('Absentee votes'),
+            },
         })
         .state('openslides_voting.absenteeVote.list', {})
         .state('openslides_voting.absenteeVote.import', {
@@ -60,6 +76,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting.motionPoll', {
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('Motion poll'),
+            },
         })
         .state('openslides_voting.motionPoll.detail', {
             url: '/motionpoll/{id:int}',
@@ -68,6 +87,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('openslides_voting.assignmentPoll', {
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('Assignment poll'),
+            },
         })
         .state('openslides_voting.assignmentPoll.detail', {
             url: '/assignmentpoll/{id:int}',
@@ -78,6 +100,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         .state('submit_votes', {
             abstract: true,
             template: '<ui-view/>',
+            data: {
+                title: gettext('OpenSlides-Voting'),
+            },
         })
         .state('submit_votes.motionPoll', {
             url: '/motionpoll/submit/{id:int}',
@@ -105,25 +130,50 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$timeout',
     '$rootScope',
     'operator',
-    function ($state, $timeout, $rootScope, operator) {
+    'gettextCatalog',
+    'Messaging',
+    function ($state, $timeout, $rootScope, operator, gettextCatalog, Messaging) {
+        var lockInterface = function () {
+            $state.transitionTo('submit_votes.token_entry');
+            // Remove the header controls, navigation, projector sidebar and the footer
+            $('#header .user').remove();
+            $('#nav').remove();
+            $('#footer').remove();
+            // Wait for angular to finish the dom..
+            $timeout(function () {
+                $('#sidebar').remove();
+            });
+
+            // Prevent state changes
+            $rootScope.$on('$stateChangeStart', function (event, toState) {
+                if (toState.name !== 'submit_votes.token_entry') {
+                    event.preventDefault();
+                }
+            })
+        };
+
+        var notifyUser = function () {
+            var message = gettextCatalog.getString('Your permissions are misconfigurated. '
+                + 'Please contact your systemadministrator or read the manual about the permissions'
+                + ' needed for the token voting mode.');
+            Messaging.addMessage(message, 'error', {noClose: true});
+        };
+
         operator.registerSetUserCallback(function (user) {
             if (operator.hasPerms('openslides_voting.can_see_token_voting')) {
-                $state.transitionTo('submit_votes.token_entry');
-                // Remove the header controls, navigation, projector sidebar and the footer
-                $('#header .user').remove();
-                $('#nav').remove();
-                $('#footer').remove();
-                // Wait for angular to finish the dom..
-                $timeout(function () {
-                    $('#sidebar').remove();
-                });
-
-                // Prevent state changes
-                $rootScope.$on('$stateChangeStart', function (event, toState) {
-                    if (toState.name !== 'submit_votes.token_entry') {
-                        event.preventDefault(); 
+                // Check, if he has the required can_see_assignments and can_see_motions
+                if (operator.hasPerms('motions.can_see') && operator.hasPerms('assignments.can_see')) {
+                    if (operator.perms.length > 3) {
+                        // Wohoo, the user has all required perms, but some more. This is not
+                        // as expected. Panic, now!
+                        notifyUser();
+                    } else {
+                        lockInterface();
                     }
-                })
+                } else {
+                    // Panic here, too!
+                    notifyUser();
+                }
             }
         });
     }
@@ -144,6 +194,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         // All states: 'scan' -> 'enter' -> 'submitted'
         $scope.votingState = 'scan';
         $scope.alert = {};
+        $scope.showGray = true; // For the generic ng-include for motion poll buttons
 
         var token, timeoutInterval;
 
@@ -307,9 +358,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'gettextCatalog',
     'UserForm',
     'VotingPrinciple',
-    'User',
-    'VotingSettings',
-    function (gettextCatalog, UserForm, VotingPrinciple, User, VotingSettings) {
+    'Delegate',
+    'Config',
+    function (gettextCatalog, UserForm, VotingPrinciple, Delegate, Config) {
         return {
             getDialog: function (user) {
                 return {
@@ -328,112 +379,126 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             },
             getFormFields: function (user) {
                 var formFields = UserForm.getFormFields();
-                var otherDelegates = User.filter({
-                        where: {
-                            id: {
-                                '!=': user.id
-                            },
-                            groups_id : VotingSettings.delegateGroupId,
-                        },
-                        orderBy: 'full_name'
-                    });
-                formFields = formFields.concat([
-                {
-                    template: '<hr class="smallhr">',
-                },
-                {
-                    key: 'keypad_number',
-                    type: 'input',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Keypad'),
-                        type: 'number'
-                    },
-                    watcher: {
-                        listener: function (field, newValue, oldValue, formScope) {
-                            if (newValue) {
-                                formScope.model.proxy_id = null;
-                                formScope.options.formState.notRegistered = false;
-                            }
-                            else {
-                                formScope.model.is_present = false;
-                                formScope.options.formState.notRegistered = true;
-                            }
-                        }
-                    }
-                },
-                {
-                    key: 'proxy_id',
-                    type: 'select-single',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Proxy'),
-                        options: otherDelegates,
-                        ngOptions: 'option.id as option.full_name for option in to.options',
-                        placeholder: '(' + gettextCatalog.getString('No proxy') + ')'
-                    },
-                    watcher: {
-                        listener: function (field, newValue, oldValue, formScope) {
-                            if (newValue) {
-                                formScope.model.keypad_number = null;
-                            }
-                        }
-                    }
-                },
-                {
-                    key: 'mandates_id',
-                    type: 'select-multiple',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Principals'),
-                        options: otherDelegates,
-                        ngOptions: 'option.id as option.full_name for option in to.options',
-                        placeholder: '(' + gettextCatalog.getString('No principals') + ')'
-                    }
-                },
-                {
-                    key: 'delegateMore',
-                    type: 'checkbox',
-                    templateOptions: {
-                        label: gettextCatalog.getString('Show voting rights')
-                    }
-                },
-                {
-                    template: '<hr class="smallhr">',
-                    hideExpression: '!model.delegateMore'
+                var otherDelegates = _.orderBy(
+                    _.filter(Delegate.getDelegates(), function (delegate) {
+                        return delegate.id !== user.id;
+                    }),
+                    'full_name'
+                );
+                var vcEnabled = Config.get('voting_enable_votecollector').value;
+                var principlesEnabled = Config.get('voting_enable_principles').value;
+                var proxiesEnabled = Config.get('voting_enable_proxies').value;
+                if (!vcEnabled && !principlesEnabled && !proxiesEnabled) {
+                    return formFields;
                 }
-                ]);
 
-                var fieldGroup = [];
-                _.forEach(VotingPrinciple.filter({orderBy: 'id'}), function (principle) {
-                    fieldGroup.push({
-                        key: 'shares[' + principle.id + ']',
+                var newFormFields = [
+                    {
+                        template: '<hr class="smallhr">',
+                    }
+                ];
+                if (vcEnabled) {
+                    newFormFields.push({
+                        key: 'keypad_number',
                         type: 'input',
-                        className: 'col-xs-2 no-padding-left',
                         templateOptions: {
-                            label: principle.name,
-                            type: 'number',
-                            step: principle.step,
-                            min: 0,
+                            label: gettextCatalog.getString('Keypad'),
+                            type: 'number'
+                        },
+                        watcher: {
+                            listener: function (field, newValue, oldValue, formScope) {
+                                if (newValue) {
+                                    formScope.model.proxy_id = null;
+                                    formScope.options.formState.notRegistered = false;
+                                }
+                                else {
+                                    formScope.model.is_present = false;
+                                    formScope.options.formState.notRegistered = true;
+                                }
+                            }
                         }
                     });
-                    if (fieldGroup.length == 6) {
-                        formFields.push({
+                }
+                if (proxiesEnabled) {
+                    newFormFields = newFormFields.concat([
+                    {
+                        key: 'proxy_id',
+                        type: 'select-single',
+                        templateOptions: {
+                            label: gettextCatalog.getString('Proxy'),
+                            options: otherDelegates,
+                            ngOptions: 'option.id as option.full_name for option in to.options',
+                            placeholder: '(' + gettextCatalog.getString('No proxy') + ')'
+                        },
+                        watcher: {
+                            listener: function (field, newValue, oldValue, formScope) {
+                                if (newValue) {
+                                    formScope.model.keypad_number = null;
+                                }
+                            }
+                        }
+                    },
+                    {
+                        key: 'mandates_id',
+                        type: 'select-multiple',
+                        templateOptions: {
+                            label: gettextCatalog.getString('Principals'),
+                            options: otherDelegates,
+                            ngOptions: 'option.id as option.full_name for option in to.options',
+                            placeholder: '(' + gettextCatalog.getString('No principals') + ')'
+                        }
+                    }
+                    ]);
+                }
+                if (principlesEnabled) {
+                    newFormFields = newFormFields.concat([
+                    {
+                        key: 'delegateMore',
+                        type: 'checkbox',
+                        templateOptions: {
+                            label: gettextCatalog.getString('Show voting rights')
+                        }
+                    },
+                    {
+                        template: '<hr class="smallhr">',
+                        hideExpression: '!model.delegateMore'
+                    }
+                    ]);
+
+                    var fieldGroup = [];
+                    _.forEach(VotingPrinciple.filter({orderBy: 'id'}), function (principle) {
+                        fieldGroup.push({
+                            key: 'shares[' + principle.id + ']',
+                            type: 'input',
+                            className: 'col-xs-2 no-padding-left',
+                            templateOptions: {
+                                label: principle.name,
+                                type: 'number',
+                                step: principle.step,
+                                min: 0,
+                            }
+                        });
+                        if (fieldGroup.length == 6) {
+                            newFormFields.push({
+                                className: 'row',
+                                fieldGroup: fieldGroup,
+                                hideExpression: '!model.delegateMore'
+                            });
+                            fieldGroup = [];
+                        }
+                    });
+                    if (fieldGroup.length > 0) {
+                        // TODO: Find a better way to deal with last col-xs.
+                        var n = (6 - fieldGroup.length) * 2 + 2 ;
+                        _.last(fieldGroup).className = 'no-padding-left col-xs-' + n;
+                        newFormFields.push({
                             className: 'row',
                             fieldGroup: fieldGroup,
                             hideExpression: '!model.delegateMore'
                         });
-                        fieldGroup = [];
                     }
-                });
-                if (fieldGroup.length > 0) {
-                    // TODO: Find a better way to deal with last col-xs.
-                    var n = (6 - fieldGroup.length) * 2 + 2 ;
-                    _.last(fieldGroup).className = 'no-padding-left col-xs-' + n;
-                    formFields.push({
-                        className: 'row',
-                        fieldGroup: fieldGroup,
-                        hideExpression: '!model.delegateMore'
-                    });
                 }
-                return formFields;
+                return formFields.concat(newFormFields);
             }
         };
     }
@@ -446,7 +511,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Config',
     function (gettextCatalog, PollType, Config) {
         return {
-            getDialog: function (obj) {
+            getDialog: function (obj, onSuccess, onError) {
                 return {
                     template: 'static/templates/openslides_voting/poll-create-form.html',
                     controller: 'PollCreateCtrl',
@@ -459,6 +524,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         },
                         resourceName: function () {
                             return obj.getResourceName();
+                        },
+                        onSuccess: function () {
+                            return onSuccess;
+                        },
+                        onError: function () {
+                            return onError;
                         },
                     },
                 };
@@ -633,9 +704,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Config',
     'objId',
     'resourceName',
+    'onSuccess',
+    'onError',
     'ErrorMessage',
     function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType,
-        Assignment, Config, objId, resourceName, ErrorMessage) {
+        Assignment, Config, objId, resourceName, onSuccess, onError, ErrorMessage) {
         $scope.obj = DS.get(resourceName, objId);
         $scope.model = {
             votingType: Config.get('voting_default_voting_type').value,
@@ -650,11 +723,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         type: model.votingType,
                     }).then (function () {
                         $scope.closeThisDialog();
+                        if (typeof onSuccess === 'function') {
+                            onSuccess(success.data.createdPollId);
+                        }
                     }, function (error) {
                         $scope.alert = ErrorMessage.forAlert(error);
                     });
                 }, function (error) {
-                    $scope.alert = ErrorMessage.forAlert(error);
+                    $scope.closeThisDialog();
+                    if (typeof onError === 'function') {
+                        onError(error);
+                    }
                 });
             } else if (resourceName === 'assignments/assignment') {
                 $http.post('/rest/assignments/assignment/' + objId + '/create_poll/', {}).then(function (success) {
@@ -669,9 +748,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         type: model.votingType,
                     }).then (function () {
                         $scope.closeThisDialog();
+                        if (typeof onSuccess === 'function') {
+                            onSuccess(success.data.createdPollId);
+                        }
                     }, function (error) {
                         $scope.alert = ErrorMessage.forAlert(error);
                     });
+                }, function (error) {
+                    $scope.closeThisDialog();
+                    if (typeof onError === 'function') {
+                        onError(error);
+                    }
                 });
             } else {
                 throw "not supported: " + resourceName;
@@ -781,11 +868,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$http',
     'VotingToken',
     'TokenContentProvider',
-    'PdfMakeDocumentProvider',
+    'TokenDocumentProvider',
     'PdfCreate',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $http, VotingToken, TokenContentProvider, PdfMakeDocumentProvider,
+    function ($scope, $http, VotingToken, TokenContentProvider, TokenDocumentProvider,
         PdfCreate, gettextCatalog, ErrorMessage) {
         VotingToken.bindAll({}, $scope, 'tokens');
 
@@ -821,9 +908,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
                 var filename = gettextCatalog.getString('Tokens') + '.pdf';
                 var contentProvider = TokenContentProvider.createInstance(success.data);
-                PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
-                    PdfCreate.download(documentProvider, filename);
-                });
+                var documentProvider = TokenDocumentProvider.createInstance(contentProvider);
+                PdfCreate.download(documentProvider, filename);
             });
         };
     }
@@ -1019,10 +1105,13 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Delegate',
     'PrincipleForm',
     'ngDialog',
-    'VotingSettings',
     function ($scope, $filter, User, VotingPrinciple, VotingShare, Delegate, PrincipleForm,
-        ngDialog, VotingSettings) {
-        User.bindAll({where: {groups_id: VotingSettings.delegateGroupId}}, $scope, 'delegates');
+        ngDialog) {
+        $scope.$watch(function () {
+            return User.lastModified();
+        }, function () {
+            $scope.delegates = Delegate.getDelegates();
+        });
 
         $scope.$watch(function () {
             return VotingShare.lastModified();
@@ -1338,8 +1427,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 .factory('KeypadForm', [
     'gettextCatalog',
     'User',
-    'VotingSettings',
-    function (gettextCatalog, User, VotingSettings) {
+    function (gettextCatalog, User) {
         return {
             getDialog: function (keypad) {
                 var resolve = {};
@@ -1375,9 +1463,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     type: 'select-single',
                     templateOptions: {
                         label: gettextCatalog.getString('Participant'),
-                        options:  User.filter({where: {
-                            groups_id: VotingSettings.delegateGroupId,
-                        }, orderBy: 'full_name'}),
+                        options: _.orderBy(User.getAll(), 'full_name'),
                         ngOptions: 'option.id as option.full_name for option in to.options',
                         placeholder: '(' + gettextCatalog.getString('Anonymous') + ')',
                     },
@@ -1703,11 +1789,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
 .factory('AbsenteeVoteForm', [
     'gettextCatalog',
-    'User',
+    'Delegate',
     'Motion',
     'Assignment',
-    'VotingSettings',
-    function (gettextCatalog, User, Motion, Assignment, VotingSettings) {
+    function (gettextCatalog, Delegate, Motion, Assignment) {
         return {
             getDialog: function (absenteeVote) {
                 return {
@@ -1743,9 +1828,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         type: 'select-single',
                         templateOptions: {
                             label: gettextCatalog.getString('Participant'),
-                            options: User.filter({where: {
-                                groups_id: VotingSettings.delegateGroupId,
-                            }, orderBy: 'full_name'}),
+                            options: _.orderBy(Delegate.getDelegates(), 'full_name'),
                             ngOptions: 'option.id as option.full_name for option in to.options',
                             required: true,
                         },
@@ -2118,8 +2201,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'ErrorMessage',
     function ($http, gettextCatalog, Projector, ProjectHelper, ErrorMessage) {
         return {
-            populateScope: function ($scope, modelName, projectorName, startUrl, resultsUrl,
+            populateScope: function ($scope, modelName, modelPollType, projectorName, startUrl, resultsUrl,
                 clearUrl) {
+
+                $scope.isAnalogPoll = function () {
+                    var pollTypes = modelPollType.filter({poll_id: $scope.poll.id});
+                    return pollTypes.length === 0 || pollTypes[0].type === 'analog';
+                };
+
                 $scope.canStopVoting = function () {
                     return $scope.vc && $scope.vc.is_voting;
                 };
@@ -2235,16 +2324,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$http',
     'gettextCatalog',
     'MotionPollBallot',
+    'MotionPollType',
     'Projector',
     'VotingController',
     'PollFormVotingCtrlBase',
     'ErrorMessage',
-    function ($scope, $http, gettextCatalog, MotionPollBallot, Projector,
+    function ($scope, $http, gettextCatalog, MotionPollBallot, MotionPollType, Projector,
         VotingController, PollFormVotingCtrlBase, ErrorMessage) {
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
-        PollFormVotingCtrlBase.populateScope($scope, 'MotionPoll', 'voting/motion-poll',
+        PollFormVotingCtrlBase.populateScope($scope, 'MotionPoll', MotionPollType, 'voting/motion-poll',
             'start_motion', 'results_motion_votes', 'clear_motion_votes');
 
         $scope.clearForm = function () {
@@ -2314,8 +2404,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
-        PollFormVotingCtrlBase.populateScope($scope, 'AssignmentPoll', 'voting/assignment-poll',
-            'start_assignment', 'results_assignment_votes', 'clear_assignment_votes');
+        PollFormVotingCtrlBase.populateScope($scope, 'AssignmentPoll', AssignmentPollType,
+            'voting/assignment-poll', 'start_assignment', 'results_assignment_votes',
+            'clear_assignment_votes');
 
         $scope.clearForm = function () {
             _.forEach($scope.poll.options, function (option) {

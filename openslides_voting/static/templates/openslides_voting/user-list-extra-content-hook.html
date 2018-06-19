@@ -1,19 +1,24 @@
 <div ng-controller="UserListExtraContentCtrl">
   <small ng-if="d.isDelegate(user)">
-    <div os-perms="openslides_voting.can_manage"
-         ng-style="{'visibility': (user.keypad.number || user.hover) ? 'visible' : 'hidden'}">
-      <div class="popover-wrapper">
-        <i class="fa fa-wifi"></i>
-        <span editable-text="user.keypad.newNumber" onaftersave="saveKeypad(user)">
-          <span ng-if="!user.keypad.number" translate>Set keypad number ...</span>
-          <span ng-if="user.keypad.number">
-            {{ user.keypad.number }}
+    <div ng-if="config('voting_enable_votecollector')">
+      <div os-perms="openslides_voting.can_manage"
+           ng-style="{'visibility': (user.keypad.number || user.hover) ? 'visible' : 'hidden'}">
+        <div class="popover-wrapper"
+            uib-tooltip="{{ 'Keypads for the VoteCollector' | translate }}"
+            tooltip-placement="bottom">
+          <i class="fa fa-calculator"></i>
+          <span editable-text="user.keypad.newNumber" onaftersave="saveKeypad(user)">
+            <span ng-if="!user.keypad.number" translate>Set keypad number ...</span>
+            <span ng-if="user.keypad.number">
+              {{ user.keypad.number }}
+            </span>
           </span>
-        </span>
+        </div>
       </div>
     </div>
     <div os-perms="openslides_voting.can_manage">
-      <div ng-if="user.proxy">
+      <div ng-if="user.proxy && config('voting_enable_proxies')"
+        uib-tooltip="{{ 'This user is represented by' | translate}} {{ user.proxy.rep.full_name }}">
         <i class="fa fa-share"></i>
         {{ user.proxy.rep.full_name }}
       </div>

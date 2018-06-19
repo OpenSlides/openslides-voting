@@ -1,19 +1,29 @@
+<style type="text/css">
+    .gray-icon {
+        filter: grayscale(100%);
+        -webkit-filter: grayscale(100%);
+    }
+</style>
+
 <div class="row">
   <div class="col-xs-4">
     <span class="pointer" ng-click="vote('Y')">
-      <img src="/static/img/button-yes.png">
+      <img src="/static/img/button-yes.png"
+        ng-class="{'gray-icon': mpbVote.value !== 'Y' && showGray}">
       <translate>Yes</translate>
     </span>
   </div>
   <div class="col-xs-4">
     <span class="pointer" ng-click="vote('N')">
-      <img src="/static/img/button-no.png">
+      <img src="/static/img/button-no.png"
+        ng-class="{'gray-icon': mpbVote.value !== 'N' && showGray}">
       <translate>No</translate>
     </span>
   </div>
   <div class="col-xs-4">
     <span class="pointer" ng-click="vote('A')">
-      <img src="/static/img/button-abstain.png">
+      <img src="/static/img/button-abstain.png"
+        ng-class="{'gray-icon': mpbVote.value !== 'A' && showGray}">
       <translate>Abstain</translate>
     </span>
   </div>

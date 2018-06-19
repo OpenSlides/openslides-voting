@@ -18,6 +18,9 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         slidesProvider.registerSlide('voting/motion-poll', {
             template: 'static/templates/openslides_voting/slide_motion_poll.html',
         });
+        slidesProvider.registerSlide('voting/assignment-poll', {
+            template: 'static/templates/openslides_voting/slide_assignment_poll.html',
+        });
     }
 ])
 
@@ -48,14 +51,21 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     '$http',
     'AuthorizedVoters',
     'Config',
+    'Motion',
+    'MotionPoll',
     'MotionPollBallot',
     'User',
     'Delegate',
     'VotingController',
-    function ($scope, $timeout, $http, AuthorizedVoters, Config, MotionPollBallot, User, Delegate, VotingController) {
+    function ($scope, $timeout, $http, AuthorizedVoters, Config, Motion, MotionPoll,
+        MotionPollBallot, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
+            poll = MotionPoll.get(pollId),
             draw = false; // prevents redundant drawing
+
+        Motion.bindOne(poll.motion.id, $scope, 'motion')
+        MotionPoll.bindOne(pollId, $scope, 'poll');
 
         var drawDelegateBoard = function () {
             if (Config.get('voting_show_delegate_board').value) {
@@ -63,7 +73,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
 
                 // Get authorized voters.
                 var voters = AuthorizedVoters.get(1).authorized_voters;
-                if (Object.keys(voters).length > 0) {
+                if (_.keys(voters).length > 0) {
                     // Create delegate board table.
                     console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
                     var colCount = Config.get('voting_delegate_board_columns').value,

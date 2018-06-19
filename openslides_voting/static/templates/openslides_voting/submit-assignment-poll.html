@@ -29,9 +29,9 @@
               Abstain
             </span>
           </div>
-          <span ng-if="poll.pollmethod === 'votes'">
+          <strong ng-if="poll.pollmethod === 'votes'">
             {{ getUserVotedFor() }}
-          </span>
+          </strong>
         </div>
       </div>
     </div>
@@ -43,7 +43,7 @@
     {{ alert.msg }}
   </div>
 
-  <ng-include src="static/templates/openslides_voting/submit-assignment-poll-buttons.html"></ng-include>
+  <ng-include src="'static/templates/openslides_voting/submit-assignment-poll-buttons.html'"></ng-include>
 
   <button type="button" class="btn btn-primary spacer-top" ng-click="vote()">
     <translate>Submit</translate>

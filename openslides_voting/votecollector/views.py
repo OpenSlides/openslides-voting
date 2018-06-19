@@ -18,7 +18,6 @@ from ..models import (
     AuthorizedVoters,
     Keypad,
     VotingController,
-    MotionPollBallot,
     VotingShare,
     VotingToken,
 )
@@ -335,7 +334,7 @@ class SubmitCandidates(ValidationView):
             raise ValidationError({'detail': 'The pollmethod has to be votes.'})
 
         options = AssignmentOption.objects.filter(poll=poll_id).order_by('weight').all()
-        ballot = AssignmentBallot(poll)
+        ballot = AssignmentBallot(poll, vc.principle)
 
         # get request content
         body = request.body
@@ -363,7 +362,6 @@ class SubmitCandidates(ValidationView):
             vc.votes_received += ballot.register_vote(
                 vote['value'],
                 voter=user,
-                principle=vc.principle,
                 result_token=result_token)
         else:  # votecollector or votecollector_anonym
             keypad_set = set()
@@ -386,8 +384,7 @@ class SubmitCandidates(ValidationView):
                 candidate_id = options[vote['value'] - 1].candidate_id
                 ballots_created = ballot.register_vote(
                     candidate_id,
-                    voter=user,
-                    principle=vc.principle)
+                    voter=user)
                 if ballots_created > 0:
                     keypad_set.add(keypad.id)
                     vc.votes_received += ballots_created

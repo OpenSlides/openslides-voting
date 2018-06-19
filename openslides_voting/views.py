@@ -153,7 +153,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             votecollector_mode = 'YesNoAbstain'
             votecollector_resource = '/vote/'
 
-            absentee_ballots_created = MotionBallot(poll, principle).create_absentee_ballots()
+            ballot = MotionBallot(poll, principle)
         elif type(poll) == AssignmentPoll:
             try:
                 principle = VotingPrinciple.objects.get(assignments=poll.assignment)
@@ -208,9 +208,13 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                         votecollector_mode = 'MultiDigit'
                     votecollector_resource = '/candidate/'
 
-            absentee_ballots_created = AssignmentBallot(poll).create_absentee_ballots()
+            ballot = AssignmentBallot(poll)
         else:
             raise ValidationError({'detail': 'Not supported type {}.'.format(type(poll))})
+
+        # Delete all old votes and create absentee ballots
+        ballot.delete_ballots()
+        absentee_ballots_created = ballot.create_absentee_ballots()
 
         if voting_type in ('votecollector', 'votecollector_anonym'):
             if not config['voting_enable_votecollector']:

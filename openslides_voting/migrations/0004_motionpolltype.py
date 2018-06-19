@@ -52,7 +52,8 @@ class Migration(migrations.Migration):
                         ('analog', 'Analog voting'),
                         ('named_electronic', 'Named electronic voting'),
                         ('token_based_electronic', 'Token-based electronic voting'),
-                        ('votecollector', 'VoteCollector')],
+                        ('votecollector', 'VoteCollector'),
+                        ('votecollector_anonym', 'VoteCollector anonym')],
                     default='analog',
                     max_length=32)),
                 ('poll', models.OneToOneField(

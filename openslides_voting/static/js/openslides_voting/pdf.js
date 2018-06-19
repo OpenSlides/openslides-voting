@@ -39,11 +39,12 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 ]
             ];
             _.forEach(ballots, function (ballot, index) {
+                var username = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonym');
                 tableBody.push([
                     {
                         text: (pollType === 'token_based_electronic'
                             ? ballot.result_token
-                            : ballot.user.full_name),
+                            : username),
                         style: PDFLayout.flipTableRowStyle(index),
                     },
                     {
@@ -200,11 +201,11 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         currentTableBody = [
                             [
                                 {
-                                    text: gettextCatalog.getString('Tokens'),
+                                    text: '',
                                     style: 'tableHeader'
                                 },
                                 {
-                                    text: gettextCatalog.getString('Barcodes'),
+                                    text: '',
                                     style: 'tableHeader'
                                 }
                             ]
@@ -213,7 +214,6 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         currentTableBody.push([
                             {
                                 text: token,
-                                style: PDFLayout.flipTableRowStyle(index),
                                 fontSize: 16,
                                 margin: [5, 35, 0, 0], // left, top, right, bottom
                             },
@@ -223,9 +223,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                                     height: 50,
                                     width: 1,
                                     text: ' ',
-                                    background: (index % 2 === 0) ? '#fff' : '#eee',
                                 }),
-                                style: PDFLayout.flipTableRowStyle(index),
                                 margin: [0, 10, 0, 0],
                             }
                         ]);

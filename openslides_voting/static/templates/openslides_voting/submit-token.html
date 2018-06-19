@@ -84,14 +84,14 @@
         Abstain
       </strong>
     </p><p ng-if="av.assignmentPoll && av.assignmentPoll.pollmethod === 'votes'">
-      <translate>Your vote:</translate>
+      <translate>Your have voted for</translate>
       <strong>
         {{ getResultCandidate() }}
       </strong>
     </p><p ng-if="av.assignmentPoll && av.assignmentPoll.pollmethod !== 'votes'">
-      <translate>Your vote:</translate>
-      <div ng-repeat="option in av.assignmentPoll.options | orderBy: 'weight'">
-        <strong>{{ option.candidate.full_name }}</strong>:
+      <translate>Your have voted for</translate></br>
+      <span ng-repeat="option in av.assignmentPoll.options | orderBy: 'weight'">
+        {{ option.candidate.full_name }}:
         <span ng-if="resultVote[option.candidate.id] === 'Y'" translate>
           Yes
         </span>
@@ -101,7 +101,8 @@
         <span ng-if="resultVote[option.candidate.id] === 'A'" translate>
           Abstain
         </span>
-      </div>
+        </br>
+      </span>
     </p><p>
       <translate>You can validate your vote using your personal result token:</translate>
       <strong>

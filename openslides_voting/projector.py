@@ -1,3 +1,6 @@
+from django.conf import settings
+
+from openslides.assignments.models import AssignmentPoll
 from openslides.core.exceptions import ProjectorException
 from openslides.motions.models import MotionPoll
 from openslides.users.models import User
@@ -31,11 +34,12 @@ class MotionPollSlide(ProjectorElement):
             # MotionPoll does not exist. Just do nothing.
             pass
         else:
+            delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2)
+            yield motionpoll
             yield motionpoll.motion
             yield motionpoll.motion.agenda_item
-            # TODO: yield motionpoll.motion.category causes failure in function below
             yield AuthorizedVoters.objects.get()
-            yield from User.objects.filter(groups=2)
+            yield from User.objects.filter(groups=delegate_group_id)
             yield from Keypad.objects.all()
             yield from VotingProxy.objects.all()
             yield from VotingShare.objects.all()
@@ -71,10 +75,11 @@ class AssignmentPollSlide(ProjectorElement):
             # AssignmentPoll does not exist. Just do nothing.
             pass
         else:
+            delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2)
+            yield assignmentpoll
             yield assignmentpoll.assignment
             yield assignmentpoll.assignment.agenda_item
-            # TODO: yield assignmentpoll.assignment.category causes failure in function below
-            yield from User.objects.filter(groups=2)
+            yield from User.objects.filter(groups=delegate_group_id)
             yield from Keypad.objects.all()
             yield from VotingProxy.objects.all()
             yield from VotingShare.objects.all()

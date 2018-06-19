@@ -181,9 +181,37 @@ class BaseBallot:
 
     def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
         """
-        Helper function that creates or updates a poll ballot.
+        Creates or updates a ballot. Needs to be implemented by derived classes. The common
+        create/update logic is in _create_ballot_common. This should be called with the appropriate model.
         """
         raise NotImplementedError()
+
+    def _create_ballot_common(self, model, vote, delegate, result_token, is_authorized_voter):
+        """
+        Common helper function that creates or updates a poll ballot.
+        """
+        created = False
+        if not delegate:
+            # Anonymous delegate
+            ballot = model(poll=self.poll)
+            created = True
+        elif delegate.id in self.admitted_delegates or is_authorized_voter:
+            try:
+                ballot = model.objects.get(poll=self.poll, delegate=delegate)
+            except model.DoesNotExist:
+                ballot = model(poll=self.poll, delegate=delegate)
+                created = True
+            # Check, if this is a dummy vote. It is, if the delegate is not admitted, but authorized to vote
+            ballot.is_dummy = delegate.id not in self.admitted_delegates and is_authorized_voter
+        else:
+            # Delegate not admitted nor authorized.
+            return
+
+        ballot.vote = vote
+        ballot.result_token = result_token
+        ballot.save()
+        if created and not ballot.is_dummy:  # do not count dummies..
+            self.created += 1
 
 
 class MotionBallot(BaseBallot):
@@ -201,9 +229,9 @@ class MotionBallot(BaseBallot):
         collection_string = MotionPollBallot.get_collection_string()
         for pk in MotionPollBallot.objects.filter(poll=self.poll).values_list('pk', flat=True):
             deleted.append((collection_string, pk))
-        self.deleted, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
+        deleted_count, _ = MotionPollBallot.objects.filter(poll=self.poll).delete()
         inform_deleted_data(deleted)
-        return self.deleted
+        return deleted_count
 
     def create_absentee_ballots(self):
         """
@@ -218,7 +246,7 @@ class MotionBallot(BaseBallot):
         # Query absentee votes for given motion.
         qs_absentee_votes = MotionAbsenteeVote.objects.filter(motion=self.poll.motion, delegate__in=admitted_delegates)
 
-        self.updated = 0
+        updated = 0
         ballots = []
         delegate_ids = []
         for absentee_vote in qs_absentee_votes:
@@ -234,7 +262,7 @@ class MotionBallot(BaseBallot):
             else:
                 ballots.append(mpb)
             delegate_ids.append(mpb.delegate.id)
-            self.updated += 1
+            updated += 1
 
         # Bulk create ballots.
         MotionPollBallot.objects.bulk_create(ballots)
@@ -243,7 +271,7 @@ class MotionBallot(BaseBallot):
         created_ballots = MotionPollBallot.objects.filter(poll=self.poll, delegate_id__in=delegate_ids)
         inform_changed_data(created_ballots)
 
-        return self.updated
+        return updated
 
     def get_next_result_token(self):
         """
@@ -324,28 +352,7 @@ class MotionBallot(BaseBallot):
         """
         Creates or updates a motion poll ballot.
         """
-        created = False
-        if not delegate:
-            # Anonymous delegate
-            mpb = MotionPollBallot(poll=self.poll)
-            created = True
-        elif delegate.id in self.admitted_delegates or is_authorized_voter:
-            try:
-                mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=delegate)
-            except MotionPollBallot.DoesNotExist:
-                mpb = MotionPollBallot(poll=self.poll, delegate=delegate)
-                created = True
-            # Check, if this is a dummy vote. It is, if the delegate is not admitted, but authorized to vote
-            mpb.is_dummy = delegate.id not in self.admitted_delegates and is_authorized_voter
-        else:
-            # Delegate not admitted nor authorized.
-            return
-
-        mpb.vote = vote
-        mpb.result_token = result_token
-        mpb.save()
-        if created and not mpb.is_dummy:  # do not count dummies..
-            self.created += 1
+        self._create_ballot_common(MotionPollBallot, vote, delegate, result_token, is_authorized_voter)
 
 
 class AssignmentBallot(BaseBallot):
@@ -463,9 +470,7 @@ class AssignmentBallot(BaseBallot):
         votes = AssignmentPollBallot.objects.filter(poll=self.poll)
 
         shares = None
-        # try to find a voting principle
-        principle = VotingPrinciple.objects.filter(assignments=self.poll.assignment).first()
-        if principle is not None:
+        if self.principle is not None:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
             voting_shares = VotingShare.objects.filter(principle=principle)
@@ -517,27 +522,15 @@ class AssignmentBallot(BaseBallot):
 
         return result
 
-    def _create_ballot(self, vote, delegate=None, result_token=0, proxy_protected=None, skip_protected=False):
+    def _query_admitted_delegates(self):
         """
-        Helper function to actually create or update a ballot.
+        Returns a query set of admitted delegate ids. Excludes delegates who cast an absentee vote.
         """
-        created = False
-        if delegate is not None:
-            try:
-                apb = AssignmentPollBallot.objects.get(poll=self.poll, delegate=delegate)
-            except AssignmentPollBallot.DoesNotExist:
-                apb = AssignmentPollBallot(poll=self.poll, delegate=delegate)
-                created = True
-        else:
-            apb = AssignmentPollBallot(poll=self.poll)
-            created = True
+        qs = query_admitted_delegates(self.principle).exclude(assignmentabsenteevote__assignment=self.poll.assignment)
+        return qs.values_list('id', flat=True)
 
-        if skip_protected and apb.proxy_protected:
-            return apb, False
-
-        apb.vote = vote
-        apb.result_token = result_token
-        if proxy_protected is not None:
-            apb.proxy_protected = proxy_protected
-        apb.save()
-        return apb, created
+    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
+        """
+        Creates or updates an assignment poll ballot.
+        """
+        self._create_ballot_common(AssignmentPollBallot, vote, delegate, result_token, is_authorized_voter)

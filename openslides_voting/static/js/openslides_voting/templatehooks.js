@@ -15,6 +15,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'Keypad',
     'VotingProxy',
     'Delegate',
+    'Config',
     'UserForm',
     'DelegateForm',
     'PollCreateForm',
@@ -24,7 +25,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'Voter',
     'VotingSettings',
     function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
-        UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
+        Config, UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
         AssignmentPollType, Voter, VotingSettings) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',

@@ -111,6 +111,7 @@ class BaseBallot:
         self.poll = poll
         self.principle = principle
         self.admitted_delegates = self._query_admitted_delegates()
+        self.created = 0
 
     def delete_ballots(self):
         """
@@ -473,7 +474,7 @@ class AssignmentBallot(BaseBallot):
         if self.principle is not None:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
-            voting_shares = VotingShare.objects.filter(principle=principle)
+            voting_shares = VotingShare.objects.filter(principle=self.principle)
             shares = dict(voting_shares.values_list('delegate', 'shares'))
 
         options = AssignmentOption.objects.filter(poll=self.poll).order_by('weight').all()

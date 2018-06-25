@@ -86,8 +86,8 @@ class ValidationView(utils_views.View):
                 try:
                     keypad = Keypad.objects.get(number=vote['id'])
                 except Keypad.DoesNotExist:
-                    raise ValidationError({
-                        'detail': 'The keypad with id {} does not exist'.format(vote['id'])})
+                    # Keypad might have been deleted after voting has started.
+                    keypad = None
                 vote['keypad'] = keypad
             elif voting_type == 'token_based_electronic':  # Check, if a valid token is given
                 if not has_perm(user, 'openslides_voting.can_see_token_voting'):
@@ -104,6 +104,25 @@ class ValidationView(utils_views.View):
                 vote['token_instance'] = token_instance
 
         return votes
+
+    def update_keypads_from_votes(self, votes, voting_type):
+        """
+        Updates the keypds from votes. The voting type has to be a VoteCollector one.
+        The votes has to be validated first.
+        """
+        if voting_type in ('votecollector', 'votecollector_anonym'):
+            keypads = []
+            for vote in votes:
+                keypad = vote['keypad']
+                # Mark keypad as in range and update battery level.
+                if keypad:
+                    keypad.in_range = True
+                    keypad.battery_level = vote['bl']
+                    keypad.save(skip_autoupdate=True)
+                    keypads.append(keypad)
+
+            # Trigger auto-update for keypads.
+            inform_changed_data(keypads)
 
 
 class SubmitVotes(ValidationView):
@@ -190,6 +209,7 @@ class SubmitVotes(ValidationView):
         if votecollector:
             body = self.decrypt_votecollector_message(body)
         votes = self.validate_input_data(body, av.type, request.user)
+        self.update_keypads_from_votes(votes, av.type)
 
         if vc.voting_mode == 'MotionPoll':
             try:
@@ -249,16 +269,12 @@ class SubmitVotes(ValidationView):
             vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
         else:  # votecollector or votecollector_anonym
             for vote in votes:
-                # Mark keypad as in range and update battery level.
                 keypad = vote['keypad']
-                keypad.in_range = True
-                keypad.battery_level = vote['bl']
-                keypad.save()
-
                 user = None
                 if av.type == 'votecollector':  # vc with user
                     # Get delegate the keypad is assigned to.
-                    user = keypad.user
+                    if keypad:
+                        user = keypad.user
                     if user is None or str(user.id) not in av.authorized_voters:
                         # no or no valid user, skip the vote
                         continue
@@ -343,6 +359,7 @@ class SubmitCandidates(ValidationView):
             body = self.decrypt_votecollector_message(body)
         votes = self.validate_input_data(body, av.type, request.user)
         votes = self.validate_candidates_votes(votes, options, not votecollector)
+        self.update_keypads_from_votes(votes, av.type)
 
         result_token = 0
         result_vote = None
@@ -365,18 +382,13 @@ class SubmitCandidates(ValidationView):
                 voter=user,
                 result_token=result_token)
         else:  # votecollector or votecollector_anonym
-            keypad_set = set()
             for vote in votes:
-                # Mark keypad as in range and update battery level.
                 keypad = vote['keypad']
-                keypad.in_range = True
-                keypad.battery_level = vote['bl']
-                keypad.save()
-
                 user = None
                 if av.type == 'votecollector':  # vc with user
                     # Get delegate the keypad is assigned to.
-                    user = keypad.user
+                    if keypad:
+                        user = keypad.user
                     if user is None or str(user.id) not in av.authorized_voters:
                         # no or no valid user, skip the vote
                         continue
@@ -387,7 +399,6 @@ class SubmitCandidates(ValidationView):
                         vote['value'],
                         voter=user)
                     if ballots_created > 0:
-                        keypad_set.add(keypad.id)
                         vc.votes_received += ballots_created
 
         vc.save()
@@ -395,102 +406,32 @@ class SubmitCandidates(ValidationView):
             'result_token': result_token,
             'result_vote': result_vote})
 
-"""
-class VotingCallbackView(utils_views.View):
+
+class SubmitSpeaker(ValidationView):
     http_method_names = ['post']
 
-    def post(self, request, poll_id, keypad_id):
+    @transaction.atomic()
+    def post(self, request, item_id, keypad_number):
+        item_id = int(item_id)
+
+        # Validate voting mode.
+        vc = VotingController.objects.get()
+        if not vc.is_voting:
+            return HttpResponse(_('No active voting'))
+
+        if vc.voting_mode != 'Item' or item_id != vc.voting_target:
+            return HttpResponse(_('Invalid voting  mode or target'))
+
         # Get keypad.
         try:
-            keypad = Keypad.objects.get(number=keypad_id)
+            keypad = Keypad.objects.get(number=keypad_number)
         except Keypad.DoesNotExist:
-            return None
+            return HttpResponse(_('Keypad not      registered'))
 
         # Mark keypad as in range and update battery level.
         keypad.in_range = True
         keypad.battery_level = request.POST.get('battery', -1)
-        # Do not auto update here to improve performance.
-        keypad.save(skip_autoupdate=True)
-        return keypad
-
-
-class VoteCallback(VotingCallbackView):
-    @transaction.atomic
-    def post(self, request, poll_id, keypad_id):
-        keypad = super().post(request, poll_id, keypad_id)
-        if keypad is None:
-            return HttpResponse(_('Vote rejected'))
-
-        # Validate vote value.
-        value = request.POST.get('value')
-        if value not in ('Y', 'N', 'A'):
-            return HttpResponse(_('Vote invalid'))
-
-        # Save vote.
-        vc = VotingController.objects.get()
-        model = MotionPoll if vc.voting_mode == 'MotionPoll' else AssignmentPoll
-        try:
-            poll = model.objects.get(id=poll_id)
-        except model.DoesNotExist:
-            return HttpResponse(_('Vote rejected'))
-
-        if vc.voting_mode == 'MotionPoll':
-            ballot = MotionBallot(poll)
-            if ballot.register_vote(keypad_id, value) == 0:
-                return HttpResponse(_('Vote rejected'))
-
-        # Update votecollector.
-        vc.votes_received = request.POST.get('votes', 0)
-        vc.voting_duration = request.POST.get('elapsed', 0)
-        vc.save()
-
-        return HttpResponse(_('Vote submitted'))
-
-
-
-class CandidateCallback(VotingCallbackView):
-    @transaction.atomic()
-    def post(self, request, poll_id, keypad_id):
-        keypad = super().post(request, poll_id, keypad_id)
-        if keypad is None:
-            return HttpResponse(_('Vote rejected'))
-
-        # Get assignment poll.
-        try:
-            poll = AssignmentPoll.objects.get(id=poll_id)
-        except AssignmentPoll.DoesNotExist:
-            return HttpResponse(_('Vote rejected'))
-
-        # Validate vote value.
-        try:
-            key = int(request.POST.get('value'))
-        except ValueError:
-            return HttpResponse(_('Vote invalid'))
-        if key < 0 or key > 9:
-            return HttpResponse(_('Vote invalid'))
-
-        # Get the elected candidate.
-        candidate = None
-        if key > 0 and key <= poll.assignment.related_users.all().count():
-            candidate = AssignmentOption.objects.filter(poll=poll_id).order_by('weight').all()[key - 1].candidate
-
-        # TODO: Save candidate vote.
-
-        # Update votingcontroller.
-        vc = VotingController.objects.get()
-        vc.votes_received = request.POST.get('votes', 0)
-        vc.voting_duration = request.POST.get('elapsed', 0)
-        vc.save()
-
-        return HttpResponse(_('Vote submitted'))
-
-
-class SpeakerCallback(VotingCallbackView):
-    @transaction.atomic()
-    def post(self, request, item_id, keypad_id):
-        keypad = super().post(request, item_id, keypad_id)
-        if keypad is None:
-            return HttpResponse(_('Keypad not registered'))
+        keypad.save()
 
         # Anonymous users cannot be added or removed from the speaker list.
         if keypad.user is None:
@@ -499,69 +440,53 @@ class SpeakerCallback(VotingCallbackView):
         # Get agenda item.
         try:
             item = Item.objects.get(id=item_id)
-        except MotionPoll.DoesNotExist:
-            return HttpResponse(_('No agenda item selected'))
+        except Item.DoesNotExist:
+            return HttpResponse(_('Invalid agenda  item'))
 
-        # Add keypad user to the speaker list.
         value = request.POST.get('value')
         if value == 'Y':
+            # Add keypad user to "next speakers" if not already on the list (begin_time=None).
             try:
-                # Add speaker to "next speakers" if not already on the list (begin_time=None).
                 Speaker.objects.add(keypad.user, item)
             except OpenSlidesError:
                 # User is already on the speaker list.
                 pass
             content = _('Added to        speakers list')
-        # Remove keypad user from the speaker list.
         elif value == 'N':
-            # Remove speaker if on "next speakers" list (begin_time=None, end_time=None).
-            queryset = Speaker.objects.filter(user=keypad.user, item=item, begin_time=None, end_time=None)
-            try:
-                # We assume that there aren't multiple entries because this
-                # is forbidden by the Manager's add method. We assume that
-                # there is only one speaker instance or none.
-                speaker = queryset.get()
-            except Speaker.DoesNotExist:
-                content = _('Does not exist  on speakers list')
-            else:
+            # Remove keypad user if on "next speakers" list (begin_time=None, end_time=None).
+            speaker = Speaker.objects.filter(user=keypad.user, item=item, begin_time=None, end_time=None).first()
+            if speaker:
                 speaker.delete()
                 content = _('Removed from    speakers list')
+            else:
+                content = _('Does not exist  on speakers list')
         else:
             content = _('Invalid entry')
+
+        # Return response with content to be displayed on keypad.
+        # Content contains extra whitespace for formatting purposes, e.g. to force a linefeed.
+        # Engage keypads have a line width 0f 16 characters.
         return HttpResponse(content)
 
 
-class Keypads(utils_views.View):
+class SubmitKeypads(ValidationView):
     http_method_names = ['post']
 
-    def post(self, request):
-        # Load json list from request body.
-        votes = json.loads(request.body.decode('utf-8'))
-        keypads = []
-        for vote in votes:
-            keypad_id = vote['id']
-            try:
-                keypad = Keypad.objects.get(number=keypad_id)
-            except Keypad.DoesNotExist:
-                continue
-
-            # Mark keypad as in range and update battery level.
-            keypad.in_range = True
-            keypad.battery_level = vote['bl']
-            keypad.save(skip_autoupdate=True)
-            keypads.append(keypad)
-
-        # Trigger auto-update.
-        inform_changed_data(keypads)
-
-        return HttpResponse()
-
-
-class KeypadCallback(VotingCallbackView):
     @transaction.atomic()
-    def post(self, request, poll_id=0, keypad_id=0):
-        keypad = super().post(request, poll_id, keypad_id)
-        if keypad:
-            inform_changed_data(keypad)
+    def post(self, request):
+        # Validate voting mode.
+        vc = VotingController.objects.get()
+        if not vc.is_voting:
+            raise ValidationError({'detail': 'No currently active voting.'})
+
+        if vc.voting_mode != 'ping':
+            raise ValidationError({'detail': 'Invalid voting mode.'})
+
+        # Get request content.
+        body = self.decrypt_votecollector_message(request.body)
+
+        # Validate marks keypads as in range and updates battery levels.
+        self.validate_input_data(body, 'votecollector', request.user)
+        self.update_keypads_from_votes(body, 'votecollector')
+
         return HttpResponse()
-"""

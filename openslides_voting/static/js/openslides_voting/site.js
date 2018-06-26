@@ -1397,7 +1397,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Keypad',
     'User',
     'VotingController',
-    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VotingController) {
+    'ErrorMessage',
+    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VotingController, ErrorMessage) {
         //Keypad.bindAll({}, $scope, 'keypads');
         // User.bindAll({}, $scope, 'users');
         VotingController.bindOne(1, $scope, 'vc');
@@ -1483,38 +1484,34 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.startSystemTest = function () {
             $scope.device = null;
 
-            angular.forEach($scope.keypads, function (keypad) {
+            _.forEach($scope.keypads, function (keypad) {
                 keypad.in_range = false;
                 keypad.battery_level = -1;
             });
 
+            // Get votecollector device status.
             $http.post('/rest/openslides_voting/voting-controller/1/update_votecollector_device_status/').then(
                 function (success) {
-                    if (success.data.error) {
-                        $scope.device = success.data.error;
-                    } else {
-                        $scope.device = success.data.device;
-                        if (success.data.connected) {
-                            $http.post('/rest/openslides_voting/voting-controller/1/ping_votecollector/').then(
-                                function (success) {
-                                    if (success.data.error) {
-                                        $scope.device = success.data.error;
+                    $scope.device = success.data.device;
+                    if (success.data.connected) {
+                        // Ping votecollector keypads.
+                        $http.post('/rest/openslides_voting/voting-controller/1/ping_votecollector/').then(
+                            function (success) {
+                                // Stop pinging after 30 seconds if still running.
+                                $timeout(function () {
+                                    if ($scope.vc.is_voting && $scope.vc.voting_mode === 'ping') {
+                                        $scope.stopSystemTest();
                                     }
-                                    else {
-                                        // Stop test after 30 sec.
-                                        $timeout(function () {
-                                            if ($scope.vc.is_voting && $scope.vc.voting_mode == 'ping') {
-                                                $scope.stopSysTest();
-                                            }
-                                        }, 30000);
-                                    }
-                                }
-                            );
-                        }
-                     }
+                                }, 30000);
+                            },
+                            function (error) {
+                                $scope.device = ErrorMessage.forAlert(error).msg;
+                            }
+                        );
+                    }
                 },
-                function (failure) {
-                    $scope.device = $scope.vc.getErrorMessage(failure.status, failure.statusText);
+                function (error) {
+                    $scope.device = ErrorMessage.forAlert(error).msg;
                 }
             );
         };
@@ -2128,12 +2125,15 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 };
 
                 $scope.isThisPollActive = function () {
-                    return $scope.vc.voting_mode == modelName &&
-                        $scope.vc.voting_target == $scope.poll.id;
+                    return $scope.vc && $scope.vc.voting_mode === modelName &&
+                        $scope.vc.voting_target === $scope.poll.id;
                 };
 
                 $scope.canClearVotes = function () {
-                    return $scope.vc && !$scope.vc.is_voting && $scope.poll.votescast !== null;
+                    // If votes were cast and voting is not active for this poll.
+                    return $scope.vc && $scope.poll.votescast !== null &&
+                        (!$scope.vc.is_voting || $scope.vc.voting_mode !== modelName ||
+                        $scope.vc.voting_target !== $scope.poll.id);
                 };
 
                 $scope.startVoting = function () {
@@ -2176,17 +2176,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 };
 
                 $scope.getDefaultVotingStatus = function () {
-                    if ($scope.vc.voting_mode == 'ping') {
+                    if ($scope.vc.voting_mode === 'ping') {
                         return gettextCatalog.getString('System test is running.');
                     }
-                    if ($scope.vc.voting_mode == 'Item') {
+                    if ($scope.vc.voting_mode === 'Item') {
                         return gettextCatalog.getString('Speakers voting is running for agenda item') + ' ' +
                             $scope.vc.voting_target + '.';
                     }
-                    if ($scope.vc.voting_mode == 'AssignmentPoll') {
+                    if ($scope.vc.voting_mode === 'AssignmentPoll') {
                         return gettextCatalog.getString('An election is running.');
                     }
-                    if ($scope.vc.voting_mode == 'MotionPoll') {
+                    if ($scope.vc.voting_mode === 'MotionPoll') {
                         return gettextCatalog.getString('A motion voting is running.');
                     }
                 };
@@ -2197,7 +2197,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         var requestData = {
                             clear_ids: isProjectedIds,
                         };
-                        if (_.indexOf(isProjectedIds, projectorId) == -1) {
+                        if (_.indexOf(isProjectedIds, projectorId) === -1) {
                             requestData.prune = {
                                 id: projectorId,
                                 element: {
@@ -2257,8 +2257,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         $scope.canStartVoting = function () {
-            return $scope.vc && $scope.poll.votescast === null &&
-                (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode == 'ping');
+            return $scope.vc && $scope.poll.votescast === null && !$scope.vc.is_voting;
         };
 
         $scope.enterResults = function (success) {
@@ -2266,7 +2265,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.poll.yes = success.data.Y[1];
             $scope.poll.no = success.data.N[1];
             $scope.poll.abstain = success.data.A[1];
-            $scope.poll.votesvalid = success.data.valid[1]
+            $scope.poll.votesvalid = success.data.valid[1];
             $scope.poll.votesinvalid = success.data.invalid[1];
             $scope.poll.votescast = success.data.casted[1];
 
@@ -2283,8 +2282,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             if (!$scope.vc || !$scope.vc.is_voting) {
                 return '';
             }
-            if ($scope.vc.voting_mode == 'MotionPoll') {
-                if ($scope.vc.voting_target != $scope.poll.id) {
+            if ($scope.vc.voting_mode === 'MotionPoll') {
+                if ($scope.vc.voting_target !== $scope.poll.id) {
                     return gettextCatalog.getString('Another motion voting is running.');
                 }
                 var msg =  gettextCatalog.getString('Votes received:') + ' ' +
@@ -2338,8 +2337,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             var pollTypeIsVc = (pollType === 'votecollector' || pollType === 'votecollector_anonym');
             var vcOk = (!pollTypeIsVc || $scope.poll.pollmethod === 'votes' ||
                 ($scope.poll.pollmethod === 'yna' && $scope.poll.options.length === 1));
-            return vcOk && $scope.vc && $scope.poll.votescast === null &&
-                    (!$scope.vc.is_voting || $scope.vc.voting_mode == 'Item' || $scope.vc.voting_mode === 'ping');
+            return vcOk && $scope.vc && $scope.poll.votescast === null && !$scope.vc.is_voting;
         };
 
         $scope.enterResults = function (success) {
@@ -2376,8 +2374,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             if (!$scope.vc || !$scope.vc.is_voting) {
                 return '';
             }
-            if ($scope.vc.voting_mode == 'AssignmentPoll') {
-                if ($scope.vc.voting_target != $scope.poll.id) {
+            if ($scope.vc.voting_mode === 'AssignmentPoll') {
+                if ($scope.vc.voting_target !== $scope.poll.id) {
                     return gettextCatalog.getString('Another election is running.');
                 }
                 var msg =  gettextCatalog.getString('Votes received:') + ' ' +
@@ -2397,54 +2395,39 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$scope',
     '$http',
     'VotingController',
-    function ($scope, $http, VotingController) {
+    'ErrorMessage',
+    function ($scope, $http, VotingController, ErrorMessage) {
         VotingController.bindOne(1, $scope, 'vc');
 
         $scope.canStartVoting = function () {
-            return (!$scope.vc.is_voting ||
-                    ($scope.vc.voting_mode == 'Item' && $scope.vc.voting_target != $scope.item.id) ||
-                    $scope.vc.voting_mode == 'ping');
+            return $scope.vc && !$scope.vc.is_voting;
         };
 
         $scope.canStopVoting = function () {
-            return $scope.vc.is_voting && $scope.vc.voting_mode == 'Item' &&
-                $scope.vc.voting_target == $scope.item.id;
+            return $scope.vc && $scope.vc.is_voting;
+        };
+
+        $scope.isThisPollActive = function () {
+            return $scope.vc && $scope.vc.voting_mode === 'Item' &&
+                $scope.vc.voting_target === $scope.item.id;
         };
 
         $scope.startVoting = function () {
-            $scope.vcAlert = {};
+            $scope.$parent.$parent.$parent.alert = {};
+
             $http.post('/rest/openslides_voting/voting-controller/1/start_speaker_list/', {
                 item_id: $scope.item.id,
-            }).then(
-                function (success) {
-                    if (success.data.error) {
-                        $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
-                    }
-                },
-                function (failure) {
-                    $scope.vcAlert = {
-                        type: 'danger',
-                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
-                        show: true };
-                }
-            );
+            }).then(null, function (error) {
+                $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+            });
         };
 
         $scope.stopVoting = function () {
-            $scope.vcAlert = {};
-            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(
-                function (success) {
-                    if (success.data.error) {
-                        $scope.vcAlert = { type: 'danger', msg: success.data.error, show: true };
-                    }
-                },
-                function (failure) {
-                    $scope.vcAlert = {
-                        type: 'danger',
-                        msg: $scope.vc.getErrorMessage(failure.status, failure.statusText),
-                        show: true };
-                }
-            );
+            $scope.$parent.$parent.$parent.alert = {};
+
+            $http.post('/rest/openslides_voting/voting-controller/1/stop/').then(null, function (error) {
+                $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+            });
         };
     }
 ])

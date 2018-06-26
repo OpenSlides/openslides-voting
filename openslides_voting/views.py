@@ -87,11 +87,10 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
     def check_view_permissions(self):
         """
-        Just allow listing. The one and only votingcontroller is created
-        during migrations.
+        The one and only voting controller is created during migrations.
         """
         if self.action in ('list', 'retrieve', 'start_motion', 'start_assignment',
-                'start_list_speakers', 'results_motion_votes', 'results_assignment_votes',
+                'start_speaker_list', 'results_motion_votes', 'results_assignment_votes',
                 'clear_motion_votes', 'clear_assignment_votes', 'stop',
                 'update_votecollector_device_status', 'ping_votecollector'):
             return self.get_access_permissions().check_permissions(self.request.user)
@@ -230,8 +229,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             url = rpc.get_callback_url(request) + votecollector_resource
             url += '%s/' % poll_id
 
-            print(votecollector_mode)
-
             try:
                 vc.votes_count, vc.device_status = rpc.start_voting(votecollector_mode, url, votecollector_options)
             except rpc.VoteCollectorError as e:
@@ -292,19 +289,32 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
     @detail_route(['post'])
     def start_speaker_list(self,request, **kwargs):
         """
-        Starts a voting for the speakers list. Give the item id by:
-        {item_id: item_id}
+        Starts a voting for the speakers list. The item id has to be given as the only argument:
+        {item_id: <item_id>}
         """
-        vs = self.get_object()
+        # Requires the votecollector.
+        if not config['voting_enable_votecollector']:
+            raise ValidationError({'detail': 'The VoteCollector is not enabled'})
+
+        vc = self.get_object()
         item, item_id = self.get_request_object(request, Item, attr_name='item_id')
 
+        # Stop any active voting no matter what mode.
         self.force_stop_active_votecollector()
+
         url = rpc.get_callback_url(request) + '/speaker/' + str(item_id) + '/'
 
         try:
-            vc.votes_count, self.vc.device_status = rpc.start_voting('SpeakerList', url)
+            vc.votes_count, vc.device_status = rpc.start_voting('SpeakerList', url)
         except rpc.VoteCollectorError as e:
             raise ValidationError({'detail': e.value})
+
+        vc.voting_mode = 'Item'
+        vc.voting_target = item_id
+        vc.votes_received = 0
+        vc.is_voting = True
+        vc.principle = None
+        vc.save()
 
         projector = Projector.objects.get(id=1)
         projector.config[self.prompt_key] = {
@@ -312,12 +322,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             'stable': True
         }
         projector.save(information={'voting_prompt': True})
-
-        self.vc.voting_mode = 'SpeakerList'
-        self.vc.voting_target = item_id
-        self.vc.votes_received = 0
-        self.vc.is_voting = True
-        self.vc.save()
 
         return Response()
 
@@ -432,11 +436,10 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             raise ValidationError({'detail': _('The object does not exist.')})
         return obj, obj_id
 
-
     @detail_route(['post'])
     def update_votecollector_device_status(self, request, **kwargs):
         """
-        Queries the device status from the votecollector. Also updates the device_status
+        Gets the device status from the votecollector. Updates the device_status
         field from the votingcontroller.
         """
         if not config['voting_enable_votecollector']:
@@ -448,23 +451,27 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         except rpc.VoteCollectorError as e:
             vc.device_status = e.value
             vc.save()
-            return Response({'error': e.value})
+            raise ValidationError({'detail': e.value})
 
+        # Typical status messages: 'Device: None. Status: Disconnected', 'Device: Simulator. Status: Connected'
         vc.device_status = status
         vc.save()
         return Response({
             'device': status,
-            'connected': not status.startswith('Device: None')})
+            'connected': ' connected' in status.lower()
+        })
 
     @detail_route(['post'])
     def ping_votecollector(self,request, **kwargs):
         """
-        Starts a ping to the votecollector.
+        Starts pinging votecollector keypads.
         """
         if not config['voting_enable_votecollector']:
             raise ValidationError({'detail': _('The VoteCollector is not enabled.')})
 
         vc = self.get_object()
+
+        # Stop any active voting no matter what mode.
         self.force_stop_active_votecollector()
         url = rpc.get_callback_url(request) + '/keypad/'
 
@@ -474,21 +481,25 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             raise ValidationError({'detail': e.value})
 
         # Clear in_range and battery_level of all keypads.
-        Keypad.objects.all().update(in_range=False, battery_level=-1)
         # We intentionally do not trigger an autoupdate.
+        Keypad.objects.all().update(in_range=False, battery_level=-1)
 
         vc.voting_mode = 'ping'
         vc.voting_target = vc.votes_received = 0
         vc.is_voting = True
+        vc.voting_principle = None
         vc.save()
 
         return Response()
 
     def force_stop_active_votecollector(self):
+        """
+        Stops any orphaned votecollector voting.
+        """
         if config['voting_enable_votecollector']:
             try:
                 rpc.stop_voting()
-            except rpc.VoteCollectorError as e:
+            except rpc.VoteCollectorError:
                 pass
 
 

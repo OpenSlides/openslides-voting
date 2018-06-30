@@ -9,13 +9,32 @@ def get_config_variables():
     Generator which yields all config variables of this app.
     It has to be evaluated during app loading (see apps.py).
     """
+    # General
     yield ConfigVariable(
         name='voting_enable_votecollector',
         default_value=False,
         input_type='boolean',
         label='Enable VoteCollector',
         weight=615,
-        group='Voting',
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
+    yield ConfigVariable(
+        name='voting_enable_proxies',
+        default_value=False,
+        input_type='boolean',
+        label='Enable proxies and absentee votes',
+        weight=616,
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
+    yield ConfigVariable(
+        name='voting_enable_principles',
+        default_value=False,
+        input_type='boolean',
+        label='Enable shares and principles',
+        weight=617,
+        group='OpenSlides-Voting',
         subgroup='General'
     )
     choices = [{'value': c[0], 'display_name': c[1]} for c in POLLTYPES]
@@ -26,25 +45,7 @@ def get_config_variables():
         label='Default voting type',
         choices=choices,
         weight=620,
-        group='Voting',
-        subgroup='General'
-    )
-    yield ConfigVariable(
-        # TODO: Use URL validator.
-        name='voting_votecollector_uri',
-        default_value='http://localhost:8030',
-        label='VoteCollector URL',
-        help_text='Example: http://localhost:8030',
-        weight=630,
-        group='Voting',
-        subgroup='General'
-    )
-    yield ConfigVariable(
-        name='voting_start_prompt',
-        default_value=ugettext_noop('Please vote now!'),
-        label='Voting start prompt (projector overlay message)',
-        weight=640,
-        group='Voting',
+        group='OpenSlides-Voting',
         subgroup='General'
     )
     yield ConfigVariable(
@@ -53,10 +54,32 @@ def get_config_variables():
         input_type='boolean',
         label='Use countdown timer',
         help_text='Auto-start and stop a countdown timer when voting starts and stops.',
-        weight=650,
-        group='Voting',
+        weight=630,
+        group='OpenSlides-Voting',
         subgroup='General'
     )
+
+    # VoteCollector
+    yield ConfigVariable(
+        # TODO: Use URL validator.
+        name='voting_votecollector_uri',
+        default_value='http://localhost:8030',
+        label='VoteCollector URL',
+        help_text='Example: http://localhost:8030',
+        weight=640,
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
+    yield ConfigVariable(
+        name='voting_start_prompt',
+        default_value=ugettext_noop('Please vote now!'),
+        label='Voting start prompt (projector overlay message)',
+        weight=650,
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
+
+    # Delegate board
     yield ConfigVariable(
         name='voting_show_delegate_board',
         default_value=True,
@@ -64,7 +87,7 @@ def get_config_variables():
         label='Show delegate board',
         help_text='Show incoming votes on a delegate board on the projector.',
         weight=660,
-        group='Voting',
+        group='OpenSlides-Voting',
         subgroup='Projector delegate board'
     )
     yield ConfigVariable(
@@ -73,7 +96,7 @@ def get_config_variables():
         input_type='integer',
         label='Delegate board columns',
         weight=670,
-        group='Voting',
+        group='OpenSlides-Voting',
         subgroup='Projector delegate board'
     )
     yield ConfigVariable(
@@ -87,7 +110,7 @@ def get_config_variables():
             {'value': 'full_name', 'display_name': 'Full name. Example: Smith John'},
         ),
         weight=680,
-        group='Voting',
+        group='OpenSlides-Voting',
         subgroup='Projector delegate board'
     )
     yield ConfigVariable(
@@ -97,6 +120,6 @@ def get_config_variables():
         label='Vote anonymously',
         help_text='Keep individual voting behaviour secret on delegate board by using a single colour.',
         weight=690,
-        group='Voting',
+        group='OpenSlides-Voting',
         subgroup='Projector delegate board'
     )

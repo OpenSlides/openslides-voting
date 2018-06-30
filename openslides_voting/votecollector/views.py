@@ -100,7 +100,7 @@ class ValidationView(utils_views.View):
                 try:
                     token_instance = VotingToken.objects.get(token=token)
                 except VotingToken.DoesNotExist:
-                    raise ValidationError({'detail': 'The token is not valid.'})
+                    raise ValidationError({'detail': 'The voting token is not valid.'})
                 vote['token_instance'] = token_instance
 
         return votes

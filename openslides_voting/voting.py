@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from django.conf import settings
 from openslides.assignments.models import AssignmentOption
+from openslides.core.config import config
 from openslides.users.models import User
 from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
 
@@ -23,7 +23,7 @@ def find_authorized_voter(delegate, proxies=None):
     :param proxies: List of proxy IDs found so far, used to eliminate circular references
     :return: authorized user (the last one in the proxy chain)
     """
-    if hasattr(delegate, 'votingproxy'):
+    if hasattr(delegate, 'votingproxy') and config['voting_enable_proxies']:
         representative = delegate.votingproxy.proxy
         if proxies is None:
             proxies = []
@@ -61,11 +61,14 @@ def get_admitted_delegates(principle, keypad=False, *order_by):
     if order_by:
         qs_delegates = qs_delegates.order_by(*order_by)
 
+    # check for keypad, if requested and votecollector is enabled.
+    check_for_keypad = keypad and config['voting_enable_votecollector']
+
     # Only admit those delegates whose authorized voter is present with keypad assigned.
     count = 0
     for delegate in qs_delegates.select_related('votingproxy', 'keypad'):
         auth_voter = find_authorized_voter(delegate)
-        if auth_voter and auth_voter.is_present and (not keypad or hasattr(auth_voter, 'keypad')):
+        if auth_voter and auth_voter.is_present and (not check_for_keypad or hasattr(auth_voter, 'keypad')):
             key = auth_voter.id
             if key in admitted:
                 admitted[key].append(delegate.id)
@@ -87,12 +90,14 @@ def query_admitted_delegates(principle=None):
     :param principle: Principle or None.
     :return: queryset
     """
-    delegate_group_id = getattr(settings, 'DELEGATE_GROUP_ID', 2)
-    qs = User.objects.filter(groups=delegate_group_id)
-    if VotingShare.objects.exists():
-        qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
-    if principle:
-        qs = qs.filter(shares__principle=principle)
+    qs = User.objects.filter(groups__permissions__codename='can_vote')
+
+    # restrict delegates with shares and principles, if enabled.
+    if config['voting_enable_principles']:
+        if VotingShare.objects.exists():
+            qs = qs.filter(shares__shares__gt=0).distinct()  # distinct is required to eliminate duplicates
+        if principle:
+            qs = qs.filter(shares__principle=principle)
     return qs
 
 
@@ -176,7 +181,7 @@ class BaseBallot:
         Helper function that recursively creates ballots for a voter and his mandates.
         """
         self._create_ballot(vote, voter, result_token, is_authorized_voter)
-        if voter:
+        if voter and config['voting_enable_proxies']:
             for proxy in voter.mandates.all():
                 self._register_vote_and_proxy_votes(vote, proxy.delegate, result_token)
 
@@ -297,7 +302,7 @@ class MotionBallot(BaseBallot):
         votes = MotionPollBallot.objects.filter(poll=self.poll).values_list('delegate', 'vote')
 
         shares = None
-        if self.principle:
+        if self.principle and config['voting_enable_principles']:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
             voting_shares = VotingShare.objects.filter(principle=self.principle)
@@ -346,7 +351,9 @@ class MotionBallot(BaseBallot):
         """
         Returns a query set of admitted delegate ids. Excludes delegates who cast an absentee vote.
         """
-        qs = query_admitted_delegates(self.principle).exclude(motionabsenteevote__motion=self.poll.motion)
+        qs = query_admitted_delegates(self.principle)
+        if config['voting_enable_proxies']:
+            qs = qs.exclude(motionabsenteevote__motion=self.poll.motion)
         return qs.values_list('id', flat=True)
 
     def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
@@ -471,7 +478,7 @@ class AssignmentBallot(BaseBallot):
         votes = AssignmentPollBallot.objects.filter(poll=self.poll)
 
         shares = None
-        if self.principle is not None:
+        if self.principle and config['voting_enable_principles']:
             # Create a dict (key: delegate, value: shares).
             # Example: {1: Decimal('1.000000'), 2: Decimal('45.120000')}
             voting_shares = VotingShare.objects.filter(principle=self.principle)
@@ -527,7 +534,9 @@ class AssignmentBallot(BaseBallot):
         """
         Returns a query set of admitted delegate ids. Excludes delegates who cast an absentee vote.
         """
-        qs = query_admitted_delegates(self.principle).exclude(assignmentabsenteevote__assignment=self.poll.assignment)
+        qs = query_admitted_delegates(self.principle)
+        if config['voting_enable_proxies']:
+            qs = qs.exclude(assignmentabsenteevote__assignment=self.poll.assignment)
         return qs.values_list('id', flat=True)
 
     def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):

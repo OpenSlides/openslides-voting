@@ -172,11 +172,9 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
     'gettextCatalog',
     function (PDFLayout, Barcode, gettextCatalog) {
         var createInstance = function (tokens) {
-             // Title
-            var pdfTitle = PDFLayout.createTitle(gettextCatalog.getString('Tokens'));
 
             var tokenTables = function () {
-                var tokensPerPage = 6; // This needs to be fitted to the dimensions of
+                var tokensPerPage = 8; // This needs to be fitted to the dimensions of
                 // the barcode below. If there are more barcodes then a page can
                 // take, the text will be shifted up or down, because pagebreaks
                 // in the columns are different.
@@ -191,22 +189,21 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                                     headerRows: 1,
                                     body: currentTableBody,
                                 },
-                                layout: 'headerLineOnly'
+                                layout: 'noBorders',
                             });
                             tables.push({
                                 text: '',
                                 pageBreak: 'after',
                             });
                         }
+                        // An empty table head
                         currentTableBody = [
                             [
                                 {
                                     text: '',
-                                    style: 'tableHeader'
                                 },
                                 {
                                     text: '',
-                                    style: 'tableHeader'
                                 }
                             ]
                         ];
@@ -215,7 +212,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                             {
                                 text: token,
                                 fontSize: 16,
-                                margin: [5, 35, 0, 0], // left, top, right, bottom
+                                margin: [50, 35, 0, 0], // left, top, right, bottom
                             },
                             {
                                 image: Barcode.getBase64(token, {
@@ -236,7 +233,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                             headerRows: 1,
                             body: currentTableBody,
                         },
-                        layout: 'headerLineOnly'
+                        layout: 'noBorders',
                     });
                 }
 
@@ -245,13 +242,42 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
 
             return {
                 getContent: function () {
-                    return _.concat([pdfTitle], tokenTables());
-                }
+                    return tokenTables();
+                },
             };
         };
 
         return {
             createInstance: createInstance,
+        };
+    }
+])
+
+.factory('TokenDocumentProvider', [
+    function () {
+        var createInstance = function(contentProvider) {
+            var getDocument = function() {
+                var content = contentProvider.getContent();
+                return {
+                    pageSize: 'A4',
+                    pageMargins: [10, 10, 10, 10],
+                    defaultStyle: {
+                        font: 'PdfFont',
+                        fontSize: 10
+                    },
+                    content: content,
+                };
+            };
+
+            return {
+                getDocument: getDocument,
+                getImageMap: function () {
+                    return {};
+                },
+            };
+        };
+        return {
+            createInstance: createInstance
         };
     }
 ]);

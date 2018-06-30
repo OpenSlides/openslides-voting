@@ -72,6 +72,28 @@ class PermissionMixin:
     def check_view_permissions(self):
         return self.get_access_permissions().check_permissions(self.request.user)
 
+# This mixin checks, if the votecollector is enabled.
+class VoteCollectorPermissionMixin:
+    def check_view_permissions(self):
+        if not config['voting_enable_votecollector']:
+            raise ValidationError({'detail': 'The votecollector is not enabled.'})
+        return self.get_access_permissions().check_permissions(self.request.user)
+
+
+# Here, the access for proxies and absentee votes is limited.
+class ProxiesPermissionMixin:
+    def check_view_permissions(self):
+        if not config['voting_enable_proxies']:
+            raise ValidationError({'detail': 'The shares and proxies are not enabled.'})
+        return self.get_access_permissions().check_permissions(self.request.user)
+
+# Here, the access for shares and principles is limited.
+class PrinciplesPermissionMixin:
+    def check_view_permissions(self):
+        if not config['voting_enable_principles']:
+            raise ValidationError({'detail': 'The absentee votes are not enabled.'})
+        return self.get_access_permissions().check_permissions(self.request.user)
+
 
 class AuthorizedVotersViewSet(PermissionMixin, ModelViewSet):
     access_permissions = AuthorizedVotersAccessPermissions()
@@ -217,7 +239,9 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
         # Delete all old votes and create absentee ballots
         ballot.delete_ballots()
-        absentee_ballots_created = ballot.create_absentee_ballots()
+        absentee_ballots_created = 0
+        if config['voting_enable_proxies']:
+            absentee_ballots_created = ballot.create_absentee_ballots()
 
         if voting_type in ('votecollector', 'votecollector_anonym'):
             if not config['voting_enable_votecollector']:
@@ -248,6 +272,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         vc.voting_mode = model.__name__
         vc.voting_target = poll_id
         vc.votes_received = absentee_ballots_created
+        vc.votes_count += absentee_ballots_created
         vc.is_voting = True
         vc.principle = principle
         vc.save()
@@ -503,12 +528,12 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 pass
 
 
-class KeypadViewSet(PermissionMixin, ModelViewSet):
+class KeypadViewSet(VoteCollectorPermissionMixin, ModelViewSet):
     access_permissions = KeypadAccessPermissions()
     queryset = Keypad.objects.all()
 
 
-class VotingPrincipleViewSet(PermissionMixin, ModelViewSet):
+class VotingPrincipleViewSet(PrinciplesPermissionMixin, ModelViewSet):
     access_permissions = VotingPrincipleAccessPermissions()
     queryset = VotingPrinciple.objects.all()
 
@@ -546,22 +571,22 @@ class VotingPrincipleViewSet(PermissionMixin, ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 
-class VotingShareViewSet(PermissionMixin, ModelViewSet):
+class VotingShareViewSet(PrinciplesPermissionMixin, ModelViewSet):
     access_permissions = VotingShareAccessPermissions()
     queryset = VotingShare.objects.all()
 
 
-class VotingProxyViewSet(PermissionMixin, ModelViewSet):
+class VotingProxyViewSet(ProxiesPermissionMixin, ModelViewSet):
     access_permissions = VotingProxyAccessPermissions()
     queryset = VotingProxy.objects.all()
 
 
-class MotionAbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
+class MotionAbsenteeVoteViewSet(ProxiesPermissionMixin, ModelViewSet):
     access_permissions = MotionAbsenteeVoteAccessPermissions()
     queryset = MotionAbsenteeVote.objects.all()
 
 
-class AssignmentAbsenteeVoteViewSet(PermissionMixin, ModelViewSet):
+class AssignmentAbsenteeVoteViewSet(ProxiesPermissionMixin, ModelViewSet):
     access_permissions = AssignmentAbsenteeVoteAccessPermissions()
     queryset = AssignmentAbsenteeVote.objects.all()
 
@@ -663,7 +688,7 @@ class AssignmentPollTypeViewSet(BasePollTypeViewSet):
     queryset = AssignmentPollType.objects.all()
 
 
-class AttendanceLogViewSet(PermissionMixin, ModelViewSet):
+class AttendanceLogViewSet(VoteCollectorPermissionMixin, ModelViewSet):
     access_permissions = AttendanceLogAccessPermissions()
     queryset = AttendanceLog.objects.all()
 
@@ -742,6 +767,9 @@ class AttendanceView(View):
     http_method_names = ['get']
 
     def get(self, request):
+        if not config['voting_enable_votecollector']:
+            return JsonResponse({'detail': _('The votecollector is not active')})
+
         total_shares = {
             'heads': [0, 0, 0, 0]  # [all, attending, in person, represented]
         }

@@ -23,10 +23,11 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
     'MotionPollType',
     'AssignmentPollType',
     'Voter',
-    'VotingSettings',
+    'VotingPrinciple',
+    'ErrorMessage',
     function ($http, templateHooks, operator, User, Keypad, VotingProxy, Delegate,
         Config, UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
-        AssignmentPollType, Voter, VotingSettings) {
+        AssignmentPollType, Voter, VotingPrinciple, ErrorMessage) {
         templateHooks.registerHook({
             id: 'motionPollFormButtons',
             templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
@@ -44,6 +45,14 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 }, function () {
                     var pollTypes = MotionPollType.filter({poll_id: scope.poll.id});
                     scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                });
+                scope.$watch(function () {
+                    return VotingPrinciple.lastModified();
+                }, function () {
+                    scope.hasPrinciple = _.some(VotingPrinciple.getAll(), function (p) {
+                        return _.includes(p.motions_id, scope.poll.motion.id);
+                    });
                 });
             },
         });
@@ -77,7 +86,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             scope: function (scope) {
                 return {
                     updateTableStats: function () {
-                        var delegateCount = User.filter({groups_id: VotingSettings.delegateGroupId}).length;
+                        var delegateCount = Delegate.getDelegates().length;
                         scope.attendingCount = Keypad.filter({ 'user.is_present': true }).length;
                         scope.representedCount = VotingProxy.getAll().length;
                         scope.absentCount = Math.max(0,
@@ -87,19 +96,31 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             },
         });
         templateHooks.registerHook({
-            id: 'userListSubmenuRight',
-            template: '<button class="btn btn-default btn-sm spacer-right pull-right"' +
-                        'ng-click="filter.multiselectFilters.group = [' +
-                        VotingSettings.delegateGroupId + ']" type="button">' +
-                        '<translate>Show delegates</translate>' +
-                      '</button>',
-        });
-        templateHooks.registerHook({
             id: 'motionPollNewVoteButton',
             scope: function (scope) {
                 scope.create_poll = function () {
                     if (operator.hasPerms('openslides_voting.can_manage')) {
-                        ngDialog.open(PollCreateForm.getDialog(scope.motion));
+                        ngDialog.open(PollCreateForm.getDialog(scope.motion,
+                            function (pollId) {
+                                ngDialog.open({
+                                    template: 'static/templates/motions/motion-poll-form.html',
+                                    controller: 'MotionPollUpdateCtrl',
+                                    className: 'ngdialog-theme-default',
+                                    closeByEscape: false,
+                                    closeByDocument: false,
+                                    resolve: {
+                                        motionpollId: function () {
+                                            return pollId;
+                                        },
+                                        voteNumber: function () {
+                                            return scope.motion.polls.length;
+                                        }
+                                    }
+                                });
+                            }, function (error) {
+                                scope.alert = ErrorMessage.forAlert(error);
+                            }
+                        ));
                     } else {
                          $http.post('/rest/motions/motion/' + scope.motion.id + '/create_poll/', {}).then(function (success) {
                             MotionPollType.create({
@@ -110,20 +131,6 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                     }
                 };
             },
-        });
-        templateHooks.registerHook({
-            id: 'motionListMenuButton',
-            template: '<a ui-sref="openslides_voting.tokens"' +
-                        'class="btn btn-default btn-sm">' +
-                        '<translate>Tokens</translate>' +
-                      '</a>',
-        });
-        templateHooks.registerHook({
-            id: 'assignmentListMenuButton',
-            template: '<a ui-sref="openslides_voting.tokens"' +
-                        'class="btn btn-default btn-sm">' +
-                        '<translate>Tokens</translate>' +
-                      '</a>',
         });
         templateHooks.registerHook({
             id: 'motionPollVotingHeader',
@@ -156,7 +163,27 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             scope: function (scope) {
                 scope.createBallot = function () {
                     if (operator.hasPerms('openslides_voting.can_manage')) {
-                        ngDialog.open(PollCreateForm.getDialog(scope.assignment));
+                        ngDialog.open(PollCreateForm.getDialog(scope.assignment,
+                            function (pollId) {
+                                ngDialog.open({
+                                    template: 'static/templates/assignments/assignmentpoll-form.html',
+                                    controller: 'AssignmentPollUpdateCtrl',
+                                    className: 'ngdialog-theme-default',
+                                    closeByEscape: false,
+                                    closeByDocument: false,
+                                    resolve: {
+                                        assignmentpollId: function () {
+                                            return pollId;
+                                        },
+                                        ballot: function () {
+                                            return scope.assignment.polls.length;
+                                        },
+                                    }
+                                });
+                            }, function (error) {
+                                scope.alert = ErrorMessage.forAlert(error);
+                            }
+                        ));
                     } else {
                          $http.post('/rest/assignments/assignment/' + scope.assignment.id +
                              '/create_poll/', {}).then(function (success) {
@@ -164,7 +191,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                                 scope.updatePhase(1);
                             }
 
-                            MotionPollType.create({
+                            AssignmentPollType.create({
                                 poll_id: success.data.createdPollId,
                                 type: Config.get('voting_default_voting_type').value,
                             });
@@ -187,6 +214,14 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 }, function () {
                     var pollTypes = AssignmentPollType.filter({poll_id: scope.poll.id});
                     scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                });
+                scope.$watch(function () {
+                    return VotingPrinciple.lastModified();
+                }, function () {
+                    scope.hasPrinciple = _.some(VotingPrinciple.getAll(), function (p) {
+                        return _.includes(p.assignments_id, scope.poll.assignment.id);
+                    });
                 });
             },
         });

@@ -1,25 +1,27 @@
 <div ng-controller="AssignmentPollFormVotingCtrl" ng-init="poll=$parent.$parent.model" class="spacer">
-  <button type="button"
-    ng-if="canStartVoting()" ng-click="startVoting()"
-    class="btn btn-default">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
-    {{ 'Start election' | translate }}</button>
-  <button type="button"
-    ng-if="canStopVoting() && isThisPollActive()" ng-click="stopVoting()"
-    class="btn btn-primary">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
-    {{ 'Stop election' | translate }}</button>
-  <button type="button"
-    ng-if="canStopVoting() && !isThisPollActive()" ng-click="stopVoting()"
-    class="btn btn-danger">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
-    {{ 'Stop another voting' | translate }}</button>
-  <button type="button"
-    ng-if="canClearVotes()" ng-click="clearVotes()"
-    class="btn btn-default">
-    <i class="fa fa-trash" aria-hidden="true"></i>
-    {{ 'Clear votes' | translate }}</button>
-  <projector-button model="projectModel" default-projector-id="1"
-    content="Project vote result"></projector-button>
-  <p>{{ getVotingStatus() }}</p>
+  <div ng-if="!isAnalogPoll()">
+    <button type="button"
+      ng-if="canStartVoting()" ng-click="startVoting()"
+      class="btn btn-default">
+      <i class="fa fa-wifi" aria-hidden="true"></i>
+      {{ 'Start election' | translate }}</button>
+    <button type="button"
+      ng-if="canStopVoting() && isThisPollActive()" ng-click="stopVoting()"
+      class="btn btn-primary">
+      <i class="fa fa-wifi" aria-hidden="true"></i>
+      {{ 'Stop election' | translate }}</button>
+    <button type="button"
+      ng-if="canStopVoting() && !isThisPollActive()" ng-click="stopVoting()"
+      class="btn btn-danger">
+      <i class="fa fa-wifi" aria-hidden="true"></i>
+      {{ 'Stop another voting' | translate }}</button>
+    <button type="button"
+      ng-if="canClearVotes()" ng-click="clearVotes()"
+      class="btn btn-default">
+      <i class="fa fa-trash" aria-hidden="true"></i>
+      {{ 'Clear votes' | translate }}</button>
+    <projector-button model="projectModel" default-projector-id="1"
+      content="Project election result"></projector-button>
+    <p>{{ getVotingStatus() }}</p>
+  </div>
 </div>

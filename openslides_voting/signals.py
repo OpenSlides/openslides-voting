@@ -14,8 +14,8 @@ def add_permissions_to_builtin_groups(**kwargs):
     content_type = ContentType.objects.get(app_label='openslides_voting', model='votingcontroller')
 
     try:
-        # Group with pk == 3 should be the staff group in OpenSlides 2.1
-        staff = Group.objects.get(pk=3)
+        # Group with pk == 4 should be the admin group in OpenSlides 2.2
+        staff = Group.objects.get(pk=4)
     except Group.DoesNotExist:
         pass
     else:

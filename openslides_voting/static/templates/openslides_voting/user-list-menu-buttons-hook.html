@@ -1,18 +1,35 @@
-<span os-perms="openslides_voting.can_manage">
-  <a ui-sref="openslides_voting.attendance" class="btn btn-default btn-sm">
-    <i class="fa fa-check-square-o fa-lg"></i>
-    <translate>Attendance</translate>
-  </a>
-  <a ui-sref="openslides_voting.absenteeVote.list" class="btn btn-default btn-sm">
-    <i class="fa fa-file-text-o fa-lg"></i>
-    <translate>Absentee votes</translate>
-  </a>
-  <a ui-sref="openslides_voting.keypad.list" class="btn btn-default btn-sm">
-    <i class="fa fa-wifi fa-lg"></i>
-    <translate>Keypads</translate>
-  </a>
-  <a ui-sref="openslides_voting.shares.list" class="btn btn-default btn-sm">
-    <i class="fa fa-pie-chart fa-lg"></i>
-    <translate>Shares</translate>
-  </a>
+<span class="dropdown" os-perms="openslides_voting.can_manage" uib-dropdown>
+  <button type="button" class="btn btn-default btn-sm"
+    id="votingMenu" uib-dropdown-toggle>
+    <translate>OpenSlides-Voting</translate>
+    <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" aria-labelledby="votingMenu">
+    <li>
+      <a ui-sref="openslides_voting.tokens">
+        <i class="fa fa-bookmark-o"></i>
+        <translate>Voting tokens</translate>
+      </a>
+    </li><li ng-if="config('voting_enable_votecollector')">
+      <a ui-sref="openslides_voting.keypad.list">
+        <i class="fa fa-calculator"></i>
+        <translate>Keypads</translate>
+      </a>
+    </li><li ng-if="config('voting_enable_votecollector')">
+      <a ui-sref="openslides_voting.attendance">
+        <i class="fa fa-check-square-o"></i>
+        <translate>Attendance</translate>
+      </a>
+    </li><li ng-if="config('voting_enable_proxies')">
+      <a ui-sref="openslides_voting.absenteeVote.list">
+        <i class="fa fa-file-text-o"></i>
+        <translate>Absentee votes</translate>
+      </a>
+    </li><li ng-if="config('voting_enable_principles')">
+      <a ui-sref="openslides_voting.shares.list">
+        <i class="fa fa-pie-chart"></i>
+        <translate>Shares</translate>
+      </a>
+    </li>
+  </ul>
 </span>

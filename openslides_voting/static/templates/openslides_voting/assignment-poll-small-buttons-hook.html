@@ -1,20 +1,21 @@
-<div class="spacer-top" os-perms="openslides_voting.can_manage">
-  <span ng-if="poll.has_votes" class="spacer">
-    <button type="button" os-perms="openslides_voting.can_manage"
-      ng-click="countVotes()" 
-      class="btn btn-xs btn-default">
-      <i class="fa fa-repeat" aria-hidden="true"></i> 
-      {{ 'Recount votes' | translate }}</button>
-  </span>
-  <span ng-if="poll.has_votes" class="spacer">
-    <a ui-sref="openslides_voting.assignmentPoll.detail({id: poll.id})" role="button"
-      os-perms="openslides_voting.can_manage"
-      class="btn btn-xs btn-default">
-      <i class="fa fa-table" aria-hidden="true"></i> 
-      {{ 'Single votes' | translate }}</a>
-  </span>
+<div os-perms="openslides_voting.can_manage">
+  <div class="spacer-top" ng-if="poll.has_votes && !isAnalogPoll">
+    <span class="spacer" ng-if="hasPrinciple">
+      <button type="button" ng-click="countVotes()"
+        class="btn btn-xs btn-default">
+        <i class="fa fa-repeat" aria-hidden="true"></i>
+        {{ 'Recount votes' | translate }}
+      </button>
+    </span>
+    <span class="spacer">
+      <a ui-sref="openslides_voting.assignmentPoll.detail({id: poll.id})" role="button"
+        class="btn btn-xs btn-default">
+        <i class="fa fa-table" aria-hidden="true"></i>
+        {{ 'Single votes' | translate }}
+      </a>
+    </span>
+  </div>
   <small>
-    <translate>Type</translate>:
     {{ pollType }}
   </small>
 </div>

@@ -517,13 +517,24 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'VotingProxy',
     'VotingShare',
     'Config',
-    'VotingSettings',
-    function ($q, User, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config, VotingSettings) {
+    'Group',
+    function ($q, User, VotingPrinciple, Keypad, VotingProxy, VotingShare, Config, Group) {
         return {
             isDelegate: function (user) {
                 if (user) {
-                    return _.includes(user.groups_id, VotingSettings.delegateGroupId);
+                    return _.includes(user.getPerms(), 'openslides_voting.can_vote');
                 }
+            },
+            getDelegates: function () {
+                var groups_id = [];
+                _.forEach(Group.getAll(), function (group) {
+                    if (_.includes(group.permissions, 'openslides_voting.can_vote')) {
+                        groups_id.push(group.id);
+                    }
+                });
+                return _.filter(User.getAll(), function (user) {
+                    return _.intersection(user.groups_id, groups_id).length;
+                });
             },
             getCellName: function (user) {
                 var name,

@@ -56,10 +56,6 @@ Not supported is YN(A) for multiple candidates.
 
 ## Settings
 
-`DELEGATE_GROUP_ID`: The group id from the delegate group. Default is 2. If one
-has a different delegate group or just delete the default delegate group, the
-new group id can be choosen here.
-
 `VOTING_RESULT_TOKEN_TIMEOUT`: The timeout in seconds until vote success view is
 closed dureng token voting. This is important, so the next one cannot get the
 result token, if the user didn't click on continue. This can be disabled, when

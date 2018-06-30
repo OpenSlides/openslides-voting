@@ -1,18 +1,18 @@
 <div class="header">
   <div class="title">
     <div class="submenu">
-      <a href="javascript:history.back()" class="btn btn-sm btn-default">
+      <a ui-sref="users.user.list" class="btn btn-sm btn-default">
         <i class="fa fa-angle-double-left fa-lg"></i>
         <translate>Back to overview</translate>
       </a>
       <a class="btn btn-default btn-sm"
-         ng-bootbox-prompt="{{ 'How much tokens should be generated?' | translate }}"
+         ng-bootbox-prompt="{{ 'How much voting tokens should be generated?' | translate }}"
          ng-bootbox-prompt-action="generate(result)">
-        <i class="fa fa-file-pdf fa-lg"></i>
+        <i class="fa fa-magic fa-lg"></i>
         <translate>Generate</translate>
       </a>
     </div>
-    <h1 translate>Tokens</h1>
+    <h1 translate>Voting tokens</h1>
   </div>
 </div>
 
@@ -24,17 +24,17 @@
   <form ng-submit="scan()" class="row">
     <div class="col-md-6">
       <div class="form-group">
-        <label for="tokenInput" translate>Enter token</label>
+        <label for="tokenInput" translate>Enter voting token</label>
         <input type="text" class="form-control" id="tokenInput"
           ng-model="tokenInput" ng-disabled="tokenInputDisabled" autofocus>
       </div>
       <button type="submit" class="btn btn-sm btn-primary" translate>
-        Activate token
+        Activate voting token
       </button>
     </div>
   </form>
 
-  <h1><translate>Active tokens</translate>:</h1>
+  <h1><translate>Active voting tokens</translate>:</h1>
   <div ng-repeat="token in tokens">
     {{ token.token }}
   </div>

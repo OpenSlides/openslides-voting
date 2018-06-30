@@ -20,7 +20,7 @@
     <form ng-submit="scan()" class="row" ng-if="av.motionPoll || av.assignmentPoll">
       <div class="col-md-6">
         <div class="form-group">
-          <label for="tokenInput" translate>Enter token</label>
+          <label for="tokenInput" translate>Enter votingtoken</label>
           <input type="text" class="form-control" id="tokenInput"
             ng-model="$parent.$parent.tokenInput" ng-disabled="tokenInputDisabled" autofocus>
         </div>
@@ -37,18 +37,6 @@
         <translate>Vote for</translate>
         {{ av.motionPoll.motion.getAgendaTitle() }}
       </h1>
-      <h3 ng-if="mpbVote.value">
-        <translate>Your vote:</translate>
-        <strong ng-if="mpbVote.value == 'Y'" translate>
-          Yes
-        </strong>
-        <strong ng-if="mpbVote.value == 'N'" translate>
-          No
-        </strong>
-        <strong ng-if="mpbVote.value == 'A'" translate>
-          Abstain
-        </strong>
-      </h3>
       <ng-include src="'static/templates/openslides_voting/submit-motion-poll-buttons.html'"></ng-include>
       <button type="button" class="btn btn-primary spacer-top-lg" ng-click="submitVote()"
         ng-disabled="!mpbVote" translate>

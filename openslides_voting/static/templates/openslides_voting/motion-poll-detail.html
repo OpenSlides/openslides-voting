@@ -33,7 +33,7 @@
         <translate>Anonymize votes</translate>
       </a>
     </div>
-    <h1>{{ motion.agenda_item.getTitle() || motion.getTitle() }}</h1>
+    <h1>{{ motion.getTitle() }}</h1>
     <h2><translate>Motion</translate> {{ motion.identifier }} &middot;
       <translate>Voting result</translate></h2>
   </div>
@@ -72,7 +72,7 @@
 
   <!-- Single votes -->
   <div class="row">
-    <div class="col-sm-6"> <h3 translate>Single votes</h3></div>
+    <div class="col-sm-6"><h3 translate>Single votes</h3></div>
     <div class="col-sm-4 pull-right">
       <!-- Search/filter -->
       <input type="text" ng-model="filter.filterString" class="form-control"
@@ -106,28 +106,37 @@
     <thead>
       <tr>
         <!-- Delegate column -->
-        <th ng-click="toggleSort('user.full_name')" class="sortable"
+        <th ng-click="sort.toggle('user.full_name')" class="sortable"
           ng-if="pollType !== 'token_based_electronic'">
           <translate>Delegate</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name'"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'user.full_name'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
 
+        <!-- Voting device column -->
+        <th ng-click="sort.toggle('device')" class="sortable" ng-if="pollType !== 'token_based_electronic'">
+          <translate>Keypad serial number</translate>
+          <i class="pull-right fa" ng-show="sort.column === 'device'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          </i>
+          <i class="fa fa-info-circle"
+             uib-tooltip="{{ 'Press \'Fn+6\' on keypad to display the serial number.' | translate}}"></i>
+        </th>
+
         <!-- Result token column -->
-        <th ng-click="toggleSort('result_token')" class="sortable"
-          ng-if="pollType === 'token_based_electronic'">
+        <th ng-click="sort.toggle('result_token')" class="sortable" ng-if="pollType === 'token_based_electronic'">
           <translate>Result token</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'result_token'"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'result_token'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
 
         <!-- Vote column -->
-        <th ng-click="toggleSort('vote')" class="sortable">
+        <th ng-click="sort.toggle('vote')" class="sortable">
           <translate>Casted vote</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'vote'"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'vote'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
     </thead>
@@ -141,12 +150,15 @@
 
         <!-- Delegate -->
         <td ng-if="pollType !== 'token_based_electronic'">
-            <a href="" ng-if="ballot.user" ui-sref="users.user.detail({id: ballot.user.id})">
-              {{ ballot.user.full_name }}
-            </a>
-            <span ng-if="!ballot.user" translate>
-              anonym
-            </span>
+          <a href="" ng-if="ballot.user" ui-sref="users.user.detail({id: ballot.user.id})">
+            {{ ballot.user.full_name }}
+          </a>
+          <span ng-if="!ballot.user"><i><translate>Anonymous</translate></i></span>
+        </td>
+
+        <!-- Voting device -->
+        <td ng-if="pollType !== 'token_based_electronic'">
+          {{ ballot.device }}
         </td>
 
         <!-- Result token-->

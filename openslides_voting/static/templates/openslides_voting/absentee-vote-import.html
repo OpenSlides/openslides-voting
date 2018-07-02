@@ -39,7 +39,7 @@
           <th translate>Motion
           <th translate>Voting intention</th>
       <tbody>
-        <tr ng-repeat="delegateVote in delegateVotes | limitTo:pg.itemsPerPage:pg.firstItem">
+        <tr ng-repeat="delegateVote in delegateVotes | limitTo:pagination.itemsPerPage:pagination.limitBegin">
           <td class="minimum"
               ng-class="{ 'text-danger': delegateVote.importerror, 'text-success': delegateVote.imported }">
             <span ng-if="delegateVote.importerror">
@@ -55,7 +55,7 @@
               <i class="fa fa-check-circle fa-lg"></i>
             </span>
           <td class="nobr">
-            {{ (pg.currentPage - 1) * pg.itemsPerPage + $index + 1 }}
+            {{ (pagination.currentPage - 1) * pagination.itemsPerPage + $index + 1 }}
           <td ng-class="{ 'text-danger': delegateVote.user_error }">
             <span ng-if="delegateVote.user_error" title="{{ delegateVote.user_error | translate }}">
               <i class="fa fa-exclamation-triangle"></i>
@@ -74,11 +74,11 @@
             <span style="margin-left: 5px">{{ delegateVote.vote_name }}</span>
     </table>
     <ul uib-pagination
-        ng-show="delegateVotes.length > pg.itemsPerPage"
+        ng-show="delegateVotes.length > pagination.itemsPerPage"
         total-items="delegateVotes.length"
-        items-per-page="pg.itemsPerPage"
-        ng-model="pg.currentPage"
-        ng-change="pg.pageChanged()"
+        items-per-page="pagination.itemsPerPage"
+        ng-model="pagination.currentPage"
+        ng-change="pagination.pageChanged()"
         class="pagination-sm"
         direction-links="false"
         boundary-links="true"

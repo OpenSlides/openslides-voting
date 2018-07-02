@@ -24,7 +24,7 @@
           <translate>Voting principle</translate> 1,
           <translate>Voting principle</translate> 2
         </code>
-      <li translate>You can provide as much voting principles as you want.
+      <li translate>You may provide as many voting principles as you like.
       <li translate>Only double quotes are accepted as text delimiter (no single quotes).
   </ul>
 
@@ -37,9 +37,9 @@
             <th>
             <th>#
             <th translate>Delegate
-            <th ng-repeat="cat in categories">{{ cat }}
+            <th ng-repeat="p in principles">{{ p }}
         <tbody>
-          <tr ng-repeat="delegateShare in delegateShares | limitTo:pg.itemsPerPage:pg.firstItem">
+          <tr ng-repeat="delegateShare in delegateShares | limitTo:pagination.itemsPerPage:pagination.limitBegin">
             <td class="minimum"
                 ng-class="{ 'text-danger': delegateShare.importerror, 'text-success': delegateShare.imported }">
               <span ng-if="delegateShare.importerror">
@@ -53,26 +53,26 @@
                 <i class="fa fa-check-circle fa-lg"></i>
               </span>
             <td class="nobr">
-              {{ (pg.currentPage - 1) * pg.itemsPerPage + $index + 1 }}
+              {{ (pagination.currentPage - 1) * pagination.itemsPerPage + $index + 1 }}
             <td ng-class="{ 'text-danger': delegateShare.error.user }">
               <span ng-if="delegateShare.error.user" title="{{ delegateShare.error.user | translate }}">
                 <i class="fa fa-exclamation-triangle"></i>
               </span>
               {{ delegateShare.fullname }}
-            <td ng-repeat="cat in categories"
-                ng-class="{ 'text-danger': delegateShare.error[cat] }">
-              <span ng-if="delegateShare.error[cat]" title="{{ delegateShare.error[cat] | translate }}">
+            <td ng-repeat="p in principles"
+                ng-class="{ 'text-danger': delegateShare.error[p] }">
+              <span ng-if="delegateShare.error[p]" title="{{ delegateShare.error[p] | translate }}">
                 <i class="fa fa-exclamation-triangle"></i>
               </span>
-              {{ delegateShare[cat] }}
+              {{ delegateShare[p] }}
       </table>
     </div>
     <ul uib-pagination
-        ng-show="delegateShares.length > pg.itemsPerPage"
+        ng-show="delegateShares.length > pagination.itemsPerPage"
         total-items="delegateShares.length"
-        items-per-page="pg.itemsPerPage"
-        ng-model="pg.currentPage"
-        ng-change="pg.pageChanged()"
+        items-per-page="pagination.itemsPerPage"
+        ng-model="pagination.currentPage"
+        ng-change="pagination.pageChanged()"
         class="pagination-sm"
         direction-links="false"
         boundary-links="true"
@@ -107,9 +107,9 @@
       </button>
     </div>
     <div class="spacer">
-      <a ng-if="csvImported" ui-sref="openslides_voting.delegate.list" class="btn btn-default">
+      <a ng-if="csvImported" ui-sref="openslides_voting.shares.list" class="btn btn-default">
         <i class="fa fa-angle-double-left fa-lg"></i>
-        <translate>Back to delegates overview</translate>
+        <translate>Back to shares overview</translate>
       </a>
     </div>
   </div>

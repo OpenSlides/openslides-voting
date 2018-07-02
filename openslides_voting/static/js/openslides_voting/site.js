@@ -596,7 +596,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                                 min: 0,
                             }
                         });
-                        if (fieldGroup.length == 6) {
+                        if (fieldGroup.length === 6) {
                             newFormFields.push({
                                 className: 'row',
                                 fieldGroup: fieldGroup,
@@ -728,10 +728,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 return;
             }
 
-            if (oldMotionPollId == av.motion_poll_id &&
-                oldAssignmentPollId == av.assignment_poll_id &&
-                oldIncluded == included &&
-                oldHasVoted == hasVoted) {
+            if (oldMotionPollId === av.motion_poll_id &&
+                oldAssignmentPollId === av.assignment_poll_id &&
+                oldIncluded === included &&
+                oldHasVoted === hasVoted) {
                 return;
             }
 
@@ -742,7 +742,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
             // something has changed. Either the user was added to the voting
             // or one poll has changed. Display a notification!
-            if (av.type == 'named_electronic') {
+            if (av.type === 'named_electronic') {
                 var msg = gettextCatalog.getString('Vote now!');
                 if (av.motion_poll_id) {
                     msg += '<a class="spacer-left" href="/motionpoll/submit/' +
@@ -825,8 +825,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'onSuccess',
     'onError',
     'ErrorMessage',
-    function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType,
-        Assignment, Config, objId, resourceName, onSuccess, onError, ErrorMessage) {
+    function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType, Assignment, Config,
+              objId, resourceName, onSuccess, onError, ErrorMessage) {
         $scope.obj = DS.get(resourceName, objId);
         $scope.model = {
             votingType: Config.get('voting_default_voting_type').value,
@@ -935,11 +935,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$scope',
     '$q',
     '$http',
+    'gettextCatalog',
     'DelegateForm',
     'Delegate',
     'User',
     'ErrorMessage',
-    function ($scope, $q, $http, DelegateForm, Delegate, User, ErrorMessage) {
+    function ($scope, $q, $http, gettextCatalog, DelegateForm, Delegate, User, ErrorMessage) {
         $scope.model.keypad_number = $scope.model.keypad ? $scope.model.keypad.number : null;
         $scope.model.proxy_id = $scope.model.proxy ? $scope.model.proxy.proxy_id : null;
         $scope.model.mandates_id = Delegate.getMandatesIds($scope.model);
@@ -951,9 +952,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
             // Check for circular proxy reference.
             if (delegate.mandates_id.indexOf(delegate.proxy_id) >= 0) {
-                // TODO (Jochen): Find a translation for this
                 message = User.get(delegate.proxy_id).full_name + ' ' +
-                    gettextCatalog.getString('cannot be gleichzeitig Vertreter und Vollmachtgeber sein.');
+                    gettextCatalog.getString('cannot be proxy and principle at once.');
                 $scope.$parent.alert = {type: 'danger', msg: message, show: true};
                 return;
             }
@@ -990,8 +990,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'PdfCreate',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $http, VotingToken, TokenContentProvider, TokenDocumentProvider,
-        PdfCreate, gettextCatalog, ErrorMessage) {
+    function ($scope, $http, VotingToken, TokenContentProvider, TokenDocumentProvider, PdfCreate,
+              gettextCatalog, ErrorMessage) {
         VotingToken.bindAll({}, $scope, 'tokens');
 
         $scope.scan = function () {
@@ -1014,7 +1014,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         $scope.generate = function (n) {
-            n = parseInt(n)
+            n = parseInt(n);
             if (isNaN(n)) {
                 return;
             }
@@ -1044,8 +1044,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'PdfMakeDocumentProvider',
     'PdfCreate',
     function ($scope, $http, $interval, gettextCatalog, VotingPrinciple,
-              AttendanceLog, AttendanceHistoryContentProvider,
-              PdfMakeDocumentProvider, PdfCreate) {
+              AttendanceLog, AttendanceHistoryContentProvider, PdfMakeDocumentProvider, PdfCreate) {
         VotingPrinciple.bindAll({}, $scope, 'principles');
         AttendanceLog.bindAll({}, $scope, 'attendanceLogs');
 
@@ -1223,8 +1222,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Delegate',
     'PrincipleForm',
     'ngDialog',
-    function ($scope, $filter, User, VotingPrinciple, VotingShare, Delegate, PrincipleForm,
-        ngDialog) {
+    'osTablePagination',
+    function ($scope, $filter, User, VotingPrinciple, VotingShare, Delegate, PrincipleForm, ngDialog, osTablePagination) {
+        // Shares table pagination.
+        $scope.pagination = osTablePagination.createInstance('SharesListPagination', 100);
+
         $scope.$watch(function () {
             return User.lastModified();
         }, function () {
@@ -1274,16 +1276,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'VotingPrinciple',
     'VotingShare',
     'User',
-    function ($scope, $q, gettext, VotingPrinciple, VotingShare, User) {
+    'osTablePagination',
+    function ($scope, $q, gettext, VotingPrinciple, VotingShare, User, osTablePagination) {
         // Set up pagination.
-        $scope.pg = {
-            firstItem: 0,
-            currentPage: 1,
-            itemsPerPage: 100,
-            pageChanged: function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        $scope.pagination = osTablePagination.createInstance('SharesImportPagination', 100);
 
         // Configure csv.
         var fields = [];
@@ -1322,7 +1318,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // Validate each record.
             _.forEach(records, function (record) {
                 record.selected = true;
-                if (record.first_name == '' && record.last_name == '') {
+                if (record.first_name === '' && record.last_name === '') {
                     // User is anonymous.
                     record.user_id = null;
                 }
@@ -1332,9 +1328,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     record.fullname = [record.first_name, record.last_name, record.number].join(' ');
                     var user = _.find(users, function (item) {
                         item.fullname = [item.first_name, item.last_name, item.number].join(' ');
-                        return item.fullname == record.fullname;
+                        return item.fullname === record.fullname;
                     });
-                    if (user != undefined) {
+                    if (user !== undefined) {
                         record.user_id = user.id;
                         record.fullname = user.get_full_name();
                     }
@@ -1381,14 +1377,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
             // Create principles if they do not exist.
             _.forEach($scope.principles, function (principle) {
-                var principles = VotingPrinciples.filter({name: principle});
+                var principles = VotingPrinciple.filter({name: principle});
                 if (principles.length >= 1) {
                     principlesMap[principle] = principles[0].id;
                 }
                 else {
                     promises.push(VotingPrinciple.create({
                         name: principle,
-                        decimal_places: 6,
+                        decimal_places: 0,
                     }).then(function (success) {
                         principlesMap[success.name] = success.id;
                     }));
@@ -1402,20 +1398,21 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                             // Look for an existing voting share.
                             var shares = VotingShare.filter({
                                 delegate_id: delegateShare.user_id,
-                                principle_id: principleMap[principle],
+                                principle_id: principlesMap[principle],
                             });
-                            if (shares.length == 1) {
+                            if (shares.length === 1) {
                                 // Update voting share.
                                 var share = shares[0];
                                 share.shares = delegateShare[principle];
                                 VotingShare.save(share).then(function (success) {
                                     delegateShare.imported = true;
                                 });
-                            }else {
+                            }
+                            else {
                                 // Create voting share.
                                 VotingShare.create({
                                     delegate_id: delegateShare.user_id,
-                                    principle_id: principleMap[principle],
+                                    principle_id: principlesMap[principle],
                                     shares: delegateShare[principle],
                                 }).then(function (success) {
                                     delegateShare.imported = true;
@@ -1433,111 +1430,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.delegateShares = [];
             $scope.csvImporting = false;
             $scope.csvImported = false;
-        };
-    }
-])
-
-.controller('MotionPollVoteDetailCtrl', [
-    '$scope',
-    '$stateParams',
-    '$http',
-    'gettextCatalog',
-    'Motion',
-    'MotionPoll',
-    'MotionPollBallot',
-    'MotionPollType',
-    'VotingPrinciple',
-    'VotingShare',
-    'osTableFilter',
-    'osTableSort',
-    'osTablePagination',
-    'MotionPollContentProvider',
-    'PdfMakeDocumentProvider',
-    'PdfCreate',
-    function ($scope, $stateParams, $http, gettextCatalog, Motion, MotionPoll,
-        MotionPollBallot, MotionPollType, VotingPrinciple, VotingShare, osTableFilter,
-        osTableSort, osTablePagination, MotionPollContentProvider, PdfMakeDocumentProvider,
-        PdfCreate) {
-
-        var pollId = $stateParams.id;
-        var motion = MotionPoll.get(pollId).motion;
-        MotionPoll.bindOne(pollId, $scope, 'poll');
-        $scope.$watch(function () {
-            return Motion.lastModified(motion.id);
-        }, function () {
-            $scope.motion = Motion.get(motion.id);
-            var principles = VotingPrinciple.filter({motions_id: motion.id});
-            if (principles.length > 0) {
-                $scope.principle = principles[0];
-            } else {
-                $scope.principle = void 0;
-            }
-            reloadMotionPollBallots();
-        });
-        $scope.$watch(function () {
-            return MotionPollBallot.lastModified();
-        }, reloadMotionPollBallots);
-
-        // Just show all users, that have shares.
-        var reloadMotionPollBallots = function () {
-            var mpbs = MotionPollBallot.filter({poll_id: pollId});
-            if ($scope.principle) {
-                $scope.ballots = _.filter(mpbs, function (mpb) {
-                    if (!mpb.user) {
-                        return true;
-                    }
-                    var shares = VotingShare.filter({
-                        principle_id: $scope.principle.id,
-                        delegate_id: mpb.user.id
-                    });
-                    return shares.length > 0 && shares[0].shares > 0;
-                });
-            } else {
-                $scope.ballots = mpbs;
-            }
-        }
-
-        // Get poll type for motion
-        var pollTypes = MotionPollType.filter({poll_id: pollId});
-        $scope.pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
-
-        // Handle table column sorting.
-        $scope.filter = osTableFilter.createInstance('MotionPollDetailFilter');
-        $scope.filter.propertyFunctionList = [
-            function (ballot) { return ballot.getVote(); },
-            function (ballot) { return ballot.user ? ballot.user.full_name : ''; },
-            function (ballot) { return ballot.result_token !== 0 ? ballot.result_token : ''; }
-        ];
-
-        $scope.sort = osTableSort.createInstance('MotionPollDetailSort');
-        if (!$scope.sort.column) {
-            if ($scope.pollType === 'token_based_electronic') {
-                $scope.sort.column = 'result_token';
-            } else {
-                $scope.sort.column = 'user.full_name';
-            }
-        }
-
-        $scope.pagination = osTablePagination.createInstance('MotionPollDetailPagination');
-
-        // PDF export
-        $scope.pdfExport = function () {
-            var filename = gettextCatalog.getString('Motion') + ' ';
-            if ($scope.motion.identifier) {
-                filename += $scope.motion.identifier;
-            } else {
-                filename += $scope.motion.getTitle();
-            }
-            filename += ' ' + gettextCatalog.getString('SingleVotes') + '.pdf';
-            var contentProvider = MotionPollContentProvider.createInstance(
-                $scope.motion, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
-            PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
-                PdfCreate.download(documentProvider, filename);
-            });
-        };
-
-        $scope.anonymizeVotes = function () {
-            $http.post('/rest/openslides_voting/motion-poll-ballot/pseudoanonymize_votes/', {poll_id: pollId});
         };
     }
 ])
@@ -1602,9 +1494,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'User',
     'VotingController',
     'ErrorMessage',
-    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VotingController, ErrorMessage) {
-        //Keypad.bindAll({}, $scope, 'keypads');
-        // User.bindAll({}, $scope, 'users');
+    'osTableFilter',
+    'osTableSort',
+    'osTablePagination',
+    function ($scope, $http, $timeout, ngDialog, KeypadForm, Keypad, User, VotingController, ErrorMessage,
+              osTableFilter, osTableSort, osTablePagination) {
         VotingController.bindOne(1, $scope, 'vc');
         $scope.alert = {};
 
@@ -1618,37 +1512,19 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.keypads = Keypad.getAll();
         });
 
-        // Set up pagination.
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 50,
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        // Keypad table filtering.
+        $scope.filter = osTableFilter.createInstance('KeypadListFilter');
+        $scope.filter.propertyFunctionList = [
+            function (keypad) { return keypad.number; },
+            function (keypad) { return keypad.user ? keypad.user.full_name : ''; },
+        ];
 
-        // Handle table column sorting.
-        $scope.sortColumn = 'number';
-        $scope.reverse = false;
-        $scope.toggleSort = function ( column ) {
-            if ( $scope.sortColumn === column ) {
-                $scope.reverse = !$scope.reverse;
-            }
-            $scope.sortColumn = column;
-        };
+        // Keypad table sorting.
+        $scope.sort = osTableSort.createInstance('KeypadListSort');
+        $scope.sort.column = 'number';
 
-        // Define custom search filter string.
-        $scope.getFilterString = function (keypad) {
-            var user = '';
-            if (keypad.user) {
-                user = keypad.user.get_full_name();
-            }
-            return [
-                keypad.number,
-                user
-            ].join(' ');
-        };
+        // Keypad table pagination.
+        $scope.pagination = osTablePagination.createInstance('KeypadListPagination', 100);
 
         // Open new/edit dialog.
         $scope.openDialog = function (keypad) {
@@ -1787,18 +1663,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'gettext',
     'Keypad',
     'User',
-    function ($scope, gettext, Keypad, User) {
+    'osTablePagination',
+    function ($scope, gettext, Keypad, User, osTablePagination) {
         // Set up pagination.
-        // http://stackoverflow.com/questions/34775157/angular-ui-bootstrap-pagination-ng-model-not-updating
-        // http://stackoverflow.com/questions/33181191/scope-currentpage-not-updating-angular-ui-pagination
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 100,
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        $scope.pagination = osTablePagination.createInstance('KeypadImportPagination', 100);
 
         // Configure csv.
         $scope.csvConfig = {
@@ -1828,7 +1696,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // Validate each record.
             _.forEach(records, function (record) {
                 record.selected = true;
-                if (record.first_name == '' && record.last_name == '') {
+                if (record.first_name === '' && record.last_name === '') {
                     // User is anonymous.
                     record.user_id = null;
                 }
@@ -1837,9 +1705,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     record.fullname = [record.first_name, record.last_name, record.number].join(' ');
                     var user = _.find(users, function (item) {
                         item.fullname = [item.first_name, item.last_name, item.number].join(' ');
-                        return item.fullname == record.fullname;
+                        return item.fullname === record.fullname;
                     });
-                    if (user != undefined) {
+                    if (user !== undefined) {
                         record.user_id = user.id;
                         record.fullname = user.get_full_name();
                     }
@@ -1998,7 +1866,11 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'AbsenteeVoteForm',
     'MotionAbsenteeVote',
     'AssignmentAbsenteeVote',
-    function ($scope, ngDialog, AbsenteeVoteForm, MotionAbsenteeVote, AssignmentAbsenteeVote) {
+    'osTableFilter',
+    'osTableSort',
+    'osTablePagination',
+    function ($scope, ngDialog, AbsenteeVoteForm, MotionAbsenteeVote, AssignmentAbsenteeVote,
+              osTableFilter, osTableSort, osTablePagination) {
         $scope.alert = {};
         $scope.absenteeVotes = [];
 
@@ -2010,7 +1882,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             _.forEach(AssignmentAbsenteeVote.getAll(), function (absenteeVote) {
                 $scope.absenteeVotes.push(Object.assign(absenteeVote));
             });
-        }
+        };
 
         $scope.$watch(function () {
             return MotionAbsenteeVote.lastModified();
@@ -2019,34 +1891,20 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             return AssignmentAbsenteeVote.lastModified();
         }, update);
 
-        // Set up pagination.
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 50,
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        // Absentee vote filtering.
+        $scope.filter = osTableFilter.createInstance('AbsenteeVoteListFilter');
+        $scope.filter.propertyFunctionList = [
+            function (absenteeVote) { return absenteeVote.delegate.full_name; },
+            function (absenteeVote) { return absenteeVote.getObjectTitle(); },
+            function (absenteeVote) { return absenteeVote.getVote(); },
+        ];
 
-        // Handle table column sorting.
-        $scope.sortColumn = 'delegate.full_name';
-        $scope.reverse = false;
-        $scope.toggleSort = function (column) {
-            if ($scope.sortColumn === column) {
-                $scope.reverse = !$scope.reverse;
-            }
-            $scope.sortColumn = column;
-        };
+        // Absentee vote table sorting.
+        $scope.sort = osTableSort.createInstance('AbsenteeVoteListSort');
+        $scope.sort.column = 'delegate.full_name';
 
-        // Define custom search filter string.
-        $scope.getFilterString = function (absenteeVote) {
-            return [
-                absenteeVote.delegate.full_name,
-                absenteeVote.getObjectTitle(),
-                absenteeVote.getVote()
-            ].join(' ');
-        };
+        // Absentee vote table pagination.
+        $scope.pagination = osTablePagination.createInstance('AbsenteeVoteListPagination');
 
         // Open new/edit dialog.
         $scope.openDialog = function (absenteeVote) {
@@ -2095,8 +1953,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'AssignmentAbsenteeVote',
     'AbsenteeVoteForm',
     'ErrorMessage',
-    function ($scope, MotionAbsenteeVote, AssignmentAbsenteeVote, AbsenteeVoteForm,
-        ErrorMessage) {
+    function ($scope, MotionAbsenteeVote, AssignmentAbsenteeVote, AbsenteeVoteForm, ErrorMessage) {
         $scope.model = {};
         $scope.formFields = AbsenteeVoteForm.getFormFields();
 
@@ -2130,8 +1987,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'AbsenteeVoteForm',
     'absenteeVote',
     'ErrorMessage',
-    function ($scope, MotionAbsenteeVote, AssignmentAbsenteeVote, AbsenteeVoteForm,
-        absenteeVote, ErrorMessage) {
+    function ($scope, MotionAbsenteeVote, AssignmentAbsenteeVote, AbsenteeVoteForm, absenteeVote, ErrorMessage) {
         // Use a deep copy of absentee vote object so list view is not updated while editing the form.
         $scope.model = angular.copy(absenteeVote);
         $scope.formFields = AbsenteeVoteForm.getFormFields(true); // Just aloow the vote to be edited
@@ -2170,16 +2026,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'AssignmentAbsenteeVote',
     'User',
     'Motion',
-    function ($scope, gettext, MotionAbsenteeVote, AssignmentAbsenteeVote, User, Motion) {
+    'osTablePagination',
+    function ($scope, gettext, MotionAbsenteeVote, AssignmentAbsenteeVote, User, Motion, osTablePagination) {
         // Set up pagination.
-        $scope.pg = {
-            'firstItem': 0,
-            'currentPage': 1,
-            'itemsPerPage': 100,
-            'pageChanged': function () {
-                $scope.pg.firstItem = ($scope.pg.currentPage - 1) * $scope.pg.itemsPerPage;
-            }
-        };
+        $scope.pagination = osTablePagination.createInstance('AbsenteeVoteImportPagination');
 
         // Configure csv.
         $scope.csvConfig = {
@@ -2196,7 +2046,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.delegateVotes = [];
         $scope.onCsvChange = function (csv) {
             var users = User.getAll(),
-                motions = Motion.getAll(),
                 records = [];
 
             $scope.clear();
@@ -2211,7 +2060,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // Validate each record.
             _.forEach(records, function (record) {
                 record.selected = true;
-                if (record.first_name == '' && record.last_name == '') {
+                if (record.first_name === '' && record.last_name === '') {
                     // User is anonymous.
                     record.user_id = null;
                 }
@@ -2220,7 +2069,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     record.fullname = [record.first_name, record.last_name, record.number].join(' ');
                     var user = _.find(users, function (item) {
                         item.fullname = [item.first_name, item.last_name, item.number].join(' ');
-                        return item.fullname == record.fullname;
+                        return item.fullname === record.fullname;
                     });
                     if (user !== undefined) {
                         record.user_id = user.id;
@@ -2234,7 +2083,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 }
                 // Find motion.
                 var motions = Motion.filter({identifier: record.motion_identifier});
-                if (motions.length == 1) {
+                if (motions.length === 1) {
                     record.motion_id = motions[0].id;
                     record.motion = motions[0].identifier + ' - ' + motions[0].getTitle();
                 }
@@ -2243,7 +2092,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     record.motion_error = gettext('Error: Motion not found.');
                 }
                 // Validate vote.
-                if (['Y', 'N', 'A'].indexOf(record.vote) == -1) {
+                if (['Y', 'N', 'A'].indexOf(record.vote) === -1) {
                     record.importerror = true;
                     record.vote_error = gettext('Error: Vote must be one of Y, N, A.');
                 }
@@ -2273,23 +2122,23 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         // Import absentee votes.
         $scope.import = function () {
             $scope.csvImporting = true;
-            angular.forEach($scope.delegateVotes, function (delegateVote) {
+            _.forEach($scope.delegateVotes, function (delegateVote) {
                 if (delegateVote.selected && !delegateVote.importerror) {
                     // Look for an existing vote.
                     var avs = MotionAbsenteeVote.filter({
                         delegate_id: delegateVote.user_id,
                         motion_id: delegateVote.motion_id
                     });
-                    if (avs.length == 1) {
+                    if (avs.length === 1) {
                         // Update vote.
                         avs[0].vote = delegateVote.vote;
-                        Motion.AbsenteeVote.save(avs[0]).then(function (success) {
+                        MotionAbsenteeVote.save(avs[0]).then(function (success) {
                             delegateVote.imported = true;
                         });
                     }
                     else {
                         // Create vote.
-                        Motion.AbsenteeVote.create({
+                        MotionAbsenteeVote.create({
                             delegate_id: delegateVote.user_id,
                             motion_id: delegateVote.motion_id,
                             vote: delegateVote.vote
@@ -2450,9 +2299,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Projector',
     'VotingController',
     'PollFormVotingCtrlBase',
-    'ErrorMessage',
-    function ($scope, $http, gettextCatalog, MotionPollBallot, MotionPollType, Projector,
-        VotingController, PollFormVotingCtrlBase, ErrorMessage) {
+    function ($scope, $http, gettextCatalog, MotionPollBallot, MotionPollType, Projector, VotingController,
+              PollFormVotingCtrlBase) {
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
@@ -2511,6 +2359,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
     }
 ])
+
 .controller('AssignmentPollFormVotingCtrl', [
     '$scope',
     '$http',
@@ -2520,9 +2369,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'AssignmentPollType',
     'AssignmentPollBallot',
     'PollFormVotingCtrlBase',
-    'ErrorMessage',
-    function ($scope, $http, gettextCatalog, Projector, VotingController, AssignmentPollType,
-        AssignmentPollBallot, PollFormVotingCtrlBase, ErrorMessage) {
+    function ($scope, $http, gettextCatalog, Projector, VotingController, AssignmentPollType, AssignmentPollBallot,
+              PollFormVotingCtrlBase) {
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
@@ -2681,8 +2529,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'MotionPollBallot',
     'operator',
     'ErrorMessage',
-    function ($scope, $stateParams, $http, MotionPoll, MotionPollBallot,
-        operator, ErrorMessage) {
+    function ($scope, $stateParams, $http, MotionPoll, MotionPollBallot, operator, ErrorMessage) {
         var pollId = $stateParams.id;
         $scope.motionPoll = MotionPoll.get(pollId);
         $scope.alert = {};
@@ -2719,8 +2566,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'User',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $stateParams, $http, AssignmentPoll, AssignmentPollBallot,
-        AssignmentButtonsCtrlBase, operator, User, gettextCatalog, ErrorMessage) {
+    function ($scope, $stateParams, $http, AssignmentPoll, AssignmentPollBallot, AssignmentButtonsCtrlBase, 
+        operator, User, gettextCatalog, ErrorMessage) {
         var pollId = $stateParams.id;
         $scope.alert = {};
 
@@ -2780,26 +2627,213 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
+.controller('MotionPollVoteDetailCtrl', [
+    '$scope',
+    '$stateParams',
+    '$http',
+    'gettextCatalog',
+    'Motion',
+    'MotionPoll',
+    'MotionPollBallot',
+    'MotionPollType',
+    'VotingPrinciple',
+    'VotingShare',
+    'osTableFilter',
+    'osTableSort',
+    'osTablePagination',
+    'MotionPollContentProvider',
+    'PdfMakeDocumentProvider',
+    'PdfCreate',
+    function ($scope, $stateParams, $http, gettextCatalog, Motion, MotionPoll, MotionPollBallot, MotionPollType,
+              VotingPrinciple, VotingShare, osTableFilter, osTableSort, osTablePagination,
+              MotionPollContentProvider, PdfMakeDocumentProvider, PdfCreate) {
+        var pollId = $stateParams.id;
+
+        $scope.$watch(function () {
+            return MotionPoll.lastModified(pollId);
+        }, function () {
+            $scope.poll = MotionPoll.get(pollId);
+            if ($scope.poll !== undefined) {
+                $scope.motion = $scope.poll.motion;
+                loadMotionPollBallots();
+            }
+            else {
+                $scope.ballots = null;
+            }
+
+            // Get poll type for motion.
+            var pollTypes = MotionPollType.filter({poll_id: pollId});
+            $scope.pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
+        });
+
+        var loadMotionPollBallots = function() {
+            var mpbs = MotionPollBallot.filter({poll_id: pollId});
+            var principles = VotingPrinciple.filter({motions_id: $scope.motion.id});
+            if (principles.length > 0) {
+                // Limit ballots to anonymous users and users that have shares.
+                var principle_id = principles[0].id;
+                $scope.ballots = _.filter(mpbs, function (mpb) {
+                    if (!mpb.user) {
+                        return true;
+                    }
+                    var shares = VotingShare.filter({
+                        principle_id: principle_id,
+                        delegate_id: mpb.user.id
+                    });
+                    return shares.length > 0 && shares[0].shares > 0;
+                });
+            }
+            else {
+                $scope.ballots = mpbs;
+            }
+        };
+
+        $scope.$watch(function () {
+            return MotionPollBallot.lastModified();
+        }, loadMotionPollBallots);  // MUST be defined above!
+
+        // Ballot table filtering.
+        $scope.filter = osTableFilter.createInstance('MotionPollDetailFilter');
+        $scope.filter.propertyFunctionList = [
+            function (ballot) { return ballot.getVote(); },
+            function (ballot) { return ballot.user ? ballot.user.full_name : ''; },
+            function (ballot) { return ballot.result_token !== 0 ? ballot.result_token : ''; }
+        ];
+
+        // Ballot table sorting.
+        $scope.sort = osTableSort.createInstance('MotionPollDetailSort');
+        if (!$scope.sort.column) {
+            if ($scope.pollType === 'token_based_electronic') {
+                $scope.sort.column = 'result_token';
+            } else {
+                $scope.sort.column = 'user.full_name';
+            }
+        }
+
+        // Ballot table pagination.
+        $scope.pagination = osTablePagination.createInstance('MotionPollDetailPagination');
+
+        // Export * filtered and sorted * ballots.
+        $scope.pdfExport = function () {
+            var filename = gettextCatalog.getString('Motion') + ' ';
+            if ($scope.motion.identifier) {
+                filename += $scope.motion.identifier;
+            } else {
+                filename += $scope.motion.getTitle();
+            }
+            filename += ' ' + gettextCatalog.getString('SingleVotes') + '.pdf';
+            var contentProvider = MotionPollContentProvider.createInstance(
+                $scope.motion, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
+            PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
+                PdfCreate.download(documentProvider, filename);
+            });
+        };
+
+        $scope.anonymizeVotes = function () {
+            $http.post('/rest/openslides_voting/motion-poll-ballot/pseudo_anonymize_votes/', {poll_id: pollId});
+        };
+    }
+])
+
 .controller('AssignmentPollVoteDetailCtrl', [
     '$scope',
-    '$http',
     '$stateParams',
+    '$http',
+    'gettextCatalog',
     'Assignment',
     'AssignmentPoll',
     'AssignmentPollBallot',
-    function ($scope, $http, $stateParams, Assignment, AssignmentPoll, AssignmentPollBallot) {
+    'AssignmentPollType',
+    'VotingPrinciple',
+    'VotingShare',
+    'osTableFilter',
+    'osTableSort',
+    'osTablePagination',
+    'AssignmentPollContentProvider',
+    'PdfMakeDocumentProvider',
+    'PdfCreate',
+    function ($scope, $stateParams, $http, gettextCatalog, Assignment, AssignmentPoll, AssignmentPollBallot,
+              AssignmentPollType, VotingPrinciple, VotingShare, osTableFilter, osTableSort, osTablePagination,
+              AssignmentPollContentProvider, PdfMakeDocumentProvider, PdfCreate) {
         var pollId = $stateParams.id;
-        var assignment = AssignmentPoll.get(pollId).assignment;
-        Assignment.bindOne(assignment.id, $scope, 'assignment');
-        AssignmentPoll.bindOne(pollId, $scope, 'poll');
-        AssignmentPollBallot.bindAll({poll_id: pollId}, $scope, 'ballots');
+
+        $scope.$watch(function () {
+            return AssignmentPoll.lastModified(pollId);
+        }, function () {
+            $scope.poll = AssignmentPoll.get(pollId);
+            if ($scope.poll !== undefined) {
+                $scope.assignment = $scope.poll.assignment;
+                loadAssignmentPollBallots();
+            }
+            else {
+                $scope.ballots = null;
+            }
+
+            // Get poll type for assignment.
+            var pollTypes = AssignmentPollType.filter({poll_id: pollId});
+            $scope.pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
+        });
+
+        var loadAssignmentPollBallots = function() {
+            var apbs = AssignmentPollBallot.filter({poll_id: pollId});
+            var principles = VotingPrinciple.filter({assignments_id: $scope.assignment.id});
+            if (principles.length > 0) {
+                // Limit ballots to anonymous users and users that have shares.
+                var principle_id = principles[0].id;
+                $scope.ballots = _.filter(apbs, function (apb) {
+                    if (!apb.user) {
+                        return true;
+                    }
+                    var shares = VotingShare.filter({
+                        principle_id: principle_id,
+                        delegate_id: apb.user.id
+                    });
+                    return shares.length > 0 && shares[0].shares > 0;
+                });
+            }
+            else {
+                $scope.ballots = apbs;
+            }
+        };
+
+        $scope.$watch(function () {
+            return AssignmentPollBallot.lastModified();
+        }, loadAssignmentPollBallots);  // MUST be defined above!
+
+        // Ballot table filtering.
+        $scope.filter = osTableFilter.createInstance('AssignmentPollDetailFilter');
+        $scope.filter.propertyFunctionList = [
+            function (ballot) { return ballot.getVote(); },
+            function (ballot) { return ballot.user ? ballot.user.full_name : ''; },
+            function (ballot) { return ballot.result_token !== 0 ? ballot.result_token : ''; }
+        ];
+
+        // Ballot table sorting.
+        $scope.sort = osTableSort.createInstance('AssignmentPollDetailSort');
+        if (!$scope.sort.column) {
+            if ($scope.pollType === 'token_based_electronic') {
+                $scope.sort.column = 'result_token';
+            } else {
+                $scope.sort.column = 'user.full_name';
+            }
+        }
+
+        // Ballot table pagination.
+        $scope.pagination = osTablePagination.createInstance('AssignmentPollDetailPagination');
+
+        // Export * filtered and sorted * ballots.
+        $scope.pdfExport = function () {
+            var filename = gettextCatalog.getString('Assignment') + ' ' + $scope.assignment.getTitle() +
+                gettextCatalog.getString('SingleVotes') + '.pdf';
+            var contentProvider = AssignmentPollContentProvider.createInstance(
+                $scope.assignment, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
+            PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
+                PdfCreate.download(documentProvider, filename);
+            });
+        };
 
         $scope.anonymizeVotes = function () {
-            throw "TODO, ist das noch notwendig?";
-            return $http.post(
-                '/rest/openslides_votecollector/assignment-poll-keypad-connection/anonymize_votes/',
-                {poll_id: $scope.poll.id}
-            ).then(function (success) {}, function (error) {});
+            $http.post('/rest/openslides_voting/assignment-poll-ballot/pseudo_anonymize_votes/', {poll_id: pollId});
         };
     }
 ])

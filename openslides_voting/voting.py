@@ -29,7 +29,6 @@ def find_authorized_voter(delegate, proxies=None):
             proxies = []
         elif representative.id in proxies:
             # We have a circular reference. Delete the voting proxy to fix it.
-            # TODO: Log circular ref error and/or notify user.
             delegate.votingproxy.delete()
             return delegate
 
@@ -137,7 +136,7 @@ class BaseBallot:
         """
         raise NotImplementedError()
 
-    def register_vote(self, vote, voter=None, result_token=0):
+    def register_vote(self, vote, voter=None, device=None, result_token=0):
         """
         Register a vote and all proxy votes by creating MotionPollBallot objects for the voter and any delegate
         represented by the voter.
@@ -149,11 +148,12 @@ class BaseBallot:
 
         :param vote: Vote, typically 'Y', 'N', 'A'
         :param voter: User or None for anonymous user
+        :param device: Voting device identifier (keypad serial number).
         :param result_token: Token
         :return: Number of ballots created
         """
         self.created = 0
-        self._register_vote_and_proxy_votes(vote, voter, result_token, is_authorized_voter=True)
+        self._register_vote_and_proxy_votes(vote, voter, device, result_token, is_authorized_voter=True)
         return self.created
 
     def count_votes(self):
@@ -176,23 +176,23 @@ class BaseBallot:
         """
         raise NotImplementedError()
 
-    def _register_vote_and_proxy_votes(self, vote, voter, result_token, is_authorized_voter=False):
+    def _register_vote_and_proxy_votes(self, vote, voter, device, result_token, is_authorized_voter=False):
         """
         Helper function that recursively creates ballots for a voter and his mandates.
         """
-        self._create_ballot(vote, voter, result_token, is_authorized_voter)
+        self._create_ballot(vote, voter, device, result_token, is_authorized_voter)
         if voter and config['voting_enable_proxies']:
             for proxy in voter.mandates.all():
                 self._register_vote_and_proxy_votes(vote, proxy.delegate, result_token)
 
-    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
+    def _create_ballot(self, vote, delegate=None, device=None, result_token=0, is_authorized_voter=False):
         """
         Creates or updates a ballot. Needs to be implemented by derived classes. The common
         create/update logic is in _create_ballot_common. This should be called with the appropriate model.
         """
         raise NotImplementedError()
 
-    def _create_ballot_common(self, model, vote, delegate, result_token, is_authorized_voter):
+    def _create_ballot_common(self, model, vote, delegate, device, result_token, is_authorized_voter):
         """
         Common helper function that creates or updates a poll ballot.
         """
@@ -214,6 +214,7 @@ class BaseBallot:
             return
 
         ballot.vote = vote
+        ballot.device = device
         ballot.result_token = result_token
         ballot.save()
         if created and not ballot.is_dummy:  # do not count dummies..
@@ -339,14 +340,14 @@ class MotionBallot(BaseBallot):
 
     def pseudo_anonymize_votes(self):
         """
-        Delete all user references for all ballots for this poll.
+        Delete all user references for all ballots of this poll.
         """
-        # TODO: bulk update
         ballots = MotionPollBallot.objects.filter(poll=self.poll)
         for mpb in ballots:
             mpb.delegate = None
             mpb.result_token = 0
-            mpb.save()
+            mpb.save(skip_autoupdate=True)
+        inform_changed_data(ballots)
 
     def _query_admitted_delegates(self):
         """
@@ -357,11 +358,11 @@ class MotionBallot(BaseBallot):
             qs = qs.exclude(motionabsenteevote__motion=self.poll.motion)
         return qs.values_list('id', flat=True)
 
-    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
+    def _create_ballot(self, vote, delegate=None, device=None, result_token=0, is_authorized_voter=False):
         """
         Creates or updates a motion poll ballot.
         """
-        self._create_ballot_common(MotionPollBallot, vote, delegate, result_token, is_authorized_voter)
+        self._create_ballot_common(MotionPollBallot, vote, delegate, device, result_token, is_authorized_voter)
 
 
 class AssignmentBallot(BaseBallot):
@@ -386,8 +387,7 @@ class AssignmentBallot(BaseBallot):
         Creates or updates all assignment poll ballots for every admitted delegate that has an
         absentee vote registered. Returns the amount of absentee votes.
         """
-
-        # TODO: This is currently unsupported!!
+        # TODO: Implement absentee votes for assignments.
         return 0
 
         """
@@ -538,6 +538,16 @@ class AssignmentBallot(BaseBallot):
 
         return result
 
+    def pseudo_anonymize_votes(self):
+        """
+        Delete all user references for all ballots of this poll.
+        """
+        ballots = AssignmentPollBallot.objects.filter(poll=self.poll)
+        for apb in ballots:
+            apb.delegate = None
+            apb.save(skip_autoupdate=True)
+        inform_changed_data(ballots)
+
     def _query_admitted_delegates(self):
         """
         Returns a query set of admitted delegate ids. Excludes delegates who cast an absentee vote.
@@ -547,8 +557,8 @@ class AssignmentBallot(BaseBallot):
             qs = qs.exclude(assignmentabsenteevote__assignment=self.poll.assignment)
         return qs.values_list('id', flat=True)
 
-    def _create_ballot(self, vote, delegate=None, result_token=0, is_authorized_voter=False):
+    def _create_ballot(self, vote, delegate=None, device=None, result_token=0, is_authorized_voter=False):
         """
         Creates or updates an assignment poll ballot.
         """
-        self._create_ballot_common(AssignmentPollBallot, vote, delegate, result_token, is_authorized_voter)
+        self._create_ballot_common(AssignmentPollBallot, vote, delegate, device, result_token, is_authorized_voter)

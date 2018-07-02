@@ -78,9 +78,9 @@ class ValidationView(utils_views.View):
                 raise ValidationError({'detail': 'A vote value is missing'})
 
             if voting_type in ('votecollector', 'votecollector_anonym'):
-                # Check, if bl and id is given and valid
-                if not 'bl' in vote or not 'id' in vote:
-                    raise ValidationError({'detail': 'bl and id are necessary for the votecollector'})
+                # Check, if bl, id and sn is given and valid.
+                if not {'bl', 'id', 'sn'}.issubset(vote):
+                    raise ValidationError({'detail': 'bl, id and sn are necessary for the votecollector'})
                 if not isinstance(vote['bl'], int) or not isinstance(vote['id'], int):
                     raise ValidationError({'detail': 'bl and id has to be int.'})
                 try:
@@ -280,7 +280,7 @@ class SubmitVotes(ValidationView):
                         continue
 
                 # Write ballot.
-                vc.votes_received += ballot.register_vote(vote['value'], voter=user)
+                vc.votes_received += ballot.register_vote(vote['value'], voter=user, device=vote['sn'])
         vc.save()
 
         return JsonResponse({
@@ -403,10 +403,7 @@ class SubmitCandidates(ValidationView):
                 # Generate resultToken
                 result_token = ballot.get_next_result_token()
                 result_vote = vote['value']
-            vc.votes_received += ballot.register_vote(
-                vote['value'],
-                voter=user,
-                result_token=result_token)
+            vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
         else:  # votecollector or votecollector_anonym
             for vote in votes:
                 keypad = vote['keypad']
@@ -420,12 +417,7 @@ class SubmitCandidates(ValidationView):
                         continue
 
                 # Write ballot.
-                if vote['value']:
-                    ballots_created = ballot.register_vote(
-                        vote['value'],
-                        voter=user)
-                    if ballots_created > 0:
-                        vc.votes_received += ballots_created
+                vc.votes_received += ballot.register_vote(vote['value'], voter=user, device=vote['sn'])
 
         vc.save()
         return JsonResponse({

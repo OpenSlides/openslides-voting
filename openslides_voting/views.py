@@ -606,10 +606,10 @@ class AssignmentAbsenteeVoteViewSet(ProxiesPermissionMixin, ModelViewSet):
 class BasePollBallotViewSet(PermissionMixin, ModelViewSet):
     def get_poll(self, request, model):
         if not isinstance(request.data, dict):
-            raise ValidationError({'detail': 'The data has to be a dict.'})
+            raise ValidationError({'detail': 'Data must be a dictionary.'})
         poll_id = request.data.get('poll_id')
         if not isinstance(poll_id, int):
-            raise ValidationError({'detail': 'The poll_id has to be an int.'})
+            raise ValidationError({'detail': 'poll_id must be an integer.'})
         try:
             poll = model.objects.get(pk=poll_id)
         except model.DoesNotExist:
@@ -624,7 +624,8 @@ class MotionPollBallotViewSet(BasePollBallotViewSet):
     @list_route(methods=['post'])
     def recount_votes(self, request):
         """
-        Recounts all votes from a given poll. Request data: {poll_id: <poll_id>}
+        Recounts all votes for a given poll.
+        :param request: Data: {poll_id: <poll_id>}
         """
         poll = self.get_poll(request, MotionPoll)
 
@@ -633,24 +634,93 @@ class MotionPollBallotViewSet(BasePollBallotViewSet):
         ballot = MotionBallot(poll, principle)
         result = ballot.count_votes()
 
-        # Update motion poll.
+        # Update motion poll. TODO: Allow decimal places.
         votes = {
             'Yes': int(result['Y'][1]),
             'No': int(result['N'][1]),
             'Abstain': int(result['A'][1])
         }
         poll.set_vote_objects_with_values(poll.get_options().get(), votes, skip_autoupdate=True)
-        poll.votescast = poll.votesvalid = int(result['casted'][1])
-        poll.votesinvalid = 0
+        poll.votescast = int(result['casted'][1])
+        poll.votesvalid = int(result['valid'][1])
+        poll.votesinvalid = int(result['invalid'][1])
         poll.save()
         return HttpResponse()
 
     @list_route(methods=['post'])
-    def pseudoanonymize_votes(self, request):
+    def pseudo_anonymize_votes(self, request):
         """
-        Pseudoanonymize all votes from a given poll. Request data: {poll_id: <poll_id>}
+        Pseudo anonymize all votes for a given poll.
         """
-        MotionBallot(self.get_poll(request, MotionPoll)).pseudo_anonymize_votes()
+        poll = self.get_poll(request)
+
+        # Pseudo anonymize ballot votes.
+        ballot = MotionBallot(poll)
+        ballot.pseudo_anonymize_votes()
+        return HttpResponse()
+
+
+class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
+    access_permissions = AssignmentPollBallotAccessPermissions()
+    queryset = AssignmentPollBallot.objects.all()
+
+    def get_poll(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError({'detail': 'Data must be a dictionary.'})
+        poll_id = request.data.get('poll_id')
+        if not isinstance(poll_id, int):
+            raise ValidationError({'detail': 'poll_id must be an integer.'})
+        try:
+            poll = AssignmentPoll.objects.get(pk=poll_id)
+        except AssignmentPoll.DoesNotExist:
+            raise ValidationError({'detail': 'Assignment poll with id {} does not exist.'.format(poll_id)})
+        return poll
+
+    @list_route(methods=['post'])
+    def recount_votes(self, request):
+        """
+        Recounts all votes for a given poll.
+        :param request: Data: {poll_id: <poll_id>}
+        """
+        poll = self.get_poll(request)
+
+        # Count ballot votes.
+        principle = VotingPrinciple.objects.filter(assignments=poll.assignment).first()
+        ballot = AssignmentBallot(poll, principle)
+        result = ballot.count_votes()
+
+        # Update assignment poll. TODO: Allow decimal places.
+        if poll.pollmethod in ('yn', 'yna'):
+            for option in poll.get_options():
+                cid = str(option.candidate_id)
+                votes = {
+                    'Yes': int(result[cid]['Y'][1]),
+                    'No': int(result[cid]['N'][1])
+                }
+                if poll.pollmethod == 'yna':
+                    votes['Abstain'] = int(result[cid]['A'][1])
+                poll.set_vote_objects_with_values(option, votes, skip_autoupdate=True)
+        else:  # votes
+            for option in poll.get_options():
+                cid = str(option.candidate_id)
+                votes = {'Votes': int(result[cid][1])}
+                poll.set_vote_objects_with_values(option, votes, skip_autoupdate=True)
+        poll.votescast = int(result['casted'][1])
+        poll.votesvalid = int(result['valid'][1])
+        poll.votesinvalid = int(result['invalid'][1])
+        poll.save()
+        return HttpResponse()
+
+    @list_route(methods=['post'])
+    def pseudo_anonymize_votes(self, request):
+        """
+        Pseudo anonymize all votes for a given poll.
+        """
+        poll = self.get_poll(request)
+
+        # Pseudo anonymize ballot votes.
+        ballot = AssignmentBallot(poll)
+        ballot.pseudo_anonymize_votes()
         return HttpResponse()
 
 
@@ -685,19 +755,6 @@ class BasePollTypeViewSet(ModelViewSet):
 class MotionPollTypeViewSet(BasePollTypeViewSet):
     access_permissions = MotionPollTypeAccessPermissions()
     queryset = MotionPollType.objects.all()
-
-
-class AssignmentPollBallotViewSet(BasePollBallotViewSet):
-    access_permissions = AssignmentPollBallotAccessPermissions()
-    queryset = AssignmentPollBallot.objects.all()
-
-    @list_route(methods=['post'])
-    def pseudoanonymize_votes(self, request):
-        """
-        Pseudoanonymize all votes from a given poll. Request data: {poll_id: <poll_id>}
-        """
-        AssignmentBallot(self.get_poll(request, AssignmentPoll)).pseudo_anonymize_votes()
-        return HttpResponse()
 
 
 class AssignmentPollTypeViewSet(BasePollTypeViewSet):

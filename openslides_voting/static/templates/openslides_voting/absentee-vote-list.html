@@ -31,8 +31,9 @@
     </div>
     <div class="col-sm-4 pull-right">
       <!-- Search/filter -->
-      <input type="text" ng-model="filter.search" class="form-control"
-          placeholder="{{ 'Search' | translate }}">
+      <input type="text" ng-model="filter.filterString" class="form-control"
+             ng-change="filter.save()"
+             placeholder="{{ 'Search' | translate }}">
     </div>
   </div>
   <!-- Delete mode options -->
@@ -64,35 +65,35 @@
         </th>
 
         <!-- Delegate column -->
-        <th ng-click="toggleSort('user.full_name')" class="sortable">
+        <th ng-click="sort.toggle('user.full_name')" class="sortable">
           <translate>Delegate</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'user.full_name'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
 
         <!-- Motion column -->
-        <th ng-click="toggleSort('motion.identifier')" class="sortable">
+        <th ng-click="sort.toggle('motion.identifier')" class="sortable">
           <translate>Motion</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'motion.identifier' && header.sortable != false"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'motion.identifier'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
 
         <!-- Vote column -->
-        <th ng-click="toggleSort('vote')" class="sortable">
+        <th ng-click="sort.toggle('vote')" class="sortable">
           <translate>Voting intention</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'vote' && header.sortable != false"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'vote'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
         </th>
       </tr>
     </thead>
     <tbody>
       <tr ng-repeat="absenteeVote in absenteeVotesFiltered = (absenteeVotes
-        | osFilter: filter.search : getFilterString
-        | orderBy: sortColumn : reverse)
-        | limitTo: pg.itemsPerPage : pg.firstItem"
+        | osFilter : filter.filterString : filter.getObjectQueryString
+        | orderBy : sort.column : sort.reverse)
+        | limitTo : pagination.itemsPerPage : pagination.limitBegin"
         ng-class="{'selected':absenteeVote.selected}"
         ng-mouseover="absenteeVote.hover=true" ng-mouseleave="absenteeVote.hover=false">
 
@@ -136,11 +137,11 @@
     </tbody>
   </table>
   <ul uib-pagination
-      ng-show="absenteeVotesFiltered.length > pg.itemsPerPage"
+      ng-show="absenteeVotesFiltered.length > pagination.itemsPerPage"
       total-items="absenteeVotesFiltered.length"
-      items-per-page="pg.itemsPerPage"
-      ng-model="pg.currentPage"
-      ng-change="pg.pageChanged()"
+      items-per-page="pagination.itemsPerPage"
+      ng-model="pagination.currentPage"
+      ng-change="pagination.pageChanged()"
       class="pagination-sm"
       direction-links="false"
       boundary-links="true"

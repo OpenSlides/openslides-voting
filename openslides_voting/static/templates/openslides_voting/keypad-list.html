@@ -50,8 +50,9 @@
         <div class="form-group">
           <div class="input-group">
             <div class="input-group-addon"><i class="fa fa-search"></i></div>
-            <input type="text" ng-model="filter.search" class="form-control"
-               placeholder="{{ 'Search' | translate}}">
+            <input type="text" ng-model="filter.filterString" class="form-control"
+                   ng-change="filter.save()"
+                   placeholder="{{ 'Search' | translate}}">
           </div>
         </div>
         <button class="btn btn-default" ng-click="isFilterOpen = !isFilterOpen"
@@ -96,8 +97,11 @@
   </div>
 
   <div class="spacer-top-lg italic">
-    <div ng-repeat="kp in keypadsFiltered = (keypads | osFilter:filter.search:getFilterString |
-        filter:{active: activeFilter} | filter:{identified: userFilter} | orderBy:sortColumn:reverse)"></div>
+    <div ng-repeat="kp in keypadsFiltered = (keypads
+      | osFilter : filter.filterString : filter.getObjectQueryString
+      | filter : {active: activeFilter}
+      | filter : {identified: userFilter}
+      | orderBy : sort.column : sort.reverse)"></div>
     {{ keypadsFiltered.length }} /
     {{ keypads.length }} {{ "keypads" | translate }}<span ng-if="(keypads|filter:{selected:true}).length > 0">,
     {{(keypads|filter:{selected:true}).length}} {{ "selected" | translate }}</span>
@@ -111,33 +115,33 @@
           <input type="checkbox" ng-model="$parent.selectedAll" ng-change="checkAll()">
 
         <!-- Keypad number column -->
-        <th ng-click="toggleSort('number')" class="sortable">
+        <th ng-click="sort.toggle('number')" class="sortable">
           <translate>Keypad</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'number' && header.sortable != false"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'number'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
 
         <!-- User column -->
-        <th ng-click="toggleSort('user.full_name')" class="sortable optional">
+        <th ng-click="sort.toggle('user.full_name')" class="sortable optional">
           <translate>Participant</translate>
-          <i class="pull-right fa" ng-show="sortColumn === 'user.full_name' && header.sortable != false"
-              ng-class="reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
+          <i class="pull-right fa" ng-show="sort.column === 'user.full_name'"
+              ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
 
         <!-- In range column -->
-        <!-- TODO: Sort by in range -->
+        <!-- TODO: Make range column sortable. -->
         <th>
           <translate>In range</translate>
 
         <!-- Battery column -->
-        <!-- TODO: Sort by battery -->
+        <!-- TODO: Make battery column sortable. -->
         <th>
           <translate>Battery</translate>
           <i class="fa fa-info-circle"
             uib-tooltip="{{ 'Battery state is checked with each voting. Available states: full, medium, low, empty' | translate }}"></i>
 
     <tbody>
-      <tr ng-repeat="keypad in keypadsFiltered | limitTo:pg.itemsPerPage:pg.firstItem"
+      <tr ng-repeat="keypad in keypadsFiltered | limitTo:pagination.itemsPerPage:pagination.limitBegin"
         class="animate-item"
         ng-class="{'selected':keypad.selected}">
 
@@ -177,11 +181,11 @@
             title="{{ keypad.power() | translate }}" aria-hidden="true"></i>
   </table>
   <ul uib-pagination
-      ng-show="keypadsFiltered.length > pg.itemsPerPage"
+      ng-show="keypadsFiltered.length > pagination.itemsPerPage"
       total-items="keypadsFiltered.length"
-      items-per-page="pg.itemsPerPage"
-      ng-model="pg.currentPage"
-      ng-change="pg.pageChanged()"
+      items-per-page="pagination.itemsPerPage"
+      ng-model="pagination.currentPage"
+      ng-change="pagination.pageChanged()"
       class="pagination-sm"
       direction-links="false"
       boundary-links="true"

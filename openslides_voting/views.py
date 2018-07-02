@@ -72,26 +72,34 @@ class PermissionMixin:
     def check_view_permissions(self):
         return self.get_access_permissions().check_permissions(self.request.user)
 
-# This mixin checks, if the votecollector is enabled.
+
 class VoteCollectorPermissionMixin:
+    """
+    This mixin checks if the votecollector is enabled.
+    """
     def check_view_permissions(self):
         if not config['voting_enable_votecollector']:
             raise ValidationError({'detail': 'The votecollector is not enabled.'})
         return self.get_access_permissions().check_permissions(self.request.user)
 
 
-# Here, the access for proxies and absentee votes is limited.
 class ProxiesPermissionMixin:
+    """
+    This mixin checks if proxy voting is enabled.
+    """
     def check_view_permissions(self):
         if not config['voting_enable_proxies']:
-            raise ValidationError({'detail': 'The shares and proxies are not enabled.'})
+            raise ValidationError({'detail': 'Proxy voting is not enabled.'})
         return self.get_access_permissions().check_permissions(self.request.user)
 
-# Here, the access for shares and principles is limited.
+
 class PrinciplesPermissionMixin:
+    """
+    This mixin checks if voting principles and shares are enabled.
+    """
     def check_view_permissions(self):
         if not config['voting_enable_principles']:
-            raise ValidationError({'detail': 'The absentee votes are not enabled.'})
+            raise ValidationError({'detail': 'Voting principles and shares are not enabled.'})
         return self.get_access_permissions().check_permissions(self.request.user)
 
 

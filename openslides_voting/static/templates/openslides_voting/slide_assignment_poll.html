@@ -1,1 +1,194 @@
-<h1>TODO</h1>
+<div ng-controller="SlideAssignmentPollCtrl" class="content scrollcontent">
+
+  <style type="text/css">
+    #resultTable {
+      font-size: 150%;
+      line-height: 40px;
+      margin: 0 20px 0 0;
+      width: auto;
+    }
+    #resultTable img {
+      width: auto;
+    }
+    #resultTable td {
+      padding: 9px;
+    }
+    #resultTable td.bold {
+      font-weight: bold;
+      text-align: right;
+    }
+    #resultTable td.vote {
+      min-width: 30px;
+    }
+    #resultTable td.chart-column {
+      width: 200px;
+    }
+    #resultTable td.percentage {
+        font-weight: normal;
+        font-size: 70%;
+        min-width: 80px;
+    }
+    #resultTable .key {
+      width: 45px;
+      height: 45px;
+      -webkit-border-radius: 7px;
+      -moz-border-radius: 7px;
+      border-radius: 7px;
+      background-color:#100A4A;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2em;
+      display: inline-block;
+      text-align: center;
+    }
+
+    #delegateBoard table {
+        border-collapse: separate;
+        border-spacing: 5px;
+        border: none;
+    }
+    #delegateBoard table td {
+        background-color: #ffffff;
+        padding: 0;
+        font-size: 0.75em;
+        width: 2em;
+        height: 2em;
+        border: none;
+    }
+    #delegateBoard table td.label {
+        font-weight: bold;
+        color: #000000;
+        white-space: nowrap;
+        width: auto;
+        padding-top: 10px;
+        margin-right: 0;
+    }
+    #delegateBoard table td.seat {
+        border: 1px solid black;
+        line-height: 120%;
+        text-align: center;
+    }
+    #delegateBoard table td.seat-N {
+        background-color: #d9534f;
+    }
+    #delegateBoard table td.seat-Y {
+        background-color: #5cb85c;
+    }
+    #delegateBoard table td.seat-A {
+        background-color: #f1d300;
+    }
+    #delegateBoard table td.seat-anonymous {
+        background-color: #999;
+    }
+    #delegateBoard table td.seat-invalid {
+        background-color: #fe9a9a;
+    }
+    #delegateBoard table td.seat-voted {
+        background-color: #92b8de;
+    }
+    #delegateBoard table td span.key {
+        font-weight: bold;
+        width: 1em;
+        height: 1em;
+        -webkit-border-radius: 2px;
+        -moz-border-radius: 2px;
+        border-radius: 2px;
+        background-color: #100A4A;
+        color: white;
+        font-size: 110%;
+        display: inline-block;
+        text-align: center;
+    }
+  </style>
+
+  <!-- Title -->
+  <div id="title">
+    <h1>{{ assignment.agenda_item.getTitle() || assignment.title }}</h1>
+    <h2>
+      <span><translate>Election</translate></span>
+      <span ng-if="poll.has_votes"> | <translate>Election result</translate></span>
+    </h2>
+  </div>
+
+  <!-- Result table for yes/no/abstain -->
+  <table ng-if="poll.pollmethod == 'yna' && poll.has_votes"
+         class="well pull-left" id="resultTable">
+    <!-- yes -->
+    <tr>
+      <td><img src='/static/img/button-yes.png'>
+      <td class="bold"> {{ ynaVotes[0].value }}
+      <td class="percentage">
+        <div ng-if="ynaVotes[0].percentNumber">
+          {{ ynaVotes[0].percentStr || '&nbsp;' }}
+          <uib-progressbar value="ynaVotes[0].percentNumber" type="success""></uib-progressbar>
+        </div>
+
+    <!-- no -->
+    <tr>
+      <td><img src='/static/img/button-no.png'>
+      <td class="bold"> {{ ynaVotes[1].value }}
+      <td class="percentage">
+        <div ng-if="ynaVotes[1].percentNumber">
+          {{ ynaVotes[1].percentStr || '&nbsp;' }}
+          <uib-progressbar value="ynaVotes[1].percentNumber" type="danger""></uib-progressbar>
+        </div>
+
+    <!-- abstain -->
+    <tr>
+      <td><img src='/static/img/button-abstain.png'>
+      <td class="bold"> {{ ynaVotes[2].value }}
+      <td class="percentage">
+        <div ng-if="ynaVotes[2].percentNumber">
+          {{ ynaVotes[2].percentStr || '&nbsp;' }}
+          <uib-progressbar value="ynaVotes[2].percentNumber" type="warning""></uib-progressbar>
+        </div>
+
+    <!-- valid votes -->
+    <tr class="total">
+      <td>
+      <td class="bold"> {{ poll.votesvalid }}
+      <td>
+  </table>
+
+  <!-- Result table for yes votes (1..n candidates) -->
+  <div ng-if="poll.pollmethod == 'votes' && poll.has_votes">
+    <!-- total votes -->
+    <table class="well table-striped" id="resultTable">
+      <tr ng-repeat="option in poll.options" ng-init="votes = option.getVotes()">
+
+        <!-- keypad key -->
+        <td><span class="key">{{ $index + 1 }}</span>
+
+        <!--candidate name -->
+        <td>
+          <i ng-if="option.is_elected" class="fa fa-star"></i>
+          <strong>{{ option.candidate.get_full_name() }}</strong>
+
+        <!-- votes -->
+        <td class="bold"> {{votes[0].value}}
+        <td class="bold"> {{votes[0].percentStr}}
+        <td class="chart-column">
+          <uib-progressbar ng-if="votes[0].percentNumber" value="votes[0].percentNumber" type="success"></uib-progressbar>
+
+      <!-- valid votes -->
+      <tr class="total">
+        <td>
+        <td translate>Valid votes
+        <td> {{ poll.votesvalid }}
+        <td>
+        <td>
+
+      <!-- invalid votes -->
+      <tr>
+        <td>
+        <td><translate>Abstains</translate> / <translate>Invalid votes</translate>
+        <td> {{ poll.votesinvalid }}
+        <td>
+        <td>
+
+      </table>
+  </div>
+
+  <!-- Delegate board -->
+  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml"></div>
+</div>

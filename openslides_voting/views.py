@@ -144,11 +144,11 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         # Get candidate name (if is an election with one candidate only)
         candidate_str = ''
         # projector message and images
-        projector_message = _(config['voting_start_prompt'])
         projector_yes = '<img src="/static/img/button-yes.png">'
         projector_no = '<img src="/static/img/button-no.png">'
         projector_abstain = '<img src="/static/img/button-abstain.png">'
         if type(poll) == MotionPoll:
+            projector_message = _(config['voting_start_prompt_motions'])
             try:
                 principle = VotingPrinciple.objects.get(motions=poll.motion)
             except VotingPrinciple.DoesNotExist:
@@ -177,6 +177,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
             ballot = MotionBallot(poll, principle)
         elif type(poll) == AssignmentPoll:
+            projector_message = _(config['voting_start_prompt_assignments'])
             try:
                 principle = VotingPrinciple.objects.get(assignments=poll.assignment)
             except VotingPrinciple.DoesNotExist:
@@ -591,29 +592,30 @@ class AssignmentAbsenteeVoteViewSet(ProxiesPermissionMixin, ModelViewSet):
     queryset = AssignmentAbsenteeVote.objects.all()
 
 
-class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
-    access_permissions = MotionPollBallotAccessPermissions()
-    queryset = MotionPollBallot.objects.all()
-
-    def get_poll(self, request):
+class BasePollBallotViewSet(PermissionMixin, ModelViewSet):
+    def get_poll(self, request, model):
         if not isinstance(request.data, dict):
             raise ValidationError({'detail': 'The data has to be a dict.'})
         poll_id = request.data.get('poll_id')
         if not isinstance(poll_id, int):
             raise ValidationError({'detail': 'The poll_id has to be an int.'})
         try:
-            poll = MotionPoll.objects.get(pk=poll_id)
-        except MotionPoll.DoesNotExist:
+            poll = model.objects.get(pk=poll_id)
+        except model.DoesNotExist:
             raise ValidationError({'detail': 'The poll with id {} does not exist.'.format(
                 poll_id)})
         return poll
+
+class MotionPollBallotViewSet(BasePollBallotViewSet):
+    access_permissions = MotionPollBallotAccessPermissions()
+    queryset = MotionPollBallot.objects.all()
 
     @list_route(methods=['post'])
     def recount_votes(self, request):
         """
         Recounts all votes from a given poll. Request data: {poll_id: <poll_id>}
         """
-        poll = self.get_poll(request)
+        poll = self.get_poll(request, MotionPoll)
 
         # Count ballot votes.
         principle = VotingPrinciple.objects.filter(motions=poll.motion).first()
@@ -637,11 +639,7 @@ class MotionPollBallotViewSet(PermissionMixin, ModelViewSet):
         """
         Pseudoanonymize all votes from a given poll. Request data: {poll_id: <poll_id>}
         """
-        poll = self.get_poll(request)
-
-        # Pseudoanonymize ballot votes.
-        ballot = MotionBallot(poll)
-        ballot.pseudo_anonymize_votes()
+        MotionBallot(self.get_poll(request, MotionPoll)).pseudo_anonymize_votes()
         return HttpResponse()
 
 
@@ -678,9 +676,17 @@ class MotionPollTypeViewSet(BasePollTypeViewSet):
     queryset = MotionPollType.objects.all()
 
 
-class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
+class AssignmentPollBallotViewSet(BasePollBallotViewSet):
     access_permissions = AssignmentPollBallotAccessPermissions()
     queryset = AssignmentPollBallot.objects.all()
+
+    @list_route(methods=['post'])
+    def pseudoanonymize_votes(self, request):
+        """
+        Pseudoanonymize all votes from a given poll. Request data: {poll_id: <poll_id>}
+        """
+        AssignmentBallot(self.get_poll(request, AssignmentPoll)).pseudo_anonymize_votes()
+        return HttpResponse()
 
 
 class AssignmentPollTypeViewSet(BasePollTypeViewSet):

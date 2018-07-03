@@ -38,4 +38,7 @@
   <div ng-repeat="token in tokens">
     {{ token.token }}
   </div>
+  <div ng-if="tokens.length === 0" translate>
+    No active voting tokens
+  </div>
 </div>

@@ -20,7 +20,7 @@
     <form ng-submit="scan()" class="row" ng-if="av.motionPoll || av.assignmentPoll">
       <div class="col-md-6">
         <div class="form-group">
-          <label for="tokenInput" translate>Enter votingtoken</label>
+          <label for="tokenInput" translate>Enter voting token</label>
           <input type="text" class="form-control" id="tokenInput"
             ng-model="$parent.$parent.tokenInput" ng-disabled="tokenInputDisabled" autofocus>
         </div>
@@ -50,7 +50,7 @@
       </h1>
       <ng-include src="'static/templates/openslides_voting/submit-assignment-poll-buttons.html'"></ng-include>
       <button type="button" class="btn btn-primary spacer-top-lg" ng-click="submitVote()"
-        ng-disabled="vote.candidateIndex < 0 && poll.pollmethod === 'votes'" translate>
+        ng-disabled="!canSubmitAssignmentPoll()" translate>
         Submit vote
       </button>
     </div>

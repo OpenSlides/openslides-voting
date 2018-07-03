@@ -2,7 +2,7 @@
   <h1 translate>Edit participant</h1>
 
   <div uib-alert ng-show="$parent.alert.show" ng-class="'alert-' + $parent.alert.type" close="$parent.alert={}">
-    {{ $parent.alert.msg }}
+    {{ $parent.$parent.alert.msg }}
   </div>
 
   <form name="delegateForm" ng-submit="delegateSave(model)">

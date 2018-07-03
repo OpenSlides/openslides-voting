@@ -505,6 +505,8 @@ class AssignmentBallot(BaseBallot):
         else:  # votes
             for option in options:
                 result[str(option.candidate.id)] = [0, Decimal(0)]
+                result['A'] = [0, Decimal(0)]
+                result['N'] = [0, Decimal(0)]
 
         # Sum up the votes.
         for vote in votes:
@@ -523,8 +525,13 @@ class AssignmentBallot(BaseBallot):
                     result[candidate_id][value][0] += 1
                     result[candidate_id][value][1] += delegate_share
             else:
-                result[vote.vote][0] += 1
-                result[vote.vote][1] += delegate_share
+                if vote.vote in ('A', 'N'):
+                    result[vote.vote][0] += 1
+                    result[vote.vote][1] += delegate_share
+                else:
+                    for candidateId in vote.vote:
+                        result[candidateId][0] += 1
+                        result[candidateId][1] += delegate_share
             result['casted'][0] += 1
             result['casted'][1] += delegate_share
         result['valid'] = result['casted']

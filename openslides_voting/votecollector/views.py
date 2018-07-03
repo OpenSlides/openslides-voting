@@ -291,23 +291,48 @@ class SubmitVotes(ValidationView):
 class SubmitCandidates(ValidationView):
     http_method_names = ['post']
 
-    def validate_candidates_votes(self, votes, options, range_exception):
+    def validate_candidates_votes(self, votes, options, range_exception, open_posts):
         """
-        Validates, that the vote values are integers with 0 < value <= len(options).
-        Replaces this index with the actual candidate id.
+        Some more types of vote values are accepted here:
+        - A simple 'A' or 'N' for abstain or No. You can give an empty list for abstian as well.
+        - A list with candidate indices. They should be unique. Indices are integers with
+          0 < i <= len(options). Replaces these indeicesx with the actual candidate ids in string.
+        - A single int: Will be converted to [<id>] and the rule above applies.
         """
         for vote in votes:
             value = vote['value']
-            try:
-                value = int(value)
-            except ValueError:
-                raise ValidationError({'detail': 'Value has to be an int.'})
-            if value > len(options) or value <= 0:
-                vote['value'] = None  # invalid vote
-                if range_exception:
-                    raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
+            # for the votecollector single digits are allowed
+            if isinstance(value, int):
+                value = [value]
+
+            # check for 'A', 'N' or a list of indices
+            if isinstance(value, list):
+                value_set = set(value)
+                if len(value_set) != len(value):  # someone has votes for the same candidate multiple times
+                    raise ValidationError({'detail': 'You can just give a candidate one or zero times.'})
+
+                if len(value) > open_posts:
+                    raise ValidationError({'detail': 'You cannot give more candidates then open posts'})
+
+                if len(value) == 0:
+                    value = 'A'
+                else:
+                    for index in value:
+                        if not isinstance(index, int):
+                            raise ValidationError({'detail': 'An index has to be int.'})
+                        if index > len(options) or index <= 0:
+                            vote['value'] = 'A'  # invalid vote
+                            if range_exception:
+                                raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
+                        else:
+                            # map the actual candidate ids stringified
+                            vote['value'] = [str(options[i - 1].candidate.id) for i in value]
+
+            elif isinstance(value, str):
+                if value not in ('A', 'N'):
+                    raise ValidationError({'detail': 'Value has to be a list of indices, "A" or "N".'})
             else:
-                vote['value'] = str(options[value - 1].candidate.id)  # save the actual candidate id
+                raise ValidationError({'detail': 'Value has to be a list of indices, "A" or "N".'})
         return votes
 
     @transaction.atomic()
@@ -316,6 +341,7 @@ class SubmitCandidates(ValidationView):
         Takes requests for incomming votes for candidates. They should have the format
         given in self.validate_input_data with the matching format for value (the pollmethod).
         For a single vote, the list can be omitted.
+        The actual vote format can be determined by reading the docstrin from `validate_candidate_votes`.
         Note: The values for the candidates are NOT the IDs. Its the index started by 1, if
         you put all candidates ordered by their weight in a straight order.
         """
@@ -358,7 +384,7 @@ class SubmitCandidates(ValidationView):
         if votecollector:
             body = self.decrypt_votecollector_message(body)
         votes = self.validate_input_data(body, av.type, request.user)
-        votes = self.validate_candidates_votes(votes, options, not votecollector)
+        votes = self.validate_candidates_votes(votes, options, not votecollector, poll.assignment.open_posts)
         self.update_keypads_from_votes(votes, av.type)
 
         result_token = 0

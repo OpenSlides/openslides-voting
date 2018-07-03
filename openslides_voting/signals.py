@@ -13,6 +13,8 @@ def add_permissions_to_builtin_groups(**kwargs):
     """
     content_type = ContentType.objects.get(app_label='openslides_voting', model='votingcontroller')
 
+
+    # Add 'can_manage' to the staff group
     try:
         # Group with pk == 4 should be the admin group in OpenSlides 2.2
         staff = Group.objects.get(pk=4)
@@ -21,6 +23,15 @@ def add_permissions_to_builtin_groups(**kwargs):
     else:
         perm_can_manage = Permission.objects.get(content_type=content_type, codename='can_manage')
         staff.permissions.add(perm_can_manage)
+
+    # Add 'can_vote' to the delegate group
+    try:
+        delegates = Group.objects.get(pk=2)
+    except Group.DoesNotExist:
+        pass
+    else:
+        perm_can_vote = Permission.objects.get(content_type=content_type, codename='can_vote')
+        delegates.permissions.add(perm_can_vote)
 
 
 def update_authorized_voters(sender, instance, **kwargs):

@@ -151,7 +151,12 @@
 
         <!-- Result token-->
         <td ng-if="pollType === 'token_based_electronic'">
-          {{ ballot.result_token }}
+          <span ng-if="ballot.result_token > 0">
+            {{ ballot.result_token }}
+          </span>
+          <span ng-if="ballot.result_token === 0" translate>
+            anonym
+          </span>
         </td>
 
         <!-- Vote -->

@@ -255,11 +255,21 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     $scope.votes.candidateIndex = -1;
                 } else {
                     _.forEach($scope.poll.options, function (option) {
-                        $scope.votes[option.candidate.id] = 'N';
+                        $scope.votes[option.candidate.id] = void 0;
                     });
                 }
             }
         };
+
+        $scope.canSubmitAssignmentPoll = function () {
+            if ($scope.poll.pollmethod === 'votes') {
+                return $scope.votes.candidateIndex >= 0;
+            } else {
+                return _.every($scope.votes, function (vote) {
+                    return vote;
+                });
+            }
+        }
 
         // This function is called, if a motion poll option is clicked
         $scope.vote = function (vote) {

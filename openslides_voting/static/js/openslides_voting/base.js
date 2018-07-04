@@ -169,7 +169,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 if (isNaN(shares) || shares <= 0) {
                     shares = 1;
                 }
-                var decimalPlaces = DS.get('openslides_voting/voting-principle', share.principle_id);
+                var decimalPlaces = share.principle.decimal_places;
                 share.shares = parseFloat(shares.toFixed(decimalPlaces));
                 callback(null, share);
             },

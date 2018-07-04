@@ -345,6 +345,7 @@ class MotionBallot(BaseBallot):
         ballots = MotionPollBallot.objects.filter(poll=self.poll)
         for mpb in ballots:
             mpb.delegate = None
+            mpb.result_token = 0
             mpb.save()
 
     def _query_admitted_delegates(self):

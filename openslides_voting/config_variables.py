@@ -11,20 +11,11 @@ def get_config_variables():
     """
     # General
     yield ConfigVariable(
-        name='voting_enable_votecollector',
-        default_value=False,
-        input_type='boolean',
-        label='Enable VoteCollector',
-        weight=615,
-        group='OpenSlides-Voting',
-        subgroup='General'
-    )
-    yield ConfigVariable(
         name='voting_enable_proxies',
         default_value=False,
         input_type='boolean',
         label='Enable proxies and absentee votes',
-        weight=616,
+        weight=615,
         group='OpenSlides-Voting',
         subgroup='General'
     )
@@ -61,6 +52,15 @@ def get_config_variables():
 
     # VoteCollector
     yield ConfigVariable(
+        name='voting_enable_votecollector',
+        default_value=False,
+        input_type='boolean',
+        label='Enable VoteCollector',
+        weight=635,
+        group='OpenSlides-Voting',
+        subgroup='VoteCollector'
+    )
+    yield ConfigVariable(
         # TODO: Use URL validator.
         name='voting_votecollector_uri',
         default_value='http://localhost:8030',
@@ -68,15 +68,23 @@ def get_config_variables():
         help_text='Example: http://localhost:8030',
         weight=640,
         group='OpenSlides-Voting',
-        subgroup='General'
+        subgroup='VoteCollector'
     )
     yield ConfigVariable(
-        name='voting_start_prompt',
+        name='voting_start_prompt_motions',
         default_value=ugettext_noop('Please vote now!'),
-        label='Voting start prompt (projector overlay message)',
+        label='Voting start prompt when using keypads (projector overlay message)',
         weight=650,
         group='OpenSlides-Voting',
-        subgroup='General'
+        subgroup='VoteCollector'
+    )
+    yield ConfigVariable(
+        name='voting_start_prompt_assignments',
+        default_value=ugettext_noop('Please vote now!'),
+        label='Election start prompt when using keypads (projector overlay message)',
+        weight=655,
+        group='OpenSlides-Voting',
+        subgroup='VoteCollector'
     )
 
     # Delegate board

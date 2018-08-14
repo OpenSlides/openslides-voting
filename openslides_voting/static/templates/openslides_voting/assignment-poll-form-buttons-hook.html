@@ -21,7 +21,7 @@
       <i class="fa fa-trash" aria-hidden="true"></i>
       {{ 'Clear votes' | translate }}</button>
     <projector-button model="projectModel" default-projector-id="1"
-      content="Project election result"></projector-button>
+      content="{{ getProjectorButtonText() }}"></projector-button>
     <p>{{ getVotingStatus() }}</p>
   </div>
 </div>

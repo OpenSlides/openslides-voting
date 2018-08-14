@@ -491,7 +491,7 @@ class SubmitSpeaker(ValidationView):
 
         # Return response with content to be displayed on keypad.
         # Content contains extra whitespace for formatting purposes, e.g. to force a linefeed.
-        # Engage keypads have a line width 0f 16 characters.
+        # Engage keypads have a line width of 16 characters.
         return HttpResponse(content)
 
 
@@ -512,7 +512,7 @@ class SubmitKeypads(ValidationView):
         body = self.decrypt_votecollector_message(request.body)
 
         # Validate marks keypads as in range and updates battery levels.
-        self.validate_input_data(body, 'votecollector', request.user)
-        self.update_keypads_from_votes(body, 'votecollector')
+        votes = self.validate_input_data(body, 'votecollector', request.user)
+        self.update_keypads_from_votes(votes, 'votecollector')
 
         return HttpResponse()

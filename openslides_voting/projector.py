@@ -37,8 +37,6 @@ class MotionPollSlide(ProjectorElement):
             yield AuthorizedVoters.objects.get()
             yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
-            yield from VotingProxy.objects.all()
-            yield from VotingShare.objects.all()
             yield from MotionPollBallot.objects.filter(poll=motionpoll)
             yield VotingController.objects.get()
 
@@ -73,10 +71,9 @@ class AssignmentPollSlide(ProjectorElement):
         else:
             yield assignmentpoll.assignment
             yield assignmentpoll.assignment.agenda_item
+            yield AuthorizedVoters.objects.get()
             yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
-            yield from VotingProxy.objects.all()
-            yield from VotingShare.objects.all()
             yield from AssignmentPollBallot.objects.filter(poll=assignmentpoll)
             yield VotingController.objects.get()
 

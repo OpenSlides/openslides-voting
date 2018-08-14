@@ -2400,6 +2400,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
                 $scope.projectModel = {
                     project: function (projectorId) {
+                        // possible callbacke, currently used by assignments.
+                        if ($scope.projectorButtonClicked) {
+                            $scope.projectorButtonClicked();
+                        }
                         var isProjectedIds = this.isProjected();
                         var requestData = {
                             clear_ids: isProjectedIds,
@@ -2583,6 +2587,28 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                      gettextCatalog.getString('Save this result now!'),
                 show: true
             };
+        };
+
+        $scope.projectorButtonClicked = function () {
+            if (!$scope.poll.published) {
+                $scope.poll.DSUpdate({
+                    assignment_id: $scope.poll.assignment_id,
+                    published: true,
+                })
+                .then(function (success) {
+                    $scope.poll.published = true;
+                }, function (error) {
+                    $scope.$parent.$parent.$parent.alert = ErrorMessage.forAlert(error);
+                });
+            }
+        };
+
+        $scope.getProjectorButtonText = function () {
+            if ($scope.poll.published) {
+                return 'Project election result';
+            } else {
+                return 'Project and publish election result';
+            }
         };
 
         $scope.getVotingStatus = function () {

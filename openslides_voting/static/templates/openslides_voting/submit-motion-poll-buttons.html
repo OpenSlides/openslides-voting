@@ -1,24 +1,38 @@
 <ng-include src="'static/templates/openslides_voting/submit-buttons-css.html'"></ng-include>
-<div class="pointer votingoption" ng-click="vote('Y')">
+<div class="pointer votingoption" ng-click="vote('Y');">
   <button type="button" class="btn btn-default btn-voting"
-    ng-class="mpb.vote == 'Y' ? 'btn-yes' : 'btn-gray'">
+    ng-class="mpbVote.value == 'Y' ? 'btn-yes' : 'btn-gray'">
     <i class="fa fa-thumbs-o-up fa-2x"></i>
   </button>
   <translate>Yes</translate>
 </div>
   
-<div class="pointer votingoption spacer-top-lg" ng-click="vote('N')">
+<div class="pointer votingoption spacer-top-lg" ng-click="vote('N');">
   <button type="button" class="btn btn-default btn-voting"
-    ng-class="mpb.vote == 'N' ? 'btn-no' : 'btn-gray'">
+  ng-class="mpbVote.value == 'N' ? 'btn-no' : 'btn-gray'">
     <i class="fa fa-thumbs-o-down fa-2x"></i>
   </button>
   <translate>No</translate>
 </div>
       
-<div class="pointer votingoption spacer-top-lg" ng-click="vote('A')">
+<div class="pointer votingoption spacer-top-lg" ng-click="vote('A');">
   <button type="button" class="btn btn-default btn-voting"
-    ng-class="mpb.vote == 'A' ? 'btn-abstain' : 'btn-gray'">
+    ng-class="mpbVote.value == 'A' ? 'btn-abstain' : 'btn-gray'">
     <i class="fa fa-circle-o fa-2x"></i>
   </button>
   <translate>Abstain</translate>
+</div>
+
+<div class="spacer-top-lg bold">
+  <translate>Your current choice:</translate>
+  <span ng-if="mpbVote.value === 'Y'">
+    <translate>Yes</translate>
+  </span>
+  <span ng-if="mpbVote.value === 'N'">
+    <translate>No</translate>
+  </span>
+  <span ng-if="mpbVote.value === 'A'">
+    <translate>Abstain</translate>
+  </span>
+  <span ng-if="!mpbVote.value">&mdash;</span>
 </div>

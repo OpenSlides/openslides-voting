@@ -406,25 +406,43 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getVote: function () {
-                    if (this.poll.pollmethod === 'yna') {
-                        var cid = this.poll.options[0].candidate_id;
-                        return voteOption[this.vote[cid]];
-                    }
-                    else if (this.poll.pollmethod === 'votes') {
-                        var cid = parseInt(this.vote);
-                        if (cid === 0) {
-                            // Abstaining vote.
-                            return "0 - " + voteOption['A'];
+                    if (this.poll.pollmethod === 'yna' || this.poll.pollmethod === 'yn') {
+                        if (this.poll.options.length === 1) {
+                            var cid = this.poll.options[0].candidate_id;
+                            return voteOption[this.vote[cid]];
+                        } else {
+                            var textParts = [];
+                            var poll = this.poll;
+                            _.forEach(this.vote, function (vote, candidateId) {
+                                candidateId = parseInt(candidateId);
+                                var option = _.find(poll.options, function (option) {
+                                    return option.candidate_id === candidateId;
+                                });
+                                textParts.push(option.candidate.full_name + ': ' +
+                                    gettextCatalog.getString(voteOption[vote]));
+                            });
+                            return textParts.join(', ');
                         }
-                        var option = _.find(this.poll.options, function (option) {
-                            return option.candidate_id === cid;
+                    } else if (this.poll.pollmethod === 'votes') {
+                        if (this.vote === 'N' || this.vote === 'A') {
+                            return voteOption[this.vote];
+                        }
+                        var candidates = [];
+                        var poll = this.poll;
+                        _.forEach(this.vote, function (candidateId) {
+                            candidateId = parseInt(candidateId);
+                            var option = _.find(poll.options, function (option) {
+                                return option.candidate_id === candidateId;
+                            });
+                            candidates.push(option.candidate.full_name);
                         });
-                        return cid + " - " + option.candidate.full_name;
+                        return candidates.join(', ');
                     }
                     return null;
                 },
                 getVoteIcon: function () {
-                    if (this.poll.pollmethod === 'yna') {
+                    if ((this.poll.pollmethod === 'yna' || this.poll.pollmethod === 'yn') &&
+                        this.poll.options.length === 1) {
                         var cid = this.poll.options[0].candidate_id;
                         return voteIcon[this.vote[cid]];
                     }

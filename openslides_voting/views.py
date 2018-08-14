@@ -617,6 +617,7 @@ class BasePollBallotViewSet(PermissionMixin, ModelViewSet):
                 poll_id)})
         return poll
 
+
 class MotionPollBallotViewSet(BasePollBallotViewSet):
     access_permissions = MotionPollBallotAccessPermissions()
     queryset = MotionPollBallot.objects.all()
@@ -652,29 +653,13 @@ class MotionPollBallotViewSet(BasePollBallotViewSet):
         """
         Pseudo anonymize all votes for a given poll.
         """
-        poll = self.get_poll(request)
-
-        # Pseudo anonymize ballot votes.
-        ballot = MotionBallot(poll)
-        ballot.pseudo_anonymize_votes()
+        MotionBallot(self.get_poll(request, MotionPoll)).pseudo_anonymize_votes()
         return HttpResponse()
 
 
-class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
+class AssignmentPollBallotViewSet(BasePollBallotViewSet):
     access_permissions = AssignmentPollBallotAccessPermissions()
     queryset = AssignmentPollBallot.objects.all()
-
-    def get_poll(self, request):
-        if not isinstance(request.data, dict):
-            raise ValidationError({'detail': 'Data must be a dictionary.'})
-        poll_id = request.data.get('poll_id')
-        if not isinstance(poll_id, int):
-            raise ValidationError({'detail': 'poll_id must be an integer.'})
-        try:
-            poll = AssignmentPoll.objects.get(pk=poll_id)
-        except AssignmentPoll.DoesNotExist:
-            raise ValidationError({'detail': 'Assignment poll with id {} does not exist.'.format(poll_id)})
-        return poll
 
     @list_route(methods=['post'])
     def recount_votes(self, request):
@@ -682,7 +667,7 @@ class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
         Recounts all votes for a given poll.
         :param request: Data: {poll_id: <poll_id>}
         """
-        poll = self.get_poll(request)
+        poll = self.get_poll(request, AssignmentPoll)
 
         # Count ballot votes.
         principle = VotingPrinciple.objects.filter(assignments=poll.assignment).first()
@@ -716,11 +701,7 @@ class AssignmentPollBallotViewSet(PermissionMixin, ModelViewSet):
         """
         Pseudo anonymize all votes for a given poll.
         """
-        poll = self.get_poll(request)
-
-        # Pseudo anonymize ballot votes.
-        ballot = AssignmentBallot(poll)
-        ballot.pseudo_anonymize_votes()
+        AssignmentBallot(self.get_poll(request, AssignmentPoll)).pseudo_anonymize_votes()
         return HttpResponse()
 
 

@@ -804,8 +804,24 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     return;
                 }
                 if (_.includes(_.keys(av.authorized_voters), operator.user.id.toString())) {
-                    return av.assignmnt_poll_id;
+                    return av.assignment_poll_id;
                 }
+            },
+            // Returns Y, N or A for an active poll from the motion. If the oerator
+            // hasn't voted yet or there is no active poll, false is returned.
+            assignmentPollVoteForAssignment: function (assignment) {
+                var pollId = this.assignmentPollIdForAssignment(assignment);
+                if (!pollId) {
+                    return false;
+                }
+                var apb = _.find(AssignmentPollBallot.getAll(), function (apb) {
+                    return apb.delegate_id === operator.user.id &&
+                        apb.poll_id === pollId;
+                });
+                if (apb) {
+                    return apb.vote;
+                }
+                return false;
             },
         };
     }
@@ -2523,13 +2539,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
 .controller('MotionPollSubmitCtrl', [
     '$scope',
+    '$state',
     '$stateParams',
     '$http',
     'MotionPoll',
     'MotionPollBallot',
     'operator',
     'ErrorMessage',
-    function ($scope, $stateParams, $http, MotionPoll, MotionPollBallot, operator, ErrorMessage) {
+    function ($scope, $state, $stateParams, $http, MotionPoll, MotionPollBallot, operator, ErrorMessage) {
         var pollId = $stateParams.id;
         $scope.motionPoll = MotionPoll.get(pollId);
         $scope.alert = {};
@@ -2543,12 +2560,22 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             });
         });
 
+        $scope.mpbVote = {
+            value: '',
+        };
+
         $scope.vote = function (vote) {
             $scope.alert = {};
-            vote = {
+            $scope.mpbVote = {
                 value: vote,
             };
-            $http.post('/votingcontroller/vote/' + pollId + '/', vote).then(null, function (error) {
+        };
+
+        $scope.submit = function () {
+            $scope.alert = {};
+            $http.post('/votingcontroller/vote/' + pollId + '/', $scope.mpbVote).then(function (success) {
+                $state.transitionTo('motions.motion.detail', {id: $scope.motionPoll.motion.id});
+            }, function (error) {
                 $scope.alert = ErrorMessage.forAlert(error);
             });
         };
@@ -2557,6 +2584,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
 .controller('AssignmentPollSubmitCtrl', [
     '$scope',
+    '$state',
     '$stateParams',
     '$http',
     'AssignmentPoll',
@@ -2566,7 +2594,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'User',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $stateParams, $http, AssignmentPoll, AssignmentPollBallot, AssignmentButtonsCtrlBase, 
+    function ($scope, $state, $stateParams, $http, AssignmentPoll, AssignmentPollBallot, AssignmentButtonsCtrlBase, 
         operator, User, gettextCatalog, ErrorMessage) {
         var pollId = $stateParams.id;
         $scope.alert = {};
@@ -2619,7 +2647,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 vote.value = $scope.votes;
             }
             $http.post('/votingcontroller/' + route + '/' + pollId + '/', vote).then(
-                null, function (error) {
+                function (success) {
+                    $state.transitionTo('assignments.assignment.detail', {id: $scope.poll.assignment.id});
+                }, function (error) {
                     $scope.alert = ErrorMessage.forAlert(error);
                 }
             );

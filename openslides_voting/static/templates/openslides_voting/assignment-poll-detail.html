@@ -72,6 +72,7 @@
         </th>
 
         <!-- Voting device column -->
+        <!-- TODO just show, if the voting mode is something with votecollector -->
         <th ng-click="sort.toggle('device')" class="sortable" ng-if="pollType !== 'token_based_electronic'">
           <translate>Keypad serial number</translate>
           <i class="pull-right fa" ng-show="sort.column === 'device'"
@@ -123,7 +124,7 @@
 
         <!-- Vote -->
         <td>
-          <i class="fa fa-{{ ballot.getVoteIcon() }}" ng-if="poll.pollmethod === 'yna'"></i>
+          <i class="fa fa-{{ ballot.getVoteIcon() }}" ng-if="(poll.pollmethod === 'yna' || poll.pollmethod === 'yn') && poll.options.length === 1"></i>
           <span style="margin-left: 5px">{{ ballot.getVote() | translate }}</span>
         </td>
   </table>

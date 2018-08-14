@@ -212,6 +212,20 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 };
             },
         });
+        templateHooks.registerHook({
+            id: 'assignmentPollVotingHeader',
+            scope: function (scope) {
+                return {
+                    getActivePoll: function () {
+                        return Voter.assignmentPollIdForAssignment(scope.assignment);
+                    },
+                    getVoteForActivePoll: function () {
+                        return Voter.assignmentPollVoteForAssignment(scope.assignment);
+                    },
+                };
+            },
+            templateUrl: 'static/templates/openslides_voting/assignment-poll-voting-header-hook.html',
+        });
     }
 ]);
 

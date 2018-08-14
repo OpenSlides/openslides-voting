@@ -345,6 +345,7 @@ class MotionBallot(BaseBallot):
         ballots = MotionPollBallot.objects.filter(poll=self.poll)
         for mpb in ballots:
             mpb.delegate = None
+            mpb.device = None
             mpb.result_token = 0
             mpb.save(skip_autoupdate=True)
         inform_changed_data(ballots)
@@ -545,6 +546,8 @@ class AssignmentBallot(BaseBallot):
         ballots = AssignmentPollBallot.objects.filter(poll=self.poll)
         for apb in ballots:
             apb.delegate = None
+            apb.device = None
+            apb.result_token = 0
             apb.save(skip_autoupdate=True)
         inform_changed_data(ballots)
 

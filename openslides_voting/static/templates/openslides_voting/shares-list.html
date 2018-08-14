@@ -33,7 +33,11 @@
     </div>
   </div>
 
-  <table class="table table-bordered spacer-top-lg">
+  <div class="italic">
+    {{ delegatesFiltered.length }} / {{ delegates.length }} {{ "Shares" | translate }}
+  </div>
+
+  <table class="table table-bordered">
     <thead>
       <tr>
         <th>
@@ -65,9 +69,10 @@
       </tr>
     </thead>
     <tbody>
-      <tr ng-repeat="delegate in delegates
+      <tr ng-repeat="delegate in delegatesFiltered = (delegates
         | filter: {full_name: search}
-        | orderBy: 'full_name'"
+        | orderBy: 'full_name')
+        | limitTo: pagination.itemsPerPage : pagination.limitBegin"
         ng-mouseover="delegate.hover=true" ng-mouseleave="delegate.hover=false">
         <td>
           {{ delegate.full_name }}
@@ -91,4 +96,16 @@
       </tr>
     </tbody>
   </table>
+  <ul uib-pagination
+      ng-show="delegatesFiltered.length > pagination.itemsPerPage"
+      total-items="delegatesFiltered.length"
+      items-per-page="pagination.itemsPerPage"
+      ng-model="pagination.currentPage"
+      ng-change="pagination.pageChanged()"
+      class="pagination-sm"
+      direction-links="false"
+      boundary-links="true"
+      first-text="&laquo;"
+      last-text="&raquo;">
+  </ul>
 </div>

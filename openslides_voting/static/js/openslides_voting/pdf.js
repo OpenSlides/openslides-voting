@@ -16,20 +16,15 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 gettextCatalog.getString('Single votes'));
 
             // Subtitle
-            var i = _.findIndex(motion.polls, function (p) { return p.id == poll.id;  });
+            var i = _.findIndex(motion.polls, function (p) { return p.id === poll.id;  });
             var pdfSubtitle = PDFLayout.createSubtitle([ (i + 1) + '. ' + gettextCatalog.getString('Vote')]);
 
-            // TODO: Add vote result table. See MotionContentProvider.
-
-            // Create single votes table. Order by user fullname.
-            var voteStr = {Y: 'Yes', N: 'No', A: 'Abstain'};
-
+            // Create single votes table.
             var tableBody = [
                 [
                     {
-                        text: (pollType === 'token_based_electronic'
-                            ? gettextCatalog.getString('Result token')
-                            : gettextCatalog.getString('Delegate')),
+                        text: (pollType === 'token_based_electronic' ?
+                            gettextCatalog.getString('Result token') : gettextCatalog.getString('Delegate')),
                         style: 'tableHeader'
                     },
                     {
@@ -39,16 +34,83 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 ]
             ];
             _.forEach(ballots, function (ballot, index) {
-                var username = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonym');
+                var name = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonymous');
                 tableBody.push([
                     {
-                        text: (pollType === 'token_based_electronic'
-                            ? ballot.result_token
-                            : username),
+                        text: (pollType === 'token_based_electronic' ? ballot.result_token : name),
                         style: PDFLayout.flipTableRowStyle(index),
                     },
                     {
-                        text: gettextCatalog.getString(voteStr[ballot.vote]),
+                        text: gettextCatalog.getString(ballot.getVote()),
+                        style: PDFLayout.flipTableRowStyle(index),
+                    }
+                ]);
+            });
+
+            var pdfTable = {
+                table: {
+                    widths: ['*', '*'],
+                    headerRows: 1,
+                    body: tableBody
+                },
+                layout: 'headerLineOnly',
+            };
+
+            return {
+                getContent: function () {
+                    return [
+                        pdfTitle,
+                        pdfSubtitle,
+                        pdfTable
+                    ];
+                },
+            };
+        };
+
+        return {
+            createInstance: createInstance,
+        };
+    }
+])
+
+.factory('AssignmentPollContentProvider', [
+    'gettextCatalog',
+    'AssignmentPollBallot',
+    'PDFLayout',
+    function(gettextCatalog, AssignmentPollBallot, PDFLayout) {
+        var createInstance = function(assignment, poll, ballots, pollType) {
+
+            // Title
+            var pdfTitle = PDFLayout.createTitle(assignment.getTitle() + ' - ' +
+                gettextCatalog.getString('Single votes'));
+
+            // Subtitle
+            var i = _.findIndex(assignment.polls, function (p) { return p.id === poll.id;  });
+            var pdfSubtitle = PDFLayout.createSubtitle([gettextCatalog.getString('Ballot') + ' ' +  (i + 1)]);
+
+            // Create single votes table.
+            var tableBody = [
+                [
+                    {
+                        text: (pollType === 'token_based_electronic' ?
+                            gettextCatalog.getString('Result token') : gettextCatalog.getString('Delegate')),
+                        style: 'tableHeader'
+                    },
+                    {
+                        text: gettextCatalog.getString('Vote'),
+                        style: 'tableHeader'
+                    }
+                ]
+            ];
+            _.forEach(ballots, function (ballot, index) {
+                var name = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonymous');
+                tableBody.push([
+                    {
+                        text: (pollType === 'token_based_electronic' ? ballot.result_token : name),
+                        style: PDFLayout.flipTableRowStyle(index),
+                    },
+                    {
+                        text: gettextCatalog.getString(ballot.getVote()),
                         style: PDFLayout.flipTableRowStyle(index),
                     }
                 ]);
@@ -133,8 +195,8 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                     body: tableBody,
                     widths: ['auto']
                 },
-                // TODO: Replace layout placeholder with static values for LineWidth and LineColor.
-                layout: '{{motion-placeholder-to-insert-functions-here}}'
+                // TODO: Make header nicer.
+                layout: 'headerLineOnly'
             };
 
             return {

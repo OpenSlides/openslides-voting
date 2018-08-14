@@ -47,7 +47,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getErrorMessage: function (status, text) {
-                    if (status == 503) {
+                    if (status === 503) {
                         return gettext('VotingController not running!');
                     }
                     return status + ': ' + text;
@@ -376,6 +376,17 @@ angular.module('OpenSlidesApp.openslides_voting', [
     'gettextCatalog',
     function (DS, gettextCatalog) {
         var name = 'openslides_voting/assignment-poll-ballot';
+        var voteOption = {
+            Y: gettextCatalog.getString('Yes'),
+            N: gettextCatalog.getString('No'),
+            A: gettextCatalog.getString('Abstain')
+        };
+        var voteIcon = {
+            Y: 'thumbs-up',
+            N: 'thumbs-down',
+            A: 'ban'
+        };
+
         return DS.defineResource({
             name: name,
             relations: {
@@ -383,12 +394,41 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     'users/user': {
                         localField: 'user',
                         localKey: 'delegate_id'
-                    }
+                    },
+                    'assignments/poll': {
+                        localField: 'poll',
+                        localKey: 'poll_id',
+                    },
                 }
             },
             methods: {
                 getResourceName: function () {
                     return name;
+                },
+                getVote: function () {
+                    if (this.poll.pollmethod === 'yna') {
+                        var cid = this.poll.options[0].candidate_id;
+                        return voteOption[this.vote[cid]];
+                    }
+                    else if (this.poll.pollmethod === 'votes') {
+                        var cid = parseInt(this.vote);
+                        if (cid === 0) {
+                            // Abstaining vote.
+                            return "0 - " + voteOption['A'];
+                        }
+                        var option = _.find(this.poll.options, function (option) {
+                            return option.candidate_id === cid;
+                        });
+                        return cid + " - " + option.candidate.full_name;
+                    }
+                    return null;
+                },
+                getVoteIcon: function () {
+                    if (this.poll.pollmethod === 'yna') {
+                        var cid = this.poll.options[0].candidate_id;
+                        return voteIcon[this.vote[cid]];
+                    }
+                    return null;
                 },
             },
         });
@@ -542,13 +582,13 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     firstName = _.trim(user.first_name),
                     lastName = _.trim(user.last_name),
                     config = Config.get('voting_delegate_board_name').value;
-                if (config == 'last_name') {
+                if (config === 'last_name') {
                     // Trim off the first name.
                     // This applies to use cases where first name is empty and last name is 'last, first'.
                     name = lastName.split(',')[0];
                 }
                 else {
-                    if (config == 'short_name') {
+                    if (config === 'short_name') {
                         firstName = firstName.substr(0, 1);
                         lastName = lastName.substr(0, 3);
                         sep = ',';
@@ -709,7 +749,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         delegate_id: delegate.id,
                         principle_id: principleId,
                     });
-                    var share = shares.length == 1 ? shares[0]: null;
+                    var share = shares.length === 1 ? shares[0]: null;
                     return self.updateShare(delegate, share, value, principleId);
                 }));
             },

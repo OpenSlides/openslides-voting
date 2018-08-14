@@ -1,6 +1,6 @@
 <div os-perms="openslides_voting.can_manage">
   <div class="spacer-top" ng-if="poll.has_votes && !isAnalogPoll">
-    <span class="spacer" ng-if="hasPrinciple">
+    <span class="spacer" ng-if="config('voting_enable_principles')">
       <button type="button" ng-click="countVotes()"
         class="btn btn-xs btn-default">
         <i class="fa fa-repeat" aria-hidden="true"></i>

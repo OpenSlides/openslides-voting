@@ -237,6 +237,7 @@ class MotionPollBallot(RESTModelMixin, models.Model, PollBallot):
     poll = models.ForeignKey(MotionPoll, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = models.CharField(max_length=1, blank=True)
+    device = models.CharField(max_length=32, null=True)
     result_token = models.PositiveIntegerField()
     is_dummy = models.BooleanField(default=False)
 
@@ -253,6 +254,7 @@ class AssignmentPollBallot(RESTModelMixin, models.Model, PollBallot):
     poll = models.ForeignKey(AssignmentPoll, on_delete=models.CASCADE)
     delegate = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     vote = JSONField(default={})
+    device = models.CharField(max_length=32, null=True)
     result_token = models.PositiveIntegerField()
     is_dummy = models.BooleanField(default=False)
 

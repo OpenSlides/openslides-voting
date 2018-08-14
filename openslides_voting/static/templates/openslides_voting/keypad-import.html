@@ -37,7 +37,7 @@
             <th translate>Keypad
             <th translate>Participant
         <tbody>
-          <tr ng-repeat="user in users | limitTo:pg.itemsPerPage:pg.firstItem">
+          <tr ng-repeat="user in users | limitTo:pagination.itemsPerPage:pagination.limitBegin">
             <td class="minimum"
                 ng-class="{ 'text-danger': user.importerror, 'text-success': user.imported }">
               <span ng-if="user.importerror">
@@ -51,7 +51,7 @@
                 <i class="fa fa-check-circle fa-lg"></i>
               </span>
             <td class="nobr">
-              {{ (pg.currentPage - 1) * pg.itemsPerPage + $index + 1 }}
+              {{ (pagination.currentPage - 1) * pagination.itemsPerPage + $index + 1 }}
             <td ng-class="{ 'text-danger': user.keypad_error }">
               <span ng-if="user.keypad_error" title="{{ user.keypad_error | translate }}">
                 <i class="fa fa-exclamation-triangle"></i>
@@ -68,11 +68,11 @@
       </table>
     </div>
     <ul uib-pagination
-        ng-show="users.length > pg.itemsPerPage"
+        ng-show="users.length > pagination.itemsPerPage"
         total-items="users.length"
-        items-per-page="pg.itemsPerPage"
-        ng-model="pg.currentPage"
-        ng-change="pg.pageChanged()"
+        items-per-page="pagination.itemsPerPage"
+        ng-model="pagination.currentPage"
+        ng-change="pagination.pageChanged()"
         class="pagination-sm"
         direction-links="false"
         boundary-links="true"

@@ -29,34 +29,6 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
         Config, UserForm, DelegateForm, PollCreateForm, ngDialog, MotionPollType,
         AssignmentPollType, Voter, VotingPrinciple, ErrorMessage) {
         templateHooks.registerHook({
-            id: 'motionPollFormButtons',
-            templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
-        });
-        templateHooks.registerHook({
-            id: 'motionPollSmallButtons',
-            templateUrl: 'static/templates/openslides_voting/motion-poll-small-buttons-hook.html',
-            scope: function (scope) {
-                // Recalculate vote result.
-                scope.countVotes = function () {
-                    $http.post('/rest/openslides_voting/motion-poll-ballot/recount_votes/', {poll_id: scope.poll.id});
-                };
-                scope.$watch(function () {
-                    return MotionPollType.lastModified();
-                }, function () {
-                    var pollTypes = MotionPollType.filter({poll_id: scope.poll.id});
-                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
-                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
-                });
-                scope.$watch(function () {
-                    return VotingPrinciple.lastModified();
-                }, function () {
-                    scope.hasPrinciple = _.some(VotingPrinciple.getAll(), function (p) {
-                        return _.includes(p.motions_id, scope.poll.motion.id);
-                    });
-                });
-            },
-        });
-        templateHooks.registerHook({
             id: 'itemDetailListOfSpeakersButtons',
             templateUrl: 'static/templates/openslides_voting/item-detail-list-of-speakers-buttons-hook.html',
         });
@@ -93,6 +65,28 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                             delegateCount - scope.attendingCount - scope.representedCount);
                     }
                 };
+            },
+        });
+        templateHooks.registerHook({
+            id: 'motionPollFormButtons',
+            templateUrl: 'static/templates/openslides_voting/motion-poll-form-buttons-hook.html',
+        });
+        templateHooks.registerHook({
+            id: 'motionPollSmallButtons',
+            templateUrl: 'static/templates/openslides_voting/motion-poll-small-buttons-hook.html',
+            scope: function (scope) {
+                // Recalculate vote result.
+                scope.countVotes = function () {
+                    $http.post('/rest/openslides_voting/motion-poll-ballot/recount_votes/',
+                        {poll_id: scope.poll.id});
+                };
+                scope.$watch(function () {
+                    return MotionPollType.lastModified();
+                }, function () {
+                    var pollTypes = MotionPollType.filter({poll_id: scope.poll.id});
+                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                });
             },
         });
         templateHooks.registerHook({
@@ -159,6 +153,24 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             templateUrl: 'static/templates/openslides_voting/assignment-poll-form-buttons-hook.html',
         });
         templateHooks.registerHook({
+            id: 'assignmentPollSmallButtons',
+            templateUrl: 'static/templates/openslides_voting/assignment-poll-small-buttons-hook.html',
+            scope: function (scope) {
+                // Recalculate vote result.
+                scope.countVotes = function () {
+                    $http.post('/rest/openslides_voting/assignment-poll-ballot/recount_votes/',
+                        {poll_id: scope.poll.id});
+                };
+                scope.$watch(function () {
+                    return AssignmentPollType.lastModified();
+                }, function () {
+                    var pollTypes = AssignmentPollType.filter({poll_id: scope.poll.id});
+                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
+                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                });
+            },
+        });
+        templateHooks.registerHook({
             id: 'assignmentPollNewBallotButton',
             scope: function (scope) {
                 scope.createBallot = function () {
@@ -198,31 +210,6 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                         });
                     }
                 };
-            },
-        });
-        templateHooks.registerHook({
-            id: 'assignmentPollSmallButtons',
-            templateUrl: 'static/templates/openslides_voting/assignment-poll-small-buttons-hook.html',
-            scope: function (scope) {
-                // Recalculate vote result.
-                scope.countVotes = function () {
-                    //$http.post('/voting/count/' + scope.poll.id + '/');
-                    throw "TODO";
-                };
-                scope.$watch(function () {
-                    return AssignmentPollType.lastModified();
-                }, function () {
-                    var pollTypes = AssignmentPollType.filter({poll_id: scope.poll.id});
-                    scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
-                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
-                });
-                scope.$watch(function () {
-                    return VotingPrinciple.lastModified();
-                }, function () {
-                    scope.hasPrinciple = _.some(VotingPrinciple.getAll(), function (p) {
-                        return _.includes(p.assignments_id, scope.poll.assignment.id);
-                    });
-                });
             },
         });
     }

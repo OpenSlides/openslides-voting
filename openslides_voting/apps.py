@@ -120,7 +120,7 @@ class VotingAppConfig(AppConfig):
     def get_angular_constants(self):
         # Custom settings
         voting_settings_dict = {
-            'votingResultTokenTimeout': getattr(settings, 'VOTING_RESULT_TOKEN_TIMEOUT', 30),
+            'votingResultTokenTimeout': getattr(settings, 'VOTING_RESULT_TOKEN_TIMEOUT', 6),
         }
         voting_settings = {
             'name': 'VotingSettings',

@@ -179,6 +179,121 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
+.factory('AssignmentButtonsCtrlBase', [
+    '$filter',
+    'AssignmentPoll',
+    function ($filter, AssignmentPoll) {
+        var populateScope = function ($scope) {
+
+            $scope.setAssignmentPoll = function (pollId) {
+                $scope.poll = AssignmentPoll.get(pollId);
+
+                // prepare the options for the ui
+                var options = $filter('orderBy')($scope.poll.options, 'weight')
+                _.forEach(options, function (option, index) {
+                    option.index = index;
+                });
+                if (options.length > 4) {
+                    $scope.optionsForTable = _.reduce(options, function (result, value, index, array) {
+                        if (index % 2 === 0) {
+                            result.push(array.slice(index, index + 2));
+                        }
+                        return result;
+                    }, []);
+                    $scope.columns = 2;
+                } else {
+                    $scope.optionsForTable = _.reduce(options, function (result, value, index, array) {
+                        result.push(array.slice(index, index + 1));
+                        return result;
+                    }, []);
+                    $scope.columns = 1;
+                }
+
+                // prepare the votes model
+                $scope.votes = {};
+                if ($scope.poll.pollmethod === 'votes') {
+                    _.forEach($scope.poll.options, function (option, index) {
+                        $scope.votes[index + 1] = false;
+                    });
+                    $scope.votes.no = false;
+                    $scope.votes.abstain = false;
+                } else {
+                    _.forEach($scope.poll.options, function (option) {
+                        $scope.votes[option.candidate.id] = void 0;
+                    });
+                }
+            };
+
+            // returns an array of indexes of selected candidates for assignment with 'votes' mode
+            $scope.candidatesSelected = function () {
+                return _.filter(_.map($scope.votes, function (value, index) {
+                    if (value && index !== 'no') {
+                        return parseInt(index);
+                    }
+                }));
+            };
+            // When a candidate is clicked in assignment 'votes' mode. Index is 1-based.
+            $scope.clickCandidate = function (index) {
+                $scope.votes.no = false;
+                $scope.votes.abstain = false;
+                if ($scope.votes[index]) {
+                    $scope.votes[index] = false;
+                } else {
+                    // Just select the candidate, if there are open posts
+                    var openPosts = $scope.poll.assignment.open_posts;
+                    if (openPosts === 1) {
+                        // Toggle the option is one can just select one candidate
+                        _.forEach($scope.poll.options, function (option, index) {
+                            $scope.votes[index + 1] = false;
+                        });
+                        $scope.votes[index] = true;
+                    } else {
+                        var selected = $scope.candidatesSelected();
+                        if (selected.length < $scope.poll.assignment.open_posts) {
+                            $scope.votes[index] = true;
+                        }
+                    }
+                }
+            };
+            // When no is clicked in assignment 'votes' mode
+            $scope.clickNo = function () {
+                $scope.votes.abstain = false;
+                $scope.votes.no = !$scope.votes.no;
+                _.forEach($scope.poll.options, function (option, index) {
+                    $scope.votes[index+1] = false;
+                });
+            };
+            // When abstain is clicked in assignment 'votes' mode
+            $scope.clickAbstain = function () {
+                $scope.votes.no = false;
+                $scope.votes.abstain = !$scope.votes.abstain;
+                _.forEach($scope.poll.options, function (option, index) {
+                    $scope.votes[index+1] = false;
+                });
+            };
+
+            $scope.canSubmitAssignmentPoll = function () {
+                if ($scope.poll.pollmethod === 'yn' || $scope.poll.pollmethod === 'yna') {
+                    return _.every($scope.poll.options, function (option) {
+                        return !!$scope.votes[option.candidate.id];
+                    });
+                } else {
+                    return $scope.somethingSelected();
+                }
+            };
+
+            $scope.somethingSelected = function () {
+                return _.some($scope.votes, function (value) {
+                    return value;
+                });
+            }
+        };
+        return {
+            populateScope: populateScope,
+        };
+    }
+])
+
 .controller('TokenSubmitCtrl', [
     '$scope',
     '$http',
@@ -186,29 +301,40 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$interval',
     '$filter',
     'AuthorizedVoters',
+    'AssignmentButtonsCtrlBase',
     'VotingSettings',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $http, $timeout, $interval, $filter, AuthorizedVoters,
+    function ($scope, $http, $timeout, $interval, $filter, AuthorizedVoters, AssignmentButtonsCtrlBase,
         VotingSettings, gettextCatalog, ErrorMessage) {
-        // All states: 'scan' -> 'enter' -> 'submitted'
+        // All states: 'scan' -> 'enter' -> 'submitted' (in a dialog)
         $scope.votingState = 'scan';
         $scope.alert = {};
         $scope.showGray = true; // For the generic ng-include for motion poll buttons
+
+        AssignmentButtonsCtrlBase.populateScope($scope);
 
         var token, timeoutInterval;
 
         $scope.$watch(function () {
             return AuthorizedVoters.lastModified();
         }, function () {
+            var message;
             if ($scope.votingState === 'enter') {
                 // Notify the one, who enters the votes.
-                // TODO
-            } else {
-                $scope.av = AuthorizedVoters.get(1);
-                $scope.isTokenVoting =  (($scope.av.motionPoll || $scope.av.assignmentPoll) &&
-                    $scope.av.type === 'token_based_electronic');
+                message = gettextCatalog.getString('The administrator has stopped the election. You vote wasn\'t submitted.');
             }
+            $scope.reset();
+            if (message) {
+                $scope.alert = {
+                    msg: message,
+                    type: 'danger',
+                    show: true,
+                };
+            }
+            $scope.av = AuthorizedVoters.get(1);
+            $scope.isTokenVoting =  (($scope.av.motionPoll || $scope.av.assignmentPoll) &&
+                $scope.av.type === 'token_based_electronic');
         });
 
         var resetInput = function () {
@@ -219,6 +345,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             });
         };
 
+        // Submit a token into $scope.tokenInput.
         $scope.scan = function () {
             if ($scope.votingState !== 'scan') {
                 return;
@@ -244,32 +371,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             });
         };
 
+        // starts the voting. set the state to 'enter'. prepares the $scope.votes model.
         var startVoting = function () {
             $scope.votingState = 'enter';
 
             if ($scope.av.assignmentPoll) {
-                $scope.poll = $scope.av.assignmentPoll;
-                // prepare the votes model
-                $scope.votes = {};
-                if ($scope.poll.pollmethod === 'votes') {
-                    $scope.votes.candidateIndex = -1;
-                } else {
-                    _.forEach($scope.poll.options, function (option) {
-                        $scope.votes[option.candidate.id] = void 0;
-                    });
-                }
+                $scope.setAssignmentPoll($scope.av.assignment_poll_id);
             }
         };
-
-        $scope.canSubmitAssignmentPoll = function () {
-            if ($scope.poll.pollmethod === 'votes') {
-                return $scope.votes.candidateIndex >= 0;
-            } else {
-                return _.every($scope.votes, function (vote) {
-                    return vote;
-                });
-            }
-        }
 
         // This function is called, if a motion poll option is clicked
         $scope.vote = function (vote) {
@@ -298,14 +407,22 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 var route;
                 if ($scope.poll.pollmethod === 'votes') {
                     route = 'candidate';
-                    vote.value = $scope.votes.candidateIndex;
-                    if (vote.value <= 0 || vote.value > $scope.poll.options.length) {
-                        $scope.alert = {
-                            msg: gettextCatalog.getString('Please select a candidate'),
-                            type: 'danger',
-                            show: true,
-                        };
-                        return;
+                    if ($scope.votes.no) {
+                        vote.value = 'N';
+                    } else if ($scope.votes.abstain) {
+                        vote.value = 'A';
+                    } else {
+                        var selected = $scope.candidatesSelected();
+                        if (selected.length === 0) {
+                            $scope.alert = {
+                                msg: gettextCatalog.getString('You have to select an option to submit'),
+                                type: 'danger',
+                                show: true,
+                            };
+                            return;
+                        } else {
+                            vote.value = selected;
+                        }
                     }
                 } else {
                     route = 'vote';
@@ -326,7 +443,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.resultToken = resultData.result_token;
             $scope.resultVote = resultData.result_vote;
             $scope.votingState = 'submitted';
-            var timeout = VotingSettings.votingResultTokenTimeout;
+            var timeout = VotingSettings.votingResultTokenTimeout || 10;
             if (timeout) {
                 $scope.timeout = timeout;
                 timeoutInterval = $interval(function () {
@@ -335,16 +452,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         $scope.reset();
                     }
                 }, 1000);
-            }
-        };
-
-        // Returns the voted candidate.
-        $scope.getResultCandidate = function () {
-            var optionIndex = parseInt($scope.resultVote);
-            var poll = $scope.av.assignmentPoll;
-            var option = $filter('orderBy')(poll.options, 'weight')[optionIndex-1];
-            if (option) {
-                return option.candidate.full_name;
             }
         };
 
@@ -362,6 +469,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
     }
 ])
+
 
 // Overrides the UserForm. Adds fields for keypads, proxies, ...
 .factory('DelegateForm', [
@@ -2426,6 +2534,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 $scope.poll['abstain_' + id] = null;
                 $scope.poll['vote_' + id] = null;
             });
+            $scope.poll.votesabstain = null;
+            $scope.poll.votesno = null;
             $scope.poll.votesvalid = null;
             $scope.poll.votesinvalid = null;
             $scope.poll.votescast = null;
@@ -2449,6 +2559,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     $scope.poll.votesvalid = value[0];
                 } else if (key === 'invalid') {
                     $scope.poll.votesinvalid = value[0];
+                } else if (key === 'A') {
+                    $scope.poll.votesabstain = value[0];
+                } else if (key === 'N') {
+                    $scope.poll.votesno = value[0];
                 } else { // a candidate
                     if ($scope.poll.pollmethod === 'votes') {
                         $scope.poll['vote_' + key] = value[1];
@@ -2574,25 +2688,20 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     '$http',
     'AssignmentPoll',
     'AssignmentPollBallot',
+    'AssignmentButtonsCtrlBase',
     'operator',
     'User',
     'gettextCatalog',
     'ErrorMessage',
     function ($scope, $stateParams, $http, AssignmentPoll, AssignmentPollBallot,
-        operator, User, gettextCatalog, ErrorMessage) {
+        AssignmentButtonsCtrlBase, operator, User, gettextCatalog, ErrorMessage) {
         var pollId = $stateParams.id;
-        $scope.poll = AssignmentPoll.get(pollId);
         $scope.alert = {};
 
+        AssignmentButtonsCtrlBase.populateScope($scope);
+
         // prepare the votes model
-        $scope.votes = {};
-        if ($scope.poll.pollmethod === 'votes') {
-            $scope.votes.candidateIndex = -1;
-        } else {
-            _.forEach($scope.poll.options, function (option) {
-                $scope.votes[option.candidate.id] = 'N';
-            });
-        }
+        $scope.setAssignmentPoll(pollId);
 
         $scope.$watch(function () {
             return AssignmentPollBallot.lastModified();
@@ -2603,8 +2712,17 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             });
         });
 
-        $scope.getUserVotedFor = function () {
-            return User.get(parseInt($scope.apb.vote)).full_name;
+        $scope.getUsersVotedFor = function () {
+            if ($scope.apb.vote === 'N') {
+                return 'No';
+            } else if ($scope.apb.vote === 'A') {
+                return 'Abstain';
+            }
+
+            var users = _.map($scope.apb.vote, function (userId) {
+                return User.get(parseInt(userId)).full_name;
+            });
+            return users.join(', ');
         };
 
         $scope.vote = function () {
@@ -2613,14 +2731,15 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             var route;
             if ($scope.poll.pollmethod === 'votes') {
                 route = 'candidate';
-                vote.value = $scope.votes.candidateIndex;
-                if (vote.value <= 0 || vote.value > $scope.poll.options.length) {
-                    $scope.alert = {
-                        msg: gettextCatalog.getString('Please select a candidate'),
-                        type: 'danger',
-                        show: true,
-                    };
-                    return;
+                if ($scope.votes.no) {
+                    vote.value = 'N';
+                } else {
+                    var selected = $scope.candidatesSelected();
+                    if (selected.length === 0) {
+                        vote.value = 'A';
+                    } else {
+                        vote.value = selected;
+                    }
                 }
             } else {
                 route = 'vote';

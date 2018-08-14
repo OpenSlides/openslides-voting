@@ -400,6 +400,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         if poll.has_votes():
             poll.get_votes().delete()
             poll.votescast = poll.votesinvalid = poll.votesvalid = None
+            if model == AssignmentPoll:
+                poll.votesabstain = poll.votesno = None
             poll.save()
 
         if model == MotionPoll:
@@ -448,7 +450,8 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
         AuthorizedVoters.clear_voting()
 
-        self.force_stop_active_votecollector()
+        if config['voting_enable_votecollector']:
+            self.force_stop_active_votecollector()
 
         return Response()
 

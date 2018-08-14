@@ -1,4 +1,4 @@
-<div class="header">
+<div class="header tokenvoting">
   <div class="title">
     <div class="submenu">
       <a href="javascript:history.back()" class="btn btn-sm btn-default">
@@ -7,7 +7,6 @@
       </a>
     </div>
     <h1>
-      <translate>Vote for</translate>
       {{ poll.assignment.getTitle() }}
     </h1>
     <div class="row" ng-if="apb">
@@ -30,7 +29,7 @@
             </span>
           </div>
           <strong ng-if="poll.pollmethod === 'votes'">
-            {{ getUserVotedFor() }}
+            {{ getUsersVotedFor() }}
           </strong>
         </div>
       </div>
@@ -42,10 +41,9 @@
   <div uib-alert ng-show="alert.show" ng-class="'alert-' + (alert.type || 'warning')" close="alert={}">
     {{ alert.msg }}
   </div>
-
   <ng-include src="'static/templates/openslides_voting/submit-assignment-poll-buttons.html'"></ng-include>
-
-  <button type="button" class="btn btn-primary spacer-top" ng-click="vote()">
-    <translate>Submit</translate>
+  <button type="button" class="btn btn-primary spacer-top" ng-click="vote()"
+    ng-disabled="!canSubmitAssignmentPoll()" translate>
+    Submit
   </button>
 </div>

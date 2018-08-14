@@ -1,30 +1,24 @@
-<style type="text/css">
-    .gray-icon {
-        filter: grayscale(100%);
-        -webkit-filter: grayscale(100%);
-    }
-</style>
-
-<div class="row">
-  <div class="col-xs-4">
-    <span class="pointer" ng-click="vote('Y')">
-      <img src="/static/img/button-yes.png"
-        ng-class="{'gray-icon': mpbVote.value !== 'Y' && showGray}">
-      <translate>Yes</translate>
-    </span>
-  </div>
-  <div class="col-xs-4">
-    <span class="pointer" ng-click="vote('N')">
-      <img src="/static/img/button-no.png"
-        ng-class="{'gray-icon': mpbVote.value !== 'N' && showGray}">
-      <translate>No</translate>
-    </span>
-  </div>
-  <div class="col-xs-4">
-    <span class="pointer" ng-click="vote('A')">
-      <img src="/static/img/button-abstain.png"
-        ng-class="{'gray-icon': mpbVote.value !== 'A' && showGray}">
-      <translate>Abstain</translate>
-    </span>
-  </div>
+<ng-include src="'static/templates/openslides_voting/submit-buttons-css.html'"></ng-include>
+<div class="pointer votingoption" ng-click="vote('Y')">
+  <button type="button" class="btn btn-default btn-voting"
+    ng-class="mpb.vote == 'Y' ? 'btn-yes' : 'btn-gray'">
+    <i class="fa fa-thumbs-o-up fa-2x"></i>
+  </button>
+  <translate>Yes</translate>
+</div>
+  
+<div class="pointer votingoption spacer-top-lg" ng-click="vote('N')">
+  <button type="button" class="btn btn-default btn-voting"
+    ng-class="mpb.vote == 'N' ? 'btn-no' : 'btn-gray'">
+    <i class="fa fa-thumbs-o-down fa-2x"></i>
+  </button>
+  <translate>No</translate>
+</div>
+      
+<div class="pointer votingoption spacer-top-lg" ng-click="vote('A')">
+  <button type="button" class="btn btn-default btn-voting"
+    ng-class="mpb.vote == 'A' ? 'btn-abstain' : 'btn-gray'">
+    <i class="fa fa-circle-o fa-2x"></i>
+  </button>
+  <translate>Abstain</translate>
 </div>

@@ -110,12 +110,11 @@ class VotingAppConfig(AppConfig):
         self.urlpatterns = urlpatterns
 
     def get_startup_elements(self):
-        from openslides.utils.collection import Collection
         for model in ('AssignmentAbsenteeVote', 'AssignmentPollType', 'AssignmentPollBallot',
                 'AttendanceLog', 'AuthorizedVoters', 'Keypad', 'MotionAbsenteeVote',
                 'MotionPollType', 'MotionPollBallot', 'VotingToken', 'VotingController',
                 'VotingShare', 'VotingPrinciple', 'VotingProxy'):
-            yield Collection(self.get_model(model).get_collection_string())
+            yield self.get_model(model)
 
     def get_angular_constants(self):
         # Custom settings

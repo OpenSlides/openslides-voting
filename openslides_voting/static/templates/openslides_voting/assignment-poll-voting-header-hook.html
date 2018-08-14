@@ -1,0 +1,10 @@
+<a ui-sref="submit_votes.assignmentPoll({id: getActivePoll()})"
+  ng-if="getActivePoll()"
+  class="btn btn-sm btn-sm" ng-class="getVoteForActivePoll() ? 'btn-default' : 'btn-primary'">
+  <span ng-if="!getVoteForActivePoll()">
+    <translate>Vote now!</translate>
+  </span>
+  <span ng-if="getVoteForActivePoll()">
+    <translate>You already have voted</translate>
+  </span>
+</a>

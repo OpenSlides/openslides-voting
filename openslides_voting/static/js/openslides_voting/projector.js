@@ -184,13 +184,20 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             $timeout(drawDelegateBoard, 0);
         });
 
+        $scope.$watch(function () {
+            return Config.lastModified();
+        }, function () {
+            draw = true;
+            $timeout(drawDelegateBoard, 0);
+        });
+
         var drawDelegateBoard = function () {
             if (!draw) {
                 return;
             }
             if (!Config.get('voting_show_delegate_board').value || !$scope.poll ||
-                !$scope.assignment || $scope.poll.options.length !== 1) {
-                // Just show the board for 1 candidate elections, if it's published.
+                !$scope.assignment) {
+                // Just show the delegate board, if the poll is published.
                 $scope.delegateBoardHtml = '';
                 return;
             }
@@ -204,7 +211,6 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                 var colCount = Config.get('voting_delegate_board_columns').value,
                     anonymous = Config.get('voting_anonymous').value,
                     table = '<table>',
-                    candidate_id = $scope.poll.options[0].candidate_id,
                     i = 0;
 
                 _.forEach(voters, function (delegates, voterId) {
@@ -212,18 +218,26 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         var user = User.get(id),
                             apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id});
                         var cls = '';
-                        if (apb.length === 1) {
+                        if (apb.length > 0) {
+                            apb = apb[0];
                             // Set td class based on vote.
                             if (anonymous) {
                                 cls = 'seat-anonymous';
-                            }
-                            else {
-                                if ($scope.poll.pollmethod === 'votes') {
-                                    console.log(apb);
-                                    cls = apb[0].vote === "0" ? 'seat-Y' : 'seat-voted';
+                            } else if ($scope.poll.pollmethod === 'votes') {
+                                switch (apb.vote) {
+                                    // global no and abstain
+                                    case 'N':
+                                        cls = 'seat-N'; break;
+                                    case 'A':
+                                        cls = 'seat-A'; break;
+                                    default:
+                                        cls = 'seat-voted'; break;
                                 }
-                                else if ($scope.poll.pollmethod === 'yna') {
-                                    cls = 'seat-' + apb[0].vote[candidate_id];
+                            } else { // YNA and YN
+                                if ($scope.poll.options.length === 1) {
+                                    cls = 'seat-' + apb.vote[$scope.poll.options[0].candidate_id];
+                                } else {
+                                    cls = 'seat-voted';
                                 }
                             }
                         }

@@ -16,7 +16,7 @@
     <div class="row" ng-if="mpb">
       <div class="col-sm-12">
         <h2>
-          <translate>You have voted for</translate>
+          <translate>You already have voted for</translate>
           <strong ng-if="mpb.vote == 'Y'" translate>
             Yes
           </strong>
@@ -37,4 +37,8 @@
     {{ alert.msg }}
   </div>
   <ng-include src="'static/templates/openslides_voting/submit-motion-poll-buttons.html'"></ng-include>
+  <button type="button" class="btn btn-primary spacer-top" ng-click="submit()"
+    ng-disabled="!mpbVote.value" translate>
+    Submit
+  </button>
 </div>

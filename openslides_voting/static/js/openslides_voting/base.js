@@ -48,7 +48,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 },
                 getErrorMessage: function (status, text) {
                     if (status === 503) {
-                        return gettext('VotingController not running!');
+                        return gettext('The VoteCollector is not running!');
                     }
                     return status + ': ' + text;
                 }

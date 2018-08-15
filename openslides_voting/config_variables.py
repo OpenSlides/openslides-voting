@@ -49,6 +49,22 @@ def get_config_variables():
         group='OpenSlides-Voting',
         subgroup='General'
     )
+    yield ConfigVariable(
+        name='voting_start_prompt_motions',
+        default_value=ugettext_noop('Please vote now!'),
+        label='Projector message for running motion voting',
+        weight=635,
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
+    yield ConfigVariable(
+        name='voting_start_prompt_assignments',
+        default_value=ugettext_noop('Please vote now!'),
+        label='Projector message for running election',
+        weight=640,
+        group='OpenSlides-Voting',
+        subgroup='General'
+    )
 
     # VoteCollector
     yield ConfigVariable(
@@ -56,7 +72,7 @@ def get_config_variables():
         default_value=False,
         input_type='boolean',
         label='Enable VoteCollector',
-        weight=635,
+        weight=650,
         group='OpenSlides-Voting',
         subgroup='VoteCollector'
     )
@@ -66,22 +82,6 @@ def get_config_variables():
         default_value='http://localhost:8030',
         label='VoteCollector URL',
         help_text='Example: http://localhost:8030',
-        weight=640,
-        group='OpenSlides-Voting',
-        subgroup='VoteCollector'
-    )
-    yield ConfigVariable(
-        name='voting_start_prompt_motions',
-        default_value=ugettext_noop('Please vote now!'),
-        label='Voting start prompt when using keypads (projector overlay message)',
-        weight=650,
-        group='OpenSlides-Voting',
-        subgroup='VoteCollector'
-    )
-    yield ConfigVariable(
-        name='voting_start_prompt_assignments',
-        default_value=ugettext_noop('Please vote now!'),
-        label='Election start prompt when using keypads (projector overlay message)',
         weight=655,
         group='OpenSlides-Voting',
         subgroup='VoteCollector'
@@ -93,33 +93,33 @@ def get_config_variables():
         default_value=True,
         input_type='boolean',
         label='Show delegate board',
-        help_text='Show incoming votes on a delegate board on the projector.',
+        help_text='Show incoming votes in a table on projector.',
         weight=660,
         group='OpenSlides-Voting',
-        subgroup='Projector delegate board'
+        subgroup='Delegate board'
     )
     yield ConfigVariable(
         name='voting_delegate_board_columns',
         default_value=10,
         input_type='integer',
-        label='Delegate board columns',
+        label='Number of columns of delegate board',
         weight=670,
         group='OpenSlides-Voting',
-        subgroup='Projector delegate board'
+        subgroup='Delegate board'
     )
     yield ConfigVariable(
         name='voting_delegate_board_name',
         default_value='short_name',
         input_type='choice',
-        label='Delegate name format used for delegate table cells',
+        label='Delegate name format used for delegate board',
         choices=(
-            {'value': 'short_name', 'display_name': 'Short name. Example: Smi,J'},
-            {'value': 'last_name', 'display_name': 'Last name. Example: Smith'},
-            {'value': 'full_name', 'display_name': 'Full name. Example: Smith John'},
+            {'value': 'short_name', 'display_name': 'Short name (e.g. "JoSm")'},
+            {'value': 'last_name', 'display_name': 'Last name (e.g. "Smith")'},
+            {'value': 'full_name', 'display_name': 'Full name (e.g. "John Smith")'},
         ),
         weight=680,
         group='OpenSlides-Voting',
-        subgroup='Projector delegate board'
+        subgroup='Delegate board'
     )
     yield ConfigVariable(
         name='voting_anonymous',
@@ -129,5 +129,5 @@ def get_config_variables():
         help_text='Keep individual voting behaviour secret on delegate board by using a single colour.',
         weight=690,
         group='OpenSlides-Voting',
-        subgroup='Projector delegate board'
+        subgroup='Delegate board'
     )

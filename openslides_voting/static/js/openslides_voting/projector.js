@@ -95,39 +95,50 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             }
 
             // Get authorized voters.
-            var voters = AuthorizedVoters.get(1).authorized_voters;
+            var voters = AuthorizedVoters.get(1).authorized_voters,
+                showKey = AuthorizedVoters.get(1).type === 'votecollector' ||
+                    AuthorizedVoters.get(1).type === 'votecollector_anonymous';
             if (_.keys(voters).length > 0) {
-                // Create delegate board table.
+                // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
                 var colCount = Config.get('voting_delegate_board_columns').value,
                     anonymous = Config.get('voting_anonymous').value,
-                    table = '<table>',
-                    i = 0;
-
+                    cells = [];
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {
                         var user = User.get(id),
-                            mpb = MotionPollBallot.filter({poll_id: pollId, delegate_id: id});
-                        var cls = '';
+                            mpb = MotionPollBallot.filter({poll_id: pollId, delegate_id: id}),
+                            name = Delegate.getCellName(user),
+                            label = name,
+                            cls = '';
+                        if (showKey) {
+                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                        }
                         if (mpb.length === 1) {
                             // Set td class based on vote.
                             cls = anonymous ? 'seat-anonymous' : 'seat-' + mpb[0].vote;
                         }
-                        if (i % colCount === 0) {
-                            table += '<tr>';
-                        }
-                        // Cell label is keypad number + user name.
-                        var keypad = Delegate.getKeypad(voterId);
-                        var label = Delegate.getCellName(user);
-                        if (keypad) {
-                            label = Delegate.getKeypad(voterId).number + '<br/>' + label;
-                        }
-                        table += '<td class="seat ' + cls + '" ' +
-                            'style="width: calc(100%/' + colCount + ');">' +
-                            label + '</td>';
-                        i++;
+                        cells.push({
+                            name: name,
+                            label: label,
+                            cls: cls,
+                        });
                     });
                 });
+
+                // Build table. Cells are ordered by name.
+                var table = '<table>',
+                    i = 0;
+                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                    if (i % colCount === 0) {
+                        table += '<tr>';
+                    }
+                    table += '<td class="seat ' + cell.cls + '" ' +
+                        'style="width: calc(100%/' + colCount + ');">' +
+                        cell.label + '</td>';
+                    i++;
+                });
+
                 $scope.delegateBoardHtml = table;
             }
             else {
@@ -201,18 +212,21 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             // Get authorized voters.
             var voters = AuthorizedVoters.get(1).authorized_voters;
             if (_.keys(voters).length > 0) {
-                // Create delegate board table.
+                // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + AssignmentPollBallot.filter({poll_id: pollId}).length);
                 var colCount = Config.get('voting_delegate_board_columns').value,
                     anonymous = Config.get('voting_anonymous').value,
-                    table = '<table>',
-                    i = 0;
-
+                    cells = [];
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {
                         var user = User.get(id),
-                            apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id});
-                        var cls = '';
+                            apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id}),
+                            name = Delegate.getCellName(user),
+                            label = name,
+                            cls = '';
+                        if ($scope.showKey) {
+                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                        }
                         if (apb.length > 0) {
                             apb = apb[0];
                             // Set td class based on vote.
@@ -236,21 +250,27 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                                 }
                             }
                         }
-                        if (i % colCount === 0) {
-                            table += '<tr>';
-                        }
-                        // Cell label is keypad number + user name.
-                        var keypad = Delegate.getKeypad(voterId);
-                        var label = Delegate.getCellName(user);
-                        if (keypad) {
-                            label = Delegate.getKeypad(voterId).number + '<br/>' + label;
-                        }
-                        table += '<td class="seat ' + cls + '" ' +
-                            'style="width: calc(100%/' + colCount + ');">' +
-                            label + '</td>';
-                        i++;
+                        cells.push({
+                            name: name,
+                            label: label,
+                            cls: cls,
+                        });
                     });
                 });
+
+                // Build table. Cells are ordered by name.
+                var table = '<table>',
+                    i = 0;
+                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                    if (i % colCount === 0) {
+                        table += '<tr>';
+                    }
+                    table += '<td class="seat ' + cell.cls + '" ' +
+                        'style="width: calc(100%/' + colCount + ');">' +
+                        cell.label + '</td>';
+                    i++;
+                });
+
                 $scope.delegateBoardHtml = table;
             }
             else {

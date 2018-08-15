@@ -302,22 +302,23 @@ class SubmitCandidates(ValidationView):
         for vote in votes:
             value = vote['value']
             # for the votecollector single digits are allowed
-            try:
-                value = [int(value)]
-            except ValueError:
-                pass
+            if isinstance(value, str):
+                try:
+                    value = [int(value)]
+                except ValueError:
+                    pass
 
             # check for 'A', 'N' or a list of indices
             if isinstance(value, list):
                 value_set = set(value)
                 if len(value_set) != len(value):  # someone has votes for the same candidate multiple times
-                    raise ValidationError({'detail': 'You can just give a candidate one or zero times.'})
+                    raise ValidationError({'detail': 'You cannot give more than one vote per candidate.'})
 
                 if len(value) > open_posts:
-                    raise ValidationError({'detail': 'You cannot give more candidates then open posts'})
+                    raise ValidationError({'detail': 'You cannot cast more votes than candidates available.'})
 
                 if len(value) == 0:
-                    value = 'A'
+                    vote['value'] = 'A'
                 else:
                     for index in value:
                         if not isinstance(index, int):

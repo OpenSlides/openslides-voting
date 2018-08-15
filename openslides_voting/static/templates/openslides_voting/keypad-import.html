@@ -35,7 +35,7 @@
             <th>
             <th>#
             <th translate>Keypad
-            <th translate>Participant
+            <th translate>Participant</th>
         <tbody>
           <tr ng-repeat="user in users | limitTo:pagination.itemsPerPage:pagination.limitBegin">
             <td class="minimum"
@@ -109,7 +109,7 @@
     <div class="spacer">
       <a ng-if="csvImported" ui-sref="openslides_voting.keypad.list" class="btn btn-default">
         <i class="fa fa-angle-double-left fa-lg"></i>
-        <translate>Back to keypads overview</translate>
+        <translate>Back to overview</translate>
       </a>
     </div>
   </div>

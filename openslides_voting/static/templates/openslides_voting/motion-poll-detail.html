@@ -22,7 +22,7 @@
       <!-- pdf -->
       <a ng-click="pdfExport()" class="btn btn-default btn-sm">
         <i class="fa fa-file-pdf-o fa-lg"></i>
-        <translate>PDF</translate>
+        PDF
       </a>
       <!-- Anonymize -->
       <a os-perms="openslides_voting.can_manage"
@@ -124,9 +124,9 @@
              uib-tooltip="{{ 'Press \'Fn+6\' on keypad to display the serial number.' | translate}}"></i>
         </th>
 
-        <!-- Result token column -->
+        <!-- Result number column -->
         <th ng-click="sort.toggle('result_token')" class="sortable" ng-if="pollType === 'token_based_electronic'">
-          <translate>Result token</translate>
+          <translate>Result number</translate>
           <i class="pull-right fa" ng-show="sort.column === 'result_token'"
               ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
           </i>
@@ -167,7 +167,7 @@
             {{ ballot.result_token }}
           </span>
           <span ng-if="ballot.result_token === 0" translate>
-            anonym
+            anonymous
           </span>
         </td>
 

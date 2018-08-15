@@ -77,7 +77,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             abstract: true,
             template: '<ui-view/>',
             data: {
-                title: gettext('Motion poll'),
+                title: gettext('Motion voting'),
             },
         })
         .state('openslides_voting.motionPoll.detail', {
@@ -88,7 +88,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             abstract: true,
             template: '<ui-view/>',
             data: {
-                title: gettext('Assignment poll'),
+                title: gettext('Election'),
             },
         })
         .state('openslides_voting.assignmentPoll.detail', {
@@ -101,7 +101,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             abstract: true,
             template: '<ui-view/>',
             data: {
-                title: gettext('OpenSlides-Voting'),
+                title: 'OpenSlides-Voting',
             },
         })
         .state('submit_votes.motionPoll', {
@@ -153,7 +153,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         var notifyUser = function () {
-            var message = gettextCatalog.getString('Your permissions are misconfigurated. '
+            var message = gettextCatalog.getString('Your permissions are misconfigured. '
                 + 'Please contact your systemadministrator or read the manual about the permissions'
                 + ' needed for the token voting mode.');
             Messaging.addMessage(message, 'error', {noClose: true});
@@ -1041,6 +1041,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             }
             $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
                 var filename = gettextCatalog.getString('Tokens') + '.pdf';
+                filename = filename.replace(/\s/g,'');
                 var contentProvider = TokenContentProvider.createInstance(success.data);
                 var documentProvider = TokenDocumentProvider.createInstance(contentProvider);
                 PdfCreate.download(documentProvider, filename);
@@ -1081,7 +1082,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         // PDF export
         $scope.pdfExport = function () {
-            var filename = gettextCatalog.getString('AttendanceHistory') + '.pdf';
+            var filename = gettextCatalog.getString('Attendance history') + '.pdf';
+            filename = filename.replace(/\s/g,'');
             var contentProvider = AttendanceHistoryContentProvider.createInstance();
             PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
                 PdfCreate.download(documentProvider, filename);
@@ -2745,13 +2747,14 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         // Export * filtered and sorted * ballots.
         $scope.pdfExport = function () {
-            var filename = gettextCatalog.getString('Motion') + ' ';
+            var filename = gettextCatalog.getString('Motion');
             if ($scope.motion.identifier) {
                 filename += $scope.motion.identifier;
             } else {
                 filename += $scope.motion.getTitle();
             }
-            filename += ' ' + gettextCatalog.getString('SingleVotes') + '.pdf';
+            filename += '_' + gettextCatalog.getString('Single votes') + '.pdf';
+            filename = filename.replace(/\s/g,'');
             var contentProvider = MotionPollContentProvider.createInstance(
                 $scope.motion, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
             PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
@@ -2853,8 +2856,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         // Export * filtered and sorted * ballots.
         $scope.pdfExport = function () {
-            var filename = gettextCatalog.getString('Assignment') + ' ' + $scope.assignment.getTitle() +
-                gettextCatalog.getString('SingleVotes') + '.pdf';
+            var filename = $scope.assignment.getTitle() + '_' +
+                gettextCatalog.getString('Single votes') + '.pdf';
+            filename = filename.replace(/\s/g,'');
             var contentProvider = AssignmentPollContentProvider.createInstance(
                 $scope.assignment, $scope.poll, $scope.ballotsFiltered, $scope.pollType);
             PdfMakeDocumentProvider.createInstance(contentProvider).then(function (documentProvider) {
@@ -2873,21 +2877,34 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'gettext',
     function (gettext) {
         // Config strings
-        gettext('Electronic Voting');
-        gettext('Delegate board');
-        gettext('VotingController URL');
-        gettext('Example: http://localhost:8030');
+        gettext('');
+        gettext('Enable proxies and absentee votes');
+        gettext('Enable shares and principles');
+        gettext('Default voting type');
+        gettext('Analog voting');
+        gettext('Named electronic voting');
+        gettext('Token-based electronic voting');
+        gettext('VoteCollector anonymous');
+        gettext('Projector message for running motion voting');
+        gettext('Projector message for running election');
         gettext('Please vote now!');
-        gettext('Voting start prompt (projector overlay message)');
+
+        gettext('VoteCollector');
+        gettext('Enable VoteCollector');
+        gettext('VoteCollector URL');
+        gettext('Example: http://localhost:8030');
+
+        gettext('Delegate board');
         gettext('Use countdown timer');
         gettext('Auto-start and stop a countdown timer when voting starts and stops.');
+        gettext('Delegate board');
         gettext('Show delegate board');
-        gettext('Show incoming votes on a delegate board on the projector.');
-        gettext('Delegate board columns');
-        gettext('Delegate name format used for delegate table cells');
-        gettext('Short name. Example: Smi,J');
-        gettext('Last name. Example: Smith');
-        gettext('Full name. Example: Smith John');
+        gettext('Show incoming votes in a table on projector.');
+        gettext('Number of columns of delegate board');
+        gettext('Delegate name format used for delegate board');
+        gettext('Short name (e.g. "JoSm")');
+        gettext('Last name (e.g. "Smith")');
+        gettext('Full name (e.g. "John Smith")');
         gettext('Vote anonymously');
         gettext('Keep individual voting behaviour secret on delegate board by using a single colour.');
 
@@ -2907,7 +2924,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('Clear votes');
 
         // Permission strings
+        gettext('Can see the token voting interface');
         gettext('Can manage voting');
+        gettext('Can vote');
     }
 ]);
 

@@ -24,7 +24,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 [
                     {
                         text: (pollType === 'token_based_electronic' ?
-                            gettextCatalog.getString('Result token') : gettextCatalog.getString('Delegate')),
+                            gettextCatalog.getString('Result number') : gettextCatalog.getString('Delegate')),
                         style: 'tableHeader'
                     },
                     {
@@ -93,7 +93,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 [
                     {
                         text: (pollType === 'token_based_electronic' ?
-                            gettextCatalog.getString('Result token') : gettextCatalog.getString('Delegate')),
+                            gettextCatalog.getString('Result number') : gettextCatalog.getString('Delegate')),
                         style: 'tableHeader'
                     },
                     {

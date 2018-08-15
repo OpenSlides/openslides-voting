@@ -122,7 +122,9 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         if (keypad) {
                             label = Delegate.getKeypad(voterId).number + '<br/>' + label;
                         }
-                        table += '<td class="seat ' + cls + '">' + label + '</td>';
+                        table += '<td class="seat ' + cls + '" ' +
+                            'style="width: calc(100%/' + colCount + ');">' +
+                            label + '</td>';
                         i++;
                     });
                 });
@@ -243,7 +245,9 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         if (keypad) {
                             label = Delegate.getKeypad(voterId).number + '<br/>' + label;
                         }
-                        table += '<td class="seat ' + cls + '">' + label + '</td>';
+                        table += '<td class="seat ' + cls + '" ' +
+                            'style="width: calc(100%/' + colCount + ');">' +
+                            label + '</td>';
                         i++;
                     });
                 });

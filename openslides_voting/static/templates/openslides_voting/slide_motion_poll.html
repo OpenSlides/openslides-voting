@@ -31,17 +31,16 @@
         border-collapse: separate;
         border-spacing: 5px;
         border: none;
+        width: 100%;
     }
     #delegateBoard table td {
         background-color: #ffffff;
     }
     #delegateBoard table td {
-        padding: 0;
+        padding: 0 2px;
         font-size: 0.75em;
-        min-width: 1em;
-        width: 3em;
-        height: 3em;
         border: none;
+        height: 50px;
     }
     #delegateBoard table td.seat {
         border: 1px solid black;
@@ -112,5 +111,5 @@
   </table>
 
   <!-- Delegate board -->
-  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml"></div>
+  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml | trusted"></div>
 </div>

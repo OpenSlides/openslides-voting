@@ -160,7 +160,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
 
 .factory('VotingShare', [
     'DS',
-    function (DS) {
+    'VotingPrinciple',
+    function (DS, VotingPrinciple) {
         var name = 'openslides_voting/voting-share';
         return DS.defineResource({
             name: name,
@@ -169,7 +170,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 if (isNaN(shares) || shares <= 0) {
                     shares = 1;
                 }
-                var decimalPlaces = share.principle.decimal_places;
+                var decimalPlaces = VotingPrinciple.get(share.principle_id).decimal_places;
                 share.shares = parseFloat(shares.toFixed(decimalPlaces));
                 callback(null, share);
             },

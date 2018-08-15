@@ -607,12 +607,12 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 }
                 else {
                     if (config === 'short_name') {
-                        firstName = firstName.substr(0, 1);
-                        lastName = lastName.substr(0, 3);
-                        sep = ',';
+                        firstName = firstName.substr(0, 2);
+                        lastName = lastName.substr(0, 2);
+                        sep = '';
                     }
                     if (lastName && firstName) {
-                        name = lastName + sep + firstName;
+                        name = firstName + sep + lastName;
                     }
                     else {
                         name = lastName || firstName;

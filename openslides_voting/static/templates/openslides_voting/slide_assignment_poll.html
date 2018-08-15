@@ -157,7 +157,8 @@
       <tr ng-repeat="option in poll.options" ng-init="votes = option.getVotes()">
 
         <!-- keypad key -->
-        <td><span class="key">{{ $index + 1 }}</span>
+        <td>
+          <span ng-if="showKey" class="key"> {{ $index + 1 }} </span>
 
         <!--candidate name -->
         <td>

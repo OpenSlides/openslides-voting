@@ -115,7 +115,8 @@
         </th>
 
         <!-- Voting device column -->
-        <th ng-click="sort.toggle('device')" class="sortable" ng-if="pollType !== 'token_based_electronic'">
+        <th ng-click="sort.toggle('device')" class="sortable"
+            ng-if="pollType === 'votecollector' || pollType === 'votecollector_anonymous'">
           <translate>Keypad serial number</translate>
           <i class="pull-right fa" ng-show="sort.column === 'device'"
               ng-class="sort.reverse ? 'fa-sort-desc' : 'fa-sort-asc'">
@@ -157,7 +158,7 @@
         </td>
 
         <!-- Voting device -->
-        <td ng-if="pollType !== 'token_based_electronic'">
+        <td ng-if="pollType === 'votecollector' || pollType === 'votecollector_anonymous'">
           {{ ballot.device }}
         </td>
 

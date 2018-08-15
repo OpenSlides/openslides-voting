@@ -297,13 +297,15 @@ class SubmitCandidates(ValidationView):
         - A simple 'A' or 'N' for abstain or No. You can give an empty list for abstian as well.
         - A list with candidate indices. They should be unique. Indices are integers with
           0 < i <= len(options). Replaces these indeicesx with the actual candidate ids in string.
-        - A single int: Will be converted to [<id>] and the rule above applies.
+        - A single digit: Will be converted to [<id>] and the rule above applies.
         """
         for vote in votes:
             value = vote['value']
             # for the votecollector single digits are allowed
-            if isinstance(value, int):
-                value = [value]
+            try:
+                value = [int(value)]
+            except ValueError:
+                pass
 
             # check for 'A', 'N' or a list of indices
             if isinstance(value, list):

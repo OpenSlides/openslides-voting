@@ -110,42 +110,48 @@
   </div>
 
   <!-- Result table for yes/no/abstain -->
-  <table ng-if="poll.pollmethod == 'yna' && poll.has_votes"
+  <table ng-if="(poll.pollmethod === 'yna' || poll.pollmethod === 'yn') && poll.has_votes"
          class="well pull-left" id="resultTable">
-    <!-- yes -->
-    <tr>
+    <tr ng-repeat="option in poll.options">
+      <!-- keypad key -->
+      <td ng-if="av.type === 'votecollector' || av.type === 'votecollector_anaonym'">
+        <span class="key">{{ $index + 1 }}</span>
+      <td>{{ option.candidate.full_name }}
+      <!-- yes -->
       <td><img src='/static/img/button-yes.png'>
-      <td class="bold">{{ ynaVotes[0].value }}
+      <td class="bold">{{ option.getVotes()[0].value }}
       <td class="percentage">
-        <div ng-if="ynaVotes[0].percentNumber">
-          {{ ynaVotes[0].percentStr || '&nbsp;' }}
-          <uib-progressbar value="ynaVotes[0].percentNumber" type="success""></uib-progressbar>
+        <div ng-if="option.getVotes()[0].percentNumber">
+          {{ option.getVotes()[0].percentStr || '&nbsp;' }}
+          <uib-progressbar value="option.getVotes()[0].percentNumber" type="success"></uib-progressbar>
         </div>
-
-    <!-- no -->
-    <tr>
+      <!-- no -->
       <td><img src='/static/img/button-no.png'>
-      <td class="bold"> {{ ynaVotes[1].value }}
+      <td class="bold">{{ option.getVotes()[1].value }}
       <td class="percentage">
-        <div ng-if="ynaVotes[1].percentNumber">
-          {{ ynaVotes[1].percentStr || '&nbsp;' }}
-          <uib-progressbar value="ynaVotes[1].percentNumber" type="danger""></uib-progressbar>
+        <div ng-if="option.getVotes()[1].percentNumber">
+          {{ option.getVotes()[1].percentStr || '&nbsp;' }}
+          <uib-progressbar value="option.getVotes()[1].percentNumber" type="danger"></uib-progressbar>
         </div>
-
-    <!-- abstain -->
-    <tr>
-      <td><img src='/static/img/button-abstain.png'>
-      <td class="bold"> {{ ynaVotes[2].value }}
-      <td class="percentage">
-        <div ng-if="ynaVotes[2].percentNumber">
-          {{ ynaVotes[2].percentStr || '&nbsp;' }}
-          <uib-progressbar value="ynaVotes[2].percentNumber" type="warning""></uib-progressbar>
+      <!-- abstain -->
+      <td ng-if="poll.pollmethod === 'yna'"><img src='/static/img/button-abstain.png'>
+      <td ng-if="poll.pollmethod === 'yna'" class="bold">{{ option.getVotes()[2].value }}
+      <td ng-if="poll.pollmethod === 'yna'" class="percentage">
+        <div ng-if="option.getVotes()[2].percentNumber">
+          {{ option.getVotes()[2].percentStr || '&nbsp;' }}
+          <uib-progressbar value="option.getVotes()[2].percentNumber" type="warning"></uib-progressbar>
         </div>
 
     <!-- valid votes -->
     <tr class="total">
+      <td ng-if="av.type === 'votecollector' || av.type === 'votecollector_anaonym'">
+      <td translate>Valid votes
+      <td>{{ poll.votesvalid }}
       <td>
-      <td class="bold"> {{ poll.votesvalid }}
+    <tr>
+      <td ng-if="av.type === 'votecollector' || av.type === 'votecollector_anaonym'">
+      <td><translate>Invalid votes</translate>
+      <td>{{ poll.votesinvalid }}
       <td>
   </table>
 
@@ -157,7 +163,7 @@
 
         <!-- keypad key -->
         <td>
-          <span ng-if="showKey" class="key"> {{ $index + 1 }} </span>
+          <span ng-if="showKey" class="key">{{ $index + 1 }} </span>
 
         <!--candidate name -->
         <td>
@@ -165,10 +171,26 @@
           <strong>{{ option.candidate.get_full_name() }}</strong>
 
         <!-- votes -->
-        <td class="bold"> {{votes[0].value}}
-        <td class="bold"> {{votes[0].percentStr}}
+        <td class="bold">{{votes[0].value}}
+        <td class="bold">{{votes[0].percentStr}}
         <td class="chart-column">
           <uib-progressbar ng-if="votes[0].percentNumber" value="votes[0].percentNumber" type="success"></uib-progressbar>
+
+      <!-- valid votes -->
+      <tr class="total" ng-if="poll.pollmethod === 'votes'">
+        <td>
+        <td translate>Abstain
+        <td>{{ poll.votesabstain }}
+        <td>
+        <td>
+
+      <!-- valid votes -->
+      <tr class="total" ng-if="poll.pollmethod === 'votes'">
+        <td>
+        <td translate>No
+        <td>{{ poll.votesno }}
+        <td>
+        <td>
 
       <!-- valid votes -->
       <tr class="total">
@@ -181,7 +203,7 @@
       <!-- invalid votes -->
       <tr>
         <td>
-        <td><translate>Abstains</translate> / <translate>Invalid votes</translate>
+        <td><translate>Invalid votes</translate>
         <td>{{ poll.votesinvalid }}
         <td>
         <td>

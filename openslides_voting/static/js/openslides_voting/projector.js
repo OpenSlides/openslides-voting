@@ -95,9 +95,9 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             }
 
             // Get authorized voters.
-            var voters = AuthorizedVoters.get(1).authorized_voters,
-                showKey = AuthorizedVoters.get(1).type === 'votecollector' ||
-                    AuthorizedVoters.get(1).type === 'votecollector_anonymous';
+            var av = AuthorizedVoters.get(1);
+            var voters = av.authorized_voters;
+            var showKey = av.type === 'votecollector' || av.type === 'votecollector_anonymous';
             if (_.keys(voters).length > 0) {
                 // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
@@ -158,12 +158,11 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'Assignment',
     'AssignmentPoll',
     'AssignmentPollBallot',
-    'AssignmentPollType',
     'User',
     'Delegate',
     'VotingController',
     function ($scope, $timeout, AuthorizedVoters, Config, Assignment, AssignmentPoll,
-              AssignmentPollBallot, AssignmentPollType, User, Delegate, VotingController) {
+              AssignmentPollBallot, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
             draw = false; // prevents redundant drawing
@@ -175,21 +174,26 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             $scope.poll = AssignmentPoll.get(pollId);
             if ($scope.poll !== undefined) {
                 $scope.assignment = Assignment.get($scope.poll.assignment_id);
-                $scope.ynaVotes = $scope.poll.options[0].getVotes();
             }
-
-            // Get poll type for assignment.
-            var pollTypes = AssignmentPollType.filter({poll_id: pollId});
-            var pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
-            $scope.showKey = pollType === 'votecollector' || pollType === 'votecollector_anonymous';
 
             draw = true;
             $timeout(drawDelegateBoard, 0);
         });
 
         $scope.$watch(function () {
+            return AuthorizedVoters.lastModified(1);
+        }, function () {
+            // Get poll type for assignment.
+            $scope.av = AuthorizedVoters.get(1);
+            $scope.showKey = ($scope.av.type === 'votecollector' || $scope.av.type === 'votecollector_anonymous');
+
+            // Using timeout seems to give the browser more time to update the DOM.
+            draw = true;
+            $timeout(drawDelegateBoard, 0);
+        });
+
+        $scope.$watch(function () {
             return VotingController.lastModified(1) +
-                AuthorizedVoters.lastModified(1) +
                 Config.lastModified();
         }, function () {
             // Using timeout seems to give the browser more time to update the DOM.
@@ -198,7 +202,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         });
 
         var drawDelegateBoard = function () {
-            if (!draw) {
+            if (!draw || !$scope.av) {
                 return;
             }
             if (!Config.get('voting_show_delegate_board').value || !$scope.poll ||
@@ -210,7 +214,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             }
 
             // Get authorized voters.
-            var voters = AuthorizedVoters.get(1).authorized_voters;
+            var voters = $scope.av.authorized_voters;
             if (_.keys(voters).length > 0) {
                 // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + AssignmentPollBallot.filter({poll_id: pollId}).length);

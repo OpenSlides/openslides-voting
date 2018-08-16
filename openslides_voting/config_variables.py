@@ -23,7 +23,7 @@ def get_config_variables():
         name='voting_enable_principles',
         default_value=False,
         input_type='boolean',
-        label='Enable shares and principles',
+        label='Enable voting shares',
         weight=617,
         group='OpenSlides-Voting',
         subgroup='General'

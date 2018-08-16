@@ -2,16 +2,16 @@
   <button type="button"
     ng-if="canStartVoting()" ng-click="startVoting()"
     class="btn btn-sm btn-default">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
+    <i class="fa fa-bullseye" aria-hidden="true"></i>
     {{ 'Start speakers voting' | translate }}</button>
   <button type="button"
     ng-if="canStopVoting() && isThisPollActive()" ng-click="stopVoting()"
     class="btn btn-sm btn-primary">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
+    <i class="fa fa-spinner fa-lg fa-spin" aria-hidden="true"></i>
     {{ 'Stop speakers voting' | translate }}</button>
   <button type="button"
     ng-if="canStopVoting() && !isThisPollActive()" ng-click="stopVoting()"
     class="btn btn-danger">
-    <i class="fa fa-wifi" aria-hidden="true"></i>
+    <i class="fa fa-bullseye" aria-hidden="true"></i>
     {{ 'Stop another voting' | translate }}</button>
 </div>

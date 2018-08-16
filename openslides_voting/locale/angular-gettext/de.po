@@ -24,7 +24,7 @@ msgstr "Eine Antragsabstimmung läuft noch."
 
 #: openslides_voting/absentee-vote-list.html:17
 #: openslides_voting/absentee-vote-list.html:54 openslides_voting/site.js:68
-#: openslides_voting/user-list-menu-buttons-hook.html:26
+#: openslides_voting/user-list-menu-buttons-hook.html:27
 msgid "Absentee votes"
 msgstr "Weisungen"
 
@@ -108,7 +108,7 @@ msgstr "Soll dieses Stimmrechtsprinzip wirklicht gelöscht werden?"
 
 #: openslides_voting/attendance.html:18
 #: openslides_voting/delegate-attendance.html:18 openslides_voting/site.js:26
-#: openslides_voting/user-list-menu-buttons-hook.html:21
+#: openslides_voting/user-list-menu-buttons-hook.html:22
 msgid "Attendance"
 msgstr "Anwesenheit"
 
@@ -166,7 +166,7 @@ msgstr ""
 
 #: openslides_voting/site.js:2944
 msgid "Can manage voting"
-msgstr "Darf elektronische Abstimmungen und Wahlen durchführen"
+msgstr "Darf elektronisches Voting steuern"
 
 #: openslides_voting/site.js:2943
 msgid "Can see the token voting interface"
@@ -179,7 +179,7 @@ msgstr "Darf elektronisch abstimmen/wählen"
 #: openslides_voting/absentee-vote-form.html:13
 #: openslides_voting/delegate-form.html:13
 #: openslides_voting/keypad-form.html:13
-#: openslides_voting/poll-create-form.html:15
+#: openslides_voting/poll-create-form.html:14
 #: openslides_voting/principle-form.html:13
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -302,8 +302,8 @@ msgid "Enable proxies and absentee votes"
 msgstr "Vertretungen und Weisungen aktivieren"
 
 #: openslides_voting/site.js:2899
-msgid "Enable shares and principles"
-msgstr "Stimmgewichtung und Stimmrechtsprinzip aktivieren"
+msgid "Enable voting shares"
+msgstr "Stimmgewichte aktivieren"
 
 #: openslides_voting/tokens.html:27
 msgid "Enter new voting token:"
@@ -381,8 +381,8 @@ msgstr "Keypads importieren"
 
 #: openslides_voting/shares-import.html:9
 #: openslides_voting/shares-list.html:14
-msgid "Import voting rights"
-msgstr "Stimmrechte importieren"
+msgid "Import voting shares"
+msgstr "Stimmgewichte importieren"
 
 #: openslides_voting/keypad-import.html:105
 msgid "Import {{ keypadsWillBeImported }} keypads"
@@ -429,7 +429,7 @@ msgid "Keypad serial number"
 msgstr "Keypad-Seriennummer"
 
 #: openslides_voting/keypad-list.html:32 openslides_voting/site.js:55
-#: openslides_voting/user-list-menu-buttons-hook.html:16
+#: openslides_voting/user-list-menu-buttons-hook.html:17
 msgid "Keypads"
 msgstr "Keypads"
 
@@ -481,10 +481,6 @@ msgstr "Neue Weisung"
 #: openslides_voting/keypad-form.html:2
 msgid "New keypad"
 msgstr "Neues Keypad"
-
-#: openslides_voting/poll-create-form.html:2
-msgid "New poll for"
-msgstr "Neue Abstimmung/Wahl für"
 
 #: openslides_voting/principle-form.html:2
 msgid "New voting principle"
@@ -538,6 +534,10 @@ msgstr "Hinweis: Weisungen für Wahlen werden noch nicht unterstützt."
 msgid "Number of columns of delegate board"
 msgstr "Spaltenanzahl der Delegiertentafel"
 
+#: openslides_voting/poll-create-form.html:11
+msgid "OK"
+msgstr "OK"
+
 #: openslides_voting/absentee-vote-import.html:28
 #: openslides_voting/keypad-import.html:26
 #: openslides_voting/shares-import.html:28
@@ -574,12 +574,8 @@ msgid "Please note:"
 msgstr "Bitte beachten:"
 
 #: openslides_voting/site.js:1839
-msgid ""
-"Please type Y, N or A for YNA-Votings or the candidate number for candidate "
-"voting."
-msgstr ""
-"Bitte geben Sie Y, N oder A ein für eine Ja/Nein/Enthaltung-Abstimmung oder "
-"die Kandidatennummer für eine Kandidatenwahl."
+msgid "Please type Y, N or A for Yes/No/Abstain."
+msgstr "Bitte geben Sie Y, N oder A für eine Ja/Nein/Enthaltung ein."
 
 #: openslides_voting/site.js:2907
 msgid "Please vote now!"
@@ -657,10 +653,6 @@ msgstr "Speichen Sie jetzt dieses Ergebnis!"
 msgid "Search"
 msgstr "Suche"
 
-#: openslides_voting/poll-create-form.html:12
-msgid "Select"
-msgstr "Auswählen"
-
 #: openslides_voting/absentee-vote-list.html:29
 #: openslides_voting/keypad-list.html:44
 msgid "Select ..."
@@ -672,6 +664,10 @@ msgstr "Auswählen ..."
 msgid "Select a CSV file"
 msgstr "CSV-Datei auswählen"
 
+#: openslides_voting/site.js:658
+msgid "Select the voting type"
+msgstr "Voting-Typ auswählen"
+
 #: openslides_voting/user-list-extra-content-hook.html:11
 msgid "Set keypad number ..."
 msgstr "Keypadnummer setzen ..."
@@ -680,9 +676,7 @@ msgstr "Keypadnummer setzen ..."
 msgid "Set share ..."
 msgstr "Stimmgewicht setzen ..."
 
-#: openslides_voting/shares-list.html:17 openslides_voting/shares-list.html:37
 #: openslides_voting/site.js:42
-#: openslides_voting/user-list-menu-buttons-hook.html:31
 msgid "Shares"
 msgstr "Stimmgewichte"
 
@@ -705,8 +699,8 @@ msgstr ""
 "Eingehende Stimmen werden in einer Tabelle auf dem Projektor angezeigt."
 
 #: openslides_voting/site.js:577
-msgid "Show voting rights"
-msgstr "Stimmrechte anzeigen"
+msgid "Show voting shares"
+msgstr "Stimmgewichte anzeigen"
 
 #: openslides_voting/assignment-poll-detail.html:33
 #: openslides_voting/assignment-poll-small-buttons-hook.html:14
@@ -722,7 +716,6 @@ msgstr "Einzelstimmen"
 msgid "Speakers voting is running for agenda item"
 msgstr "Redelisten-Abstimmung läuft für Tagesordnungspunkt"
 
-#: openslides_voting/assignment-poll-form-buttons-hook.html:7
 #: openslides_voting/site.js:2931
 msgid "Start election"
 msgstr "Wahl starten"
@@ -736,18 +729,18 @@ msgstr "Redelisten-Abstimmung starten"
 msgid "Start system test"
 msgstr "Systemtest starten"
 
+#: openslides_voting/assignment-poll-form-buttons-hook.html:7
 #: openslides_voting/motion-poll-form-buttons-hook.html:7
 #: openslides_voting/site.js:2929
 msgid "Start voting"
-msgstr "Abstimmung starten"
+msgstr "Voting starten"
 
 #: openslides_voting/assignment-poll-form-buttons-hook.html:17
 #: openslides_voting/item-detail-list-of-speakers-buttons-hook.html:16
 #: openslides_voting/motion-poll-form-buttons-hook.html:17
 msgid "Stop another voting"
-msgstr "Andere Abstimmung/Wahl beenden"
+msgstr "Anderes Voting beenden"
 
-#: openslides_voting/assignment-poll-form-buttons-hook.html:12
 #: openslides_voting/site.js:2932
 msgid "Stop election"
 msgstr "Wahl beenden"
@@ -755,16 +748,17 @@ msgstr "Wahl beenden"
 #: openslides_voting/item-detail-list-of-speakers-buttons-hook.html:11
 #: openslides_voting/site.js:2934
 msgid "Stop speakers voting"
-msgstr "Redelisten-Abstimmung beenden"
+msgstr "Redelisten-Voting beenden"
 
 #: openslides_voting/keypad-list.html:24
 msgid "Stop system test"
 msgstr "Systemtest stoppen"
 
+#: openslides_voting/assignment-poll-form-buttons-hook.html:12
 #: openslides_voting/motion-poll-form-buttons-hook.html:12
 #: openslides_voting/site.js:2930
 msgid "Stop voting"
-msgstr "Abstimmung beenden"
+msgstr "Voting beenden"
 
 #: openslides_voting/submit-assignment-poll.html:45
 #: openslides_voting/submit-motion-poll.html:40
@@ -819,10 +813,6 @@ msgstr "Token-basiertes elektronisches Voting"
 #: openslides_voting/site.js:1035
 msgid "Tokens"
 msgstr "Tokens"
-
-#: openslides_voting/site.js:658
-msgid "Type"
-msgstr "Typ"
 
 #: openslides_voting/site.js:2915
 msgid "Use countdown timer"
@@ -881,11 +871,11 @@ msgstr "Empfangene Stimmen:"
 #: openslides_voting/absentee-vote-import.html:40
 #: openslides_voting/absentee-vote-list.html:85 openslides_voting/site.js:1837
 msgid "Voting intention"
-msgstr "Abstimmungsabsicht"
+msgstr "Stimmverhalten"
 
 #: openslides_voting/submit-token.html:39
 msgid "Voting is not yet running ..."
-msgstr "Der Voting-Vorgang ist noch nicht gestartet ..."
+msgstr "Das Voting ist noch nicht gestartet ..."
 
 #: openslides_voting/shares-import.html:24
 #: openslides_voting/shares-import.html:25
@@ -897,8 +887,13 @@ msgstr "Stimmrechtsprinzip"
 msgid "Voting result"
 msgstr "Abstimmungsergebnis"
 
+#: openslides_voting/shares-list.html:17 openslides_voting/shares-list.html:37
+#: openslides_voting/user-list-menu-buttons-hook.html:32
+msgid "Voting shares"
+msgstr "Stimmgewichte"
+
 #: openslides_voting/site.js:34 openslides_voting/tokens.html:15
-#: openslides_voting/user-list-menu-buttons-hook.html:11
+#: openslides_voting/user-list-menu-buttons-hook.html:12
 msgid "Voting tokens"
 msgstr "Voting-Tokens"
 
@@ -940,12 +935,13 @@ msgstr "Ihre aktuelle Auswahl:"
 
 #: openslides_voting/site.js:156
 msgid ""
-"Your permissions are misconfigured. Please contact your systemadministrator "
-"or read the manual about the permissions needed for the token voting mode."
+"Your group permissions are misconfigured. The token voting interface group "
+"may have only 3 permissions: \"Can see motions\", \"Can see elections\" and "
+"\"Can see the token voting interface.sions\""
 msgstr ""
-"Die Benutzergruppenrechte sind falsch konfiguriert. Bitte kontaktieren Sie "
-"Ihren Systemadministrator oder lesen Sie die Voting-Plugin-Anleitung über "
-"die nötigen Rechte für den Token-Voting-Modus."
+"Ihre Benutzergruppenrechte sind falsch konfiguriert. Die Token-Voting-"
+"Interface-Gruppe darf nur 3 Rechte haben: \"Darf Anträge sehen\", \"Darf "
+"Wahlen sehen\" und \"Darf das Token-Voting-Interface sehen\""
 
 #: openslides_voting/submit-token.html:100
 msgid "Your personal result number to validate your voting:"
@@ -1050,16 +1046,16 @@ msgid "selected"
 msgstr "ausgewählt"
 
 #: openslides_voting/shares-import.html:98
-msgid "voting rights were successfully imported."
-msgstr "Stimmrechte wurde erfolgreich importiert."
+msgid "voting shares were successfully imported."
+msgstr "Stimmgewichte wurden erfolgreich importiert."
 
 #: openslides_voting/shares-import.html:91
-msgid "voting rights will be imported."
-msgstr "Stimmrechte werden importiert."
+msgid "voting shares will be imported."
+msgstr "Stimmgewichte werden importiert."
 
 #: openslides_voting/shares-import.html:86
-msgid "voting rights will not be imported."
-msgstr "Stimmrechte werden nicht importiert."
+msgid "voting shares will not be imported."
+msgstr "Stimmgewichte werden nicht importiert."
 
 #: openslides_voting/site.js:1013
 msgid "was activated successfully"

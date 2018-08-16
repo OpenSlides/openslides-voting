@@ -1249,16 +1249,38 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             return User.lastModified();
         }, function () {
             $scope.delegates = Delegate.getDelegates();
+            _.forEach($scope.delegates, function (delegate) {
+                if (!$scope.newShares[delegate.id]) {
+                    $scope.newShares[delegate.id] = {};
+                }
+            });
+            $scope.updateNewShares();
         });
+
+        // This object has all share values in it and is accessible with
+        // newShares[delegate.id][principle.id]. This is for editing the shares
+        // with the inline editing tool.
+        $scope.newShares = {};
 
         $scope.$watch(function () {
             return VotingShare.lastModified();
         }, function () {
             $scope.shares = VotingShare.getAll();
-            _.forEach($scope.shares, function (share) {
-                share.newShares = share.shares;
-            });
+            $scope.updateNewShares();
         });
+
+        $scope.updateNewShares = function () {
+            _.forEach($scope.shares, function (share) {
+                //share.newShares = share.shares;
+                if (!$scope.newShares[share.delegate_id]) {
+                    $scope.newShares[share.delegate_id] = {};
+                }
+                // limit shares to length of decimal places
+                var shares = parseFloat(share.shares);
+                var decimalPlaces = share.principle.decimal_places;
+                $scope.newShares[share.delegate_id][share.principle_id] = shares.toFixed(decimalPlaces);
+            });
+        };
 
         $scope.$watch(function () {
             return VotingPrinciple.lastModified();
@@ -1274,7 +1296,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.saveShare = function (newShares, delegate, principle) {
             var share = $scope.getShare(delegate, principle);
-            Delegate.updateShare(delegate, share, newShares, principle.id);
+            Delegate.updateShare(delegate, share, newShares, principle.id).then(function (success) {
+                // On race conditions other autoupdates can have changed (resetted) this value. Save the actual one.
+                $scope.newShares[delegate.id][principle.id] = newShares;
+            });
         };
 
         $scope.openDialog = function (principle) {

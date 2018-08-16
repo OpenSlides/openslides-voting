@@ -265,6 +265,7 @@ class AssignmentPollBallot(RESTModelMixin, models.Model, PollBallot):
         return '%s, %s, %s' % (self.poll, self.delegate, self.vote)
 
 
+# Changing this results in migrations -> do them
 POLLTYPES = [
     ('analog', 'Analog voting'),
     ('named_electronic', 'Named electronic voting'),

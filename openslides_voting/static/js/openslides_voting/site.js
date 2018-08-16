@@ -2488,9 +2488,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.getProjectorButtonText = function () {
             if ($scope.poll.published) {
-                return 'Project election result';
+                return 'Project result';
             } else {
-                return 'Project and publish election result';
+                return 'Project and publish result';
             }
         };
 
@@ -2935,9 +2935,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('Recount votes');
         gettext('Single votes');
         gettext('Voting result');
-        gettext('Project vote result');
         gettext('Election result');
-        gettext('Project election result');
+        gettext('Project result');
         gettext('Clear votes');
 
         // Permission strings

@@ -82,8 +82,8 @@
 
           <div ng-style="{'visibility': (getShare(delegate, principle) || (delegate.hover && principle.hover)) ? 'visible' : 'hidden'}">
             <div class="popover-wrapper">
-              <span editable-text="newShares"
-                onaftersave="saveShare(newShares, delegate, principle)">
+              <span editable-text="newShares[delegate.id][principle.id]"
+                onaftersave="saveShare(newShares[delegate.id][principle.id], delegate, principle)">
                 <small ng-if="!getShare(delegate, principle)" translate>Set share ...</small>
                 <span ng-if="getShare(delegate, principle)">
                   {{ getShare(delegate, principle).shares | number: principle.decimal_places }}

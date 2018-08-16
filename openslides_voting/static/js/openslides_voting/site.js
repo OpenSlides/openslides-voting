@@ -153,9 +153,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         };
 
         var notifyUser = function () {
-            var message = gettextCatalog.getString('Your permissions are misconfigured. '
-                + 'Please contact your systemadministrator or read the manual about the permissions'
-                + ' needed for the token voting mode.');
+            var message = gettextCatalog.getString('Your group permissions are misconfigured. '
+                + 'The token voting interface group may have only 3 permissions: '
+                + '"Can see motions", "Can see elections" and "Can see the token voting interface.sions"');
             Messaging.addMessage(message, 'error', {noClose: true});
         };
 
@@ -574,7 +574,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         key: 'delegateMore',
                         type: 'checkbox',
                         templateOptions: {
-                            label: gettextCatalog.getString('Show voting rights')
+                            label: gettextCatalog.getString('Show voting shares')
                         }
                     },
                     {
@@ -655,9 +655,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     key: 'votingType',
                     type: 'select-single',
                     templateOptions: {
-                        label: gettextCatalog.getString('Type'),
+                        label: gettextCatalog.getString('Select the voting type'),
                         options: PollType.getTypes(Config.get('voting_enable_votecollector').value),
-                        ngOptions: 'option.key as option.displayName for option in to.options',
+                        ngOptions: 'option.key as option.displayName | translate for option in to.options',
                         required: true,
                     }
                 },
@@ -1836,7 +1836,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     templateOptions: {
                         label: gettextCatalog.getString('Voting intention'),
                         required: true,
-                        description: gettextCatalog.getString('Please type Y, N or A for YNA-Votings or the candidate number for candidate voting.')
+                        description: gettextCatalog.getString('Please type Y, N or A for Yes/No/Abstain.')
                     },
                 };
 
@@ -2896,7 +2896,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         // Config strings
         gettext('');
         gettext('Enable proxies and absentee votes');
-        gettext('Enable shares and principles');
+        gettext('Enable voting shares');
         gettext('Default voting type');
         gettext('Analog voting');
         gettext('Named electronic voting');

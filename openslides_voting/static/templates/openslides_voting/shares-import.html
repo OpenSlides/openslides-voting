@@ -6,7 +6,7 @@
         <translate>Back to overview</translate>
       </a>
     </div>
-    <h1 translate>Import voting rights</h1>
+    <h1 translate>Import voting shares</h1>
   </div>
 </div>
 
@@ -83,19 +83,19 @@
     <div class="text-danger">
       <i class="fa fa-exclamation-triangle"></i>
       {{ sharesWillNotBeImported }}
-      <translate>voting rights will not be imported.</translate>
+      <translate>voting shares will not be imported.</translate>
     </div>
     <div>
       <i class="fa fa-check-circle-o fa-lg"></i>
       {{ sharesWillBeImported }}
-      <translate>voting rights will be imported.</translate>
+      <translate>voting shares will be imported.</translate>
     </div>
     <div ng-repeat="share in delegateSharesImported = (delegateShares | filter:{imported:true})"></div>
     <div ng-if="delegateSharesImported.length" class="text-success">
       <hr class="smallhr">
       <i class="fa fa-check-circle fa-lg"></i>
       {{ delegateSharesImported.length }}
-      <translate>voting rights were successfully imported.</translate>
+      <translate>voting shares were successfully imported.</translate>
     </div>
 
     <div class="spacer">

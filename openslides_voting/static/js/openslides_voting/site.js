@@ -629,7 +629,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Config',
     function (gettextCatalog, PollType, Config) {
         return {
-            getDialog: function (obj, onSuccess, onError) {
+            getDialog: function (obj, onError) {
                 return {
                     template: 'static/templates/openslides_voting/poll-create-form.html',
                     controller: 'PollCreateCtrl',
@@ -642,9 +642,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         },
                         resourceName: function () {
                             return obj.getResourceName();
-                        },
-                        onSuccess: function () {
-                            return onSuccess;
                         },
                         onError: function () {
                             return onError;
@@ -838,11 +835,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'Config',
     'objId',
     'resourceName',
-    'onSuccess',
     'onError',
     'ErrorMessage',
-    function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType, Assignment, Config,
-              objId, resourceName, onSuccess, onError, ErrorMessage) {
+    function ($scope, $http, DS, PollCreateForm, MotionPollType, AssignmentPollType,
+            Assignment, Config, objId, resourceName, onError, ErrorMessage) {
         $scope.obj = DS.get(resourceName, objId);
         $scope.model = {
             votingType: Config.get('voting_default_voting_type').value,
@@ -852,14 +848,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.select = function (model) {
             if (resourceName === 'motions/motion') {
                 $http.post('/rest/motions/motion/' + objId + '/create_poll/', {}).then(function (success) {
+                    var pollId = success.data.createdPollId;
                     MotionPollType.create({
-                        poll_id: success.data.createdPollId,
+                        poll_id: pollId,
                         type: model.votingType,
                     }).then (function () {
                         $scope.closeThisDialog();
-                        if (typeof onSuccess === 'function') {
-                            onSuccess(success.data.createdPollId);
-                        }
                     }, function (error) {
                         $scope.alert = ErrorMessage.forAlert(error);
                     });
@@ -877,14 +871,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                         Assignment.save($scope.obj);
                     }
 
+                    var pollId = success.data.createdPollId;
                     AssignmentPollType.create({
-                        poll_id: success.data.createdPollId,
+                        poll_id: pollId,
                         type: model.votingType,
                     }).then (function () {
                         $scope.closeThisDialog();
-                        if (typeof onSuccess === 'function') {
-                            onSuccess(success.data.createdPollId);
-                        }
                     }, function (error) {
                         $scope.alert = ErrorMessage.forAlert(error);
                     });

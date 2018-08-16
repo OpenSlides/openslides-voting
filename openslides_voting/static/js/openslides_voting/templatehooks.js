@@ -175,24 +175,7 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
             scope: function (scope) {
                 scope.createBallot = function () {
                     if (operator.hasPerms('openslides_voting.can_manage')) {
-                        ngDialog.open(PollCreateForm.getDialog(scope.assignment,
-                            function (pollId) {
-                                ngDialog.open({
-                                    template: 'static/templates/assignments/assignmentpoll-form.html',
-                                    controller: 'AssignmentPollUpdateCtrl',
-                                    className: 'ngdialog-theme-default',
-                                    closeByEscape: false,
-                                    closeByDocument: false,
-                                    resolve: {
-                                        assignmentpollId: function () {
-                                            return pollId;
-                                        },
-                                        ballot: function () {
-                                            return scope.assignment.polls.length;
-                                        },
-                                    }
-                                });
-                            }, function (error) {
+                        ngDialog.open(PollCreateForm.getDialog(scope.assignment, function (error) {
                                 scope.alert = ErrorMessage.forAlert(error);
                             }
                         ));

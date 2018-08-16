@@ -297,25 +297,28 @@ class SubmitCandidates(ValidationView):
         - A simple 'A' or 'N' for abstain or No. You can give an empty list for abstian as well.
         - A list with candidate indices. They should be unique. Indices are integers with
           0 < i <= len(options). Replaces these indeicesx with the actual candidate ids in string.
-        - A single int: Will be converted to [<id>] and the rule above applies.
+        - A single digit: Will be converted to [<id>] and the rule above applies.
         """
         for vote in votes:
             value = vote['value']
             # for the votecollector single digits are allowed
-            if isinstance(value, int):
-                value = [value]
+            if isinstance(value, str):
+                try:
+                    value = [int(value)]
+                except ValueError:
+                    pass
 
             # check for 'A', 'N' or a list of indices
             if isinstance(value, list):
                 value_set = set(value)
                 if len(value_set) != len(value):  # someone has votes for the same candidate multiple times
-                    raise ValidationError({'detail': 'You can just give a candidate one or zero times.'})
+                    raise ValidationError({'detail': 'You cannot give more than one vote per candidate.'})
 
                 if len(value) > open_posts:
-                    raise ValidationError({'detail': 'You cannot give more candidates then open posts'})
+                    raise ValidationError({'detail': 'You cannot cast more votes than candidates available.'})
 
                 if len(value) == 0:
-                    value = 'A'
+                    vote['value'] = 'A'
                 else:
                     for index in value:
                         if not isinstance(index, int):

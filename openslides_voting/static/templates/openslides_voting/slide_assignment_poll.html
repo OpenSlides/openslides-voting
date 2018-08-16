@@ -49,11 +49,10 @@
     }
     #delegateBoard table td {
         background-color: #ffffff;
-        padding: 0;
+        padding: 0 2px;
         font-size: 0.75em;
-        width: 2em;
-        height: 2em;
         border: none;
+        height: 50px;
     }
     #delegateBoard table td.label {
         font-weight: bold;
@@ -157,7 +156,8 @@
       <tr ng-repeat="option in poll.options" ng-init="votes = option.getVotes()">
 
         <!-- keypad key -->
-        <td><span class="key">{{ $index + 1 }}</span>
+        <td>
+          <span ng-if="showKey" class="key"> {{ $index + 1 }} </span>
 
         <!--candidate name -->
         <td>
@@ -190,5 +190,5 @@
   </div>
 
   <!-- Delegate board -->
-  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml"></div>
+  <div id="delegateBoard" ng-if="!poll.has_votes" ng-bind-html="delegateBoardHtml | trusted"></div>
 </div>

@@ -7,11 +7,10 @@ from openslides.utils.projector import ProjectorElement
 from .models import (
     AuthorizedVoters,
     AssignmentPollBallot,
+    AssignmentPollType,
     Keypad,
     MotionPollBallot,
     VotingController,
-    VotingProxy,
-    VotingShare,
 )
 
 
@@ -75,6 +74,7 @@ class AssignmentPollSlide(ProjectorElement):
             yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
             yield from AssignmentPollBallot.objects.filter(poll=assignmentpoll)
+            yield from AssignmentPollType.objects.filter(poll=assignmentpoll)
             yield VotingController.objects.get()
 
     def get_collection_elements_required_for_this(self, collection_element, config_entry):

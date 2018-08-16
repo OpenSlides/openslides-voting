@@ -73,68 +73,79 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         });
 
         $scope.$watch(function () {
-            return VotingController.lastModified(1);
+            return VotingController.lastModified(1) +
+                AuthorizedVoters.lastModified(1) +
+                Config.lastModified();
         }, function () {
             // Using timeout seems to give the browser more time to update the DOM.
             draw = true;
             $timeout(drawDelegateBoard, 0);
         });
 
-        $scope.$watch(function () {
-            return AuthorizedVoters.lastModified(1);
-        }, function () {
-            draw = true;
-            $timeout(drawDelegateBoard, 0);
-        });
-
         var drawDelegateBoard = function () {
-            if (Config.get('voting_show_delegate_board').value) {
-                if (!draw) return;
+            if (!draw) {
+                return;
+            }
+            if (!Config.get('voting_show_delegate_board').value || !$scope.poll ||
+                !$scope.motion) {
+                // Only show the delegate board if the poll is published.
+                $scope.delegateBoardHtml = '';
+                draw = false;
+                return;
+            }
 
-                // Get authorized voters.
-                var voters = AuthorizedVoters.get(1).authorized_voters;
-                if (_.keys(voters).length > 0) {
-                    // Create delegate board table.
-                    console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
-                    var colCount = Config.get('voting_delegate_board_columns').value,
-                        anonymous = Config.get('voting_anonymous').value,
-                        table = '<table>',
-                        i = 0;
-
-                    _.forEach(voters, function (delegates, voterId) {
-                        _.forEach(delegates, function (id) {
-                            var user = User.get(id),
-                                mpb = MotionPollBallot.filter({poll_id: pollId, delegate_id: id});
-                            var cls = '';
-                            if (mpb.length === 1) {
-                                // Set td class based on vote.
-                                cls = anonymous ? 'seat-anonymous' : 'seat-' + mpb[0].vote;
-                            }
-                            if (i % colCount === 0) {
-                                table += '<tr>';
-                            }
-                            // Cell label is keypad number + user name.
-                            var keypad = Delegate.getKeypad(voterId);
-                            var label = Delegate.getCellName(user);
-                            if (keypad) {
-                                label = Delegate.getKeypad(voterId).number + '<br/>' + label;
-                            }
-                            table += '<td class="seat ' + cls + '">' + label + '</td>';
-                            i++;
+            // Get authorized voters.
+            var voters = AuthorizedVoters.get(1).authorized_voters,
+                showKey = AuthorizedVoters.get(1).type === 'votecollector' ||
+                    AuthorizedVoters.get(1).type === 'votecollector_anonymous';
+            if (_.keys(voters).length > 0) {
+                // Create delegate board table cells.
+                // console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
+                var colCount = Config.get('voting_delegate_board_columns').value,
+                    anonymous = Config.get('voting_anonymous').value,
+                    cells = [];
+                _.forEach(voters, function (delegates, voterId) {
+                    _.forEach(delegates, function (id) {
+                        var user = User.get(id),
+                            mpb = MotionPollBallot.filter({poll_id: pollId, delegate_id: id}),
+                            name = Delegate.getCellName(user),
+                            label = name,
+                            cls = '';
+                        if (showKey) {
+                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                        }
+                        if (mpb.length === 1) {
+                            // Set td class based on vote.
+                            cls = anonymous ? 'seat-anonymous' : 'seat-' + mpb[0].vote;
+                        }
+                        cells.push({
+                            name: name,
+                            label: label,
+                            cls: cls,
                         });
                     });
-                    $scope.delegateBoardHtml = table;
-                }
-                else {
-                    // Clear delegate table.
-                    console.log("Clear delegate board.");
-                    $scope.delegateBoardHtml = '';
-                }
-                draw = false;
+                });
+
+                // Build table. Cells are ordered by name.
+                var table = '<table>',
+                    i = 0;
+                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                    if (i % colCount === 0) {
+                        table += '<tr>';
+                    }
+                    table += '<td class="seat ' + cell.cls + '" ' +
+                        'style="width: calc(100%/' + colCount + ');">' +
+                        cell.label + '</td>';
+                    i++;
+                });
+
+                $scope.delegateBoardHtml = table;
             }
             else {
+                // Clear delegate table.
                 $scope.delegateBoardHtml = '';
             }
+            draw = false;
         };
     }
 ])
@@ -147,11 +158,12 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'Assignment',
     'AssignmentPoll',
     'AssignmentPollBallot',
+    'AssignmentPollType',
     'User',
     'Delegate',
     'VotingController',
     function ($scope, $timeout, AuthorizedVoters, Config, Assignment, AssignmentPoll,
-              AssignmentPollBallot, User, Delegate, VotingController) {
+              AssignmentPollBallot, AssignmentPollType, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
             draw = false; // prevents redundant drawing
@@ -165,28 +177,22 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                 $scope.assignment = Assignment.get($scope.poll.assignment_id);
                 $scope.ynaVotes = $scope.poll.options[0].getVotes();
             }
+
+            // Get poll type for assignment.
+            var pollTypes = AssignmentPollType.filter({poll_id: pollId});
+            var pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog';
+            $scope.showKey = pollType === 'votecollector' || pollType === 'votecollector_anonymous';
+
             draw = true;
             $timeout(drawDelegateBoard, 0);
         });
 
         $scope.$watch(function () {
-            return VotingController.lastModified(1);
+            return VotingController.lastModified(1) +
+                AuthorizedVoters.lastModified(1) +
+                Config.lastModified();
         }, function () {
             // Using timeout seems to give the browser more time to update the DOM.
-            draw = true;
-            $timeout(drawDelegateBoard, 0);
-        });
-
-        $scope.$watch(function () {
-            return AuthorizedVoters.lastModified(1);
-        }, function () {
-            draw = true;
-            $timeout(drawDelegateBoard, 0);
-        });
-
-        $scope.$watch(function () {
-            return Config.lastModified();
-        }, function () {
             draw = true;
             $timeout(drawDelegateBoard, 0);
         });
@@ -197,27 +203,30 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             }
             if (!Config.get('voting_show_delegate_board').value || !$scope.poll ||
                 !$scope.assignment) {
-                // Just show the delegate board, if the poll is published.
+                // Only show the delegate board if the poll is published.
                 $scope.delegateBoardHtml = '';
+                draw = false;
                 return;
             }
-
 
             // Get authorized voters.
             var voters = AuthorizedVoters.get(1).authorized_voters;
             if (_.keys(voters).length > 0) {
-                // Create delegate board table.
-                console.log("Draw delegate board. Votes: " + AssignmentPollBallot.filter({poll_id: pollId}).length);
+                // Create delegate board table cells.
+                // console.log("Draw delegate board. Votes: " + AssignmentPollBallot.filter({poll_id: pollId}).length);
                 var colCount = Config.get('voting_delegate_board_columns').value,
                     anonymous = Config.get('voting_anonymous').value,
-                    table = '<table>',
-                    i = 0;
-
+                    cells = [];
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {
                         var user = User.get(id),
-                            apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id});
-                        var cls = '';
+                            apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id}),
+                            name = Delegate.getCellName(user),
+                            label = name,
+                            cls = '';
+                        if ($scope.showKey) {
+                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                        }
                         if (apb.length > 0) {
                             apb = apb[0];
                             // Set td class based on vote.
@@ -241,28 +250,35 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                                 }
                             }
                         }
-                        if (i % colCount === 0) {
-                            table += '<tr>';
-                        }
-                        // Cell label is keypad number + user name.
-                        // TODO: Add selected candidate id for poll method 'votes'.
-                        var keypad = Delegate.getKeypad(voterId);
-                        var label = Delegate.getCellName(user);
-                        if (keypad) {
-                            label = Delegate.getKeypad(voterId).number + '<br/>' + label;
-                        }
-                        table += '<td class="seat ' + cls + '">' + label + '</td>';
-                        i++;
+                        cells.push({
+                            name: name,
+                            label: label,
+                            cls: cls,
+                        });
                     });
                 });
+
+                // Build table. Cells are ordered by name.
+                var table = '<table>',
+                    i = 0;
+                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                    if (i % colCount === 0) {
+                        table += '<tr>';
+                    }
+                    table += '<td class="seat ' + cell.cls + '" ' +
+                        'style="width: calc(100%/' + colCount + ');">' +
+                        cell.label + '</td>';
+                    i++;
+                });
+
                 $scope.delegateBoardHtml = table;
-            } else {
+            }
+            else {
                 // Clear delegate table.
                 $scope.delegateBoardHtml = '';
             }
             draw = false;
         };
-    }
-])
+    }])
 
 }());

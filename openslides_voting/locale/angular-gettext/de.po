@@ -344,7 +344,7 @@ msgstr "Filter ..."
 
 #: openslides_voting/site.js:2924
 msgid "Full name (e.g. \"John Smith\")"
-msgstr "Vollständigen Namen (z.B. \"Max Mustermann\")"
+msgstr "Vollständiger Name (z. B. \"Max Mustermann\")"
 
 #: openslides_voting/tokens.html:12
 msgid "Generate"
@@ -435,7 +435,7 @@ msgstr "Keypads"
 
 #: openslides_voting/site.js:2923
 msgid "Last name (e.g. \"Smith\")"
-msgstr "Nachname (z.B. \"Mustermann\")"
+msgstr "Nachname (z. B. \"Mustermann\")"
 
 #: openslides_voting/absentee-vote-import.html:39
 #: openslides_voting/absentee-vote-list.html:77
@@ -682,7 +682,7 @@ msgstr "Stimmgewichte"
 
 #: openslides_voting/site.js:2922
 msgid "Short name (e.g. \"JoSm\")"
-msgstr "Kurzname (z.B. \"MaMu\")"
+msgstr "Kurzname (z. B. \"MaMu\")"
 
 #: openslides_voting/attendance.html:57
 #: openslides_voting/delegate-attendance.html:46

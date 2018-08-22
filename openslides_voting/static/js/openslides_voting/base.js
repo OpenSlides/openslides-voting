@@ -535,6 +535,68 @@ angular.module('OpenSlidesApp.openslides_voting', [
     }
 ])
 
+.config([
+    '$provide',
+    function ($provide) {
+        $provide.decorator('MotionPollDecimalPlaces', [
+            '$delegate',
+            '$q',
+            'VotingPrinciple',
+            function ($delegate, $q, VotingPrinciple) {
+                return {
+                    getPlaces: function (poll, find) {
+                        var getPlaces = function (poll) {
+                            var principles = VotingPrinciple.filter({motions_id: poll.motion.id});
+                            if (principles.length > 0) {
+                                return principles[0].decimal_places;
+                            } else {
+                                return 0;
+                            }
+                        };
+                        if (find) {
+                            return $q(function (resolve) {
+                                VotingPrinciple.findAll().then(function (s) {
+                                    resolve(getPlaces(poll));
+                                });
+                            });
+                        } else {
+                            return getPlaces(poll);
+                        }
+                    },
+                };
+            }
+        ]);
+        $provide.decorator('AssignmentPollDecimalPlaces', [
+            '$delegate',
+            '$q',
+            'VotingPrinciple',
+            function ($delegate, $q, VotingPrinciple) {
+                return {
+                    getPlaces: function (poll, find) {
+                        var getPlaces = function (poll) {
+                            var principles = VotingPrinciple.filter({assignments_id: poll.assignment.id});
+                            if (principles.length > 0) {
+                                return principles[0].decimal_places;
+                            } else {
+                                return 0;
+                            }
+                        };
+                        if (find) {
+                            return $q(function (resolve) {
+                                VotingPrinciple.findAll().then(function (s) {
+                                    resolve(getPlaces(poll));
+                                });
+                            });
+                        } else {
+                            return getPlaces(poll);
+                        }
+                    },
+                };
+            }
+        ]);
+    }
+])
+
 .factory('AttendanceLog', [
     'DS',
     function (DS) {

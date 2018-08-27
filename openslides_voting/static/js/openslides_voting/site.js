@@ -2488,9 +2488,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         $scope.getProjectorButtonText = function () {
             if ($scope.poll.published) {
-                return 'Project result';
+                return gettextCatalog.getString('Project result');
             } else {
-                return 'Project and publish result';
+                return gettextCatalog.getString('Project and publish result');
             }
         };
 

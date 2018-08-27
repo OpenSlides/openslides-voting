@@ -164,15 +164,15 @@ msgstr ""
 "Der Batterie-Status wird mit jeder Abstimmung geprüft. Verfügbare Zustände: "
 "voll, mittel, niedrig, leer"
 
-#: openslides_voting/site.js:2944
+#: openslides_voting/site.js:2945
 msgid "Can manage voting"
 msgstr "Darf elektronisches Voting steuern"
 
-#: openslides_voting/site.js:2943
+#: openslides_voting/site.js:2944
 msgid "Can see the token voting interface"
 msgstr "Darf das Token-Voting-Interface sehen"
 
-#: openslides_voting/site.js:2945
+#: openslides_voting/site.js:2946
 msgid "Can vote"
 msgstr "Darf elektronisch abstimmen/wählen"
 
@@ -197,7 +197,7 @@ msgstr "Vorschau leeren"
 
 #: openslides_voting/assignment-poll-form-buttons-hook.html:22
 #: openslides_voting/motion-poll-form-buttons-hook.html:22
-#: openslides_voting/site.js:2940
+#: openslides_voting/site.js:2941
 msgid "Clear votes"
 msgstr "Stimmen löschen"
 
@@ -596,7 +596,11 @@ msgstr "Vorschau"
 msgid "Principals"
 msgstr "Mandanten (Vollmachtgeber)"
 
-#: openslides_voting/site.js:2939
+#: openslides_voting/site.js:2493
+msgid "Project and publish result"
+msgstr "Ergebnis projizieren und veröffentlichen"
+
+#: openslides_voting/site.js:2491 openslides_voting/site.js:2939
 msgid "Project result"
 msgstr "Ergebnis projizieren"
 

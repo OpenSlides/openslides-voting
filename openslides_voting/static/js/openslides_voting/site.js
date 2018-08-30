@@ -2717,10 +2717,18 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         var loadMotionPollBallots = function() {
             var mpbs = MotionPollBallot.filter({poll_id: pollId});
-            var principles = VotingPrinciple.filter({motions_id: $scope.motion.id});
+            var principles = VotingPrinciple.filter({
+                where: {
+                    motions_id: {
+                        contains: $scope.motion.id
+                    }
+                }
+            });
             if (principles.length > 0) {
                 // Limit ballots to anonymous users and users that have shares.
                 var principle_id = principles[0].id;
+                $scope.votesPrecision = principles[0].decimal_places;
+
                 $scope.ballots = _.filter(mpbs, function (mpb) {
                     if (!mpb.user) {
                         return true;
@@ -2733,6 +2741,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 });
             }
             else {
+                $scope.votesPrecision = 0;
                 $scope.ballots = mpbs;
             }
         };
@@ -2826,7 +2835,13 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 
         var loadAssignmentPollBallots = function() {
             var apbs = AssignmentPollBallot.filter({poll_id: pollId});
-            var principles = VotingPrinciple.filter({assignments_id: $scope.assignment.id});
+            var principles = VotingPrinciple.filter({
+                where: {
+                    assignments_id: {
+                        contains: $scope.assignment.id
+                    }
+                }
+            });
             if (principles.length > 0) {
                 // Limit ballots to anonymous users and users that have shares.
                 var principle_id = principles[0].id;

@@ -53,11 +53,12 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'Motion',
     'MotionPoll',
     'MotionPollBallot',
+    'MotionPollDecimalPlaces',
     'User',
     'Delegate',
     'VotingController',
     function ($scope, $timeout, AuthorizedVoters, Config, Motion, MotionPoll,
-              MotionPollBallot, User, Delegate, VotingController) {
+              MotionPollBallot, MotionPollDecimalPlaces, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
             draw = false; // prevents redundant drawing
@@ -69,6 +70,10 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             $scope.poll = MotionPoll.get(pollId);
             if ($scope.poll !== undefined) {
                 $scope.motion = Motion.get($scope.poll.motion_id);
+                $scope.votesPrecision = MotionPollDecimalPlaces.getPlaces($scope.poll);
+            }
+            else {
+                $scope.votesPrecision = 0;
             }
         });
 
@@ -158,11 +163,12 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'Assignment',
     'AssignmentPoll',
     'AssignmentPollBallot',
+    'AssignmentPollDecimalPlaces',
     'User',
     'Delegate',
     'VotingController',
     function ($scope, $timeout, AuthorizedVoters, Config, Assignment, AssignmentPoll,
-              AssignmentPollBallot, User, Delegate, VotingController) {
+              AssignmentPollBallot, AssignmentPollDecimalPlaces, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
             draw = false; // prevents redundant drawing
@@ -174,8 +180,11 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             $scope.poll = AssignmentPoll.get(pollId);
             if ($scope.poll !== undefined) {
                 $scope.assignment = Assignment.get($scope.poll.assignment_id);
+                $scope.votesPrecision = AssignmentPollDecimalPlaces.getPlaces($scope.poll);
             }
-
+            else {
+                $scope.votesPrecision = 0;
+            }
             draw = true;
             $timeout(drawDelegateBoard, 0);
         });

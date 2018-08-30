@@ -635,16 +635,16 @@ class MotionPollBallotViewSet(BasePollBallotViewSet):
         ballot = MotionBallot(poll, principle)
         result = ballot.count_votes()
 
-        # Update motion poll. TODO: Allow decimal places.
+        # Update motion poll.
         votes = {
-            'Yes': int(result['Y'][1]),
-            'No': int(result['N'][1]),
-            'Abstain': int(result['A'][1])
+            'Yes': result['Y'][1],
+            'No': result['N'][1],
+            'Abstain': result['A'][1]
         }
         poll.set_vote_objects_with_values(poll.get_options().get(), votes, skip_autoupdate=True)
-        poll.votescast = int(result['casted'][1])
-        poll.votesvalid = int(result['valid'][1])
-        poll.votesinvalid = int(result['invalid'][1])
+        poll.votescast = result['casted'][1]
+        poll.votesvalid = result['valid'][1]
+        poll.votesinvalid = result['invalid'][1]
         poll.save()
         return HttpResponse()
 
@@ -674,25 +674,25 @@ class AssignmentPollBallotViewSet(BasePollBallotViewSet):
         ballot = AssignmentBallot(poll, principle)
         result = ballot.count_votes()
 
-        # Update assignment poll. TODO: Allow decimal places.
+        # Update assignment poll.
         if poll.pollmethod in ('yn', 'yna'):
             for option in poll.get_options():
                 cid = str(option.candidate_id)
                 votes = {
-                    'Yes': int(result[cid]['Y'][1]),
-                    'No': int(result[cid]['N'][1])
+                    'Yes': result[cid]['Y'][1],
+                    'No': result[cid]['N'][1]
                 }
                 if poll.pollmethod == 'yna':
-                    votes['Abstain'] = int(result[cid]['A'][1])
+                    votes['Abstain'] = result[cid]['A'][1]
                 poll.set_vote_objects_with_values(option, votes, skip_autoupdate=True)
         else:  # votes
             for option in poll.get_options():
                 cid = str(option.candidate_id)
-                votes = {'Votes': int(result[cid][1])}
+                votes = {'Votes': result[cid][1]}
                 poll.set_vote_objects_with_values(option, votes, skip_autoupdate=True)
-        poll.votescast = int(result['casted'][1])
-        poll.votesvalid = int(result['valid'][1])
-        poll.votesinvalid = int(result['invalid'][1])
+        poll.votescast = result['casted'][1]
+        poll.votesvalid = result['valid'][1]
+        poll.votesinvalid = result['invalid'][1]
         poll.save()
         return HttpResponse()
 

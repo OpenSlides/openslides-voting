@@ -11,6 +11,7 @@ from .models import (
     Keypad,
     MotionPollBallot,
     VotingController,
+    VotingPrinciple,
 )
 
 
@@ -37,6 +38,7 @@ class MotionPollSlide(ProjectorElement):
             yield from User.objects.filter(groups__permissions__codename='can_vote')
             yield from Keypad.objects.all()
             yield from MotionPollBallot.objects.filter(poll=motionpoll)
+            yield from VotingPrinciple.objects.filter(motions=motionpoll.motion)
             yield VotingController.objects.get()
 
     def get_collection_elements_required_for_this(self, collection_element, config_entry):
@@ -77,6 +79,7 @@ class AssignmentPollSlide(ProjectorElement):
             yield from Keypad.objects.all()
             yield from AssignmentPollBallot.objects.filter(poll=assignmentpoll)
             yield from AssignmentPollType.objects.filter(poll=assignmentpoll)
+            yield from VotingPrinciple.objects.filter(assignments=assignmentpoll.assignment)
             yield VotingController.objects.get()
 
     def get_collection_elements_required_for_this(self, collection_element, config_entry):

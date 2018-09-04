@@ -102,12 +102,13 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             // Get authorized voters.
             var av = AuthorizedVoters.get(1);
             var voters = av.authorized_voters;
-            var showKey = av.type === 'votecollector' || av.type === 'votecollector_anonymous';
-            if (_.keys(voters).length > 0) {
+            var showKey = av.type.indexOf('votecollector') === 0;
+            if (_.keys(voters).length > 0 &&
+                av.type !== 'votecollector_anonymous' && av.type !== 'votecollector_secret') {
                 // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + MotionPollBallot.filter({poll_id: pollId}).length);
                 var colCount = Config.get('voting_delegate_board_columns').value,
-                    anonymous = Config.get('voting_anonymous').value,
+                    anonymous = Config.get('voting_anonymous').value || av.type === 'votecollector_pseudo_secret',
                     cells = [];
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {
@@ -194,7 +195,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         }, function () {
             // Get poll type for assignment.
             $scope.av = AuthorizedVoters.get(1);
-            $scope.showKey = ($scope.av.type === 'votecollector' || $scope.av.type === 'votecollector_anonymous');
+            $scope.showKey = $scope.av.type.indexOf('votecollector') === 0;
 
             // Using timeout seems to give the browser more time to update the DOM.
             draw = true;
@@ -224,11 +225,12 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
 
             // Get authorized voters.
             var voters = $scope.av.authorized_voters;
-            if (_.keys(voters).length > 0) {
+            if (_.keys(voters).length > 0 &&
+                $scope.av.type !== 'votecollector_anonymous' && $scope.av.type !== 'votecollector_secret') {
                 // Create delegate board table cells.
                 // console.log("Draw delegate board. Votes: " + AssignmentPollBallot.filter({poll_id: pollId}).length);
                 var colCount = Config.get('voting_delegate_board_columns').value,
-                    anonymous = Config.get('voting_anonymous').value,
+                    anonymous = Config.get('voting_anonymous').value || $scope.av.type === 'votecollector_pseudo_secret',
                     cells = [];
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {

@@ -470,7 +470,6 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     }
 ])
 
-
 // Overrides the UserForm. Adds fields for keypads, proxies, ...
 .factory('DelegateForm', [
     'gettextCatalog',
@@ -2203,8 +2202,19 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
     'ErrorMessage',
     function ($http, gettextCatalog, Projector, ProjectHelper, ErrorMessage) {
         return {
-            populateScope: function ($scope, modelName, modelPollType, projectorName, startUrl, resultsUrl,
+            populateScope: function ($scope, modelName, formName, modelPollType, projectorName, startUrl, resultsUrl,
                 clearUrl) {
+
+                var formIsDisabled = false;
+                var disableFormInputs = function () {
+                    if (!formIsDisabled) {
+                        var $form = $('form[name="' + formName + '"]');
+                        _.forEach($('input', $form).not(':input[type=button]'), function (element) {
+                            $(element).prop('disabled', true);
+                        });
+                    }
+                    formIsDisabled = true; // prevent redundant execution
+                };
 
                 $scope.isAnalogPoll = function () {
                     var pollTypes = modelPollType.filter({poll_id: $scope.poll.id});
@@ -2221,6 +2231,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 };
 
                 $scope.canClearVotes = function () {
+                    // Make form readonly. Is executed for all poll types except for analog.
+                    disableFormInputs();
+
                     // If votes were cast and voting is not active for this poll.
                     return $scope.vc && $scope.poll.votescast !== null &&
                         (!$scope.vc.is_voting || $scope.vc.voting_mode !== modelName ||
@@ -2339,7 +2352,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
-        PollFormVotingCtrlBase.populateScope($scope, 'MotionPoll', MotionPollType, 'voting/motion-poll',
+        PollFormVotingCtrlBase.populateScope($scope, 'MotionPoll', 'motionPollForm', MotionPollType, 'voting/motion-poll',
             'start_motion', 'results_motion_votes', 'clear_motion_votes');
 
         $scope.clearForm = function () {
@@ -2409,7 +2422,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         Projector.bindAll({}, $scope, 'projectors');
         VotingController.bindOne(1, $scope, 'vc');
 
-        PollFormVotingCtrlBase.populateScope($scope, 'AssignmentPoll', AssignmentPollType,
+        PollFormVotingCtrlBase.populateScope($scope, 'AssignmentPoll', 'assignmentPollForm', AssignmentPollType,
             'voting/assignment-poll', 'start_assignment', 'results_assignment_votes',
             'clear_assignment_votes');
 
@@ -2432,7 +2445,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             // check for support from votecollector.
             var pollTypes = AssignmentPollType.filter({poll_id: $scope.poll.id});
             var pollType = pollTypes.length >= 1 ? pollTypes[0].type : 'analog_voting';
-            var pollTypeIsVc = (pollType === 'votecollector' || pollType === 'votecollector_anonym');
+            var pollTypeIsVc = pollType.indexOf('votecollector') === 0;
             var vcOk = (!pollTypeIsVc || $scope.poll.pollmethod === 'votes' ||
                 ($scope.poll.pollmethod === 'yna' && $scope.poll.options.length === 1));
             return vcOk && $scope.vc && $scope.poll.votescast === null && !$scope.vc.is_voting;

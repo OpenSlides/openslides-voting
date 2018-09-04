@@ -68,7 +68,7 @@ class ValidationView(utils_views.View):
         if not isinstance(votes, list):
             votes = [votes]
 
-        if voting_type not in ('votecollector', 'votecollector_anonym') and len(votes) != 1:
+        if not voting_type.startswith('votecollector') and len(votes) != 1:
             raise ValidationError({'detail': 'Just one vote has to be given'})
 
         for vote in votes:
@@ -77,7 +77,7 @@ class ValidationView(utils_views.View):
             if 'value' not in vote:
                 raise ValidationError({'detail': 'A vote value is missing'})
 
-            if voting_type in ('votecollector', 'votecollector_anonym'):
+            if voting_type.startswith('votecollector'):
                 # Check, if bl, id and sn is given and valid.
                 if not {'bl', 'id', 'sn'}.issubset(vote):
                     raise ValidationError({'detail': 'bl, id and sn are necessary for the votecollector'})
@@ -110,7 +110,7 @@ class ValidationView(utils_views.View):
         Updates the keypds from votes. The voting type has to be a VoteCollector one.
         The votes has to be validated first.
         """
-        if voting_type in ('votecollector', 'votecollector_anonym'):
+        if voting_type.startswith('votecollector'):
             keypads = []
             for vote in votes:
                 keypad = vote['keypad']
@@ -195,9 +195,9 @@ class SubmitVotes(ValidationView):
             raise ValidationError({'detail': 'Analog voting does not support votes.'})
 
         # Only allow votecollector requests if the type is right and the other way around
-        if votecollector and av.type not in ('votecollector', 'votecollector_anonym'):
+        if votecollector and not av.type.startswith('votecollector'):
             raise ValidationError({'detail': 'The type is not votecollector!'})
-        if not votecollector and av.type in ('votecollector', 'votecollector_anonym'):
+        if not votecollector and av.type.startswith('votecollector'):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
@@ -267,11 +267,11 @@ class SubmitVotes(ValidationView):
                 result_vote = vote['value']
 
             vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
-        else:  # votecollector or votecollector_anonym
+        else:  # a votecollector type
             for vote in votes:
                 keypad = vote['keypad']
                 user = None
-                if av.type == 'votecollector':  # vc with user
+                if av.type in ('votecollector', 'votecollector_secret', 'votecollector_pseudo_secret'):  # vc with user
                     # Get delegate the keypad is assigned to.
                     if keypad:
                         user = keypad.user
@@ -366,9 +366,9 @@ class SubmitCandidates(ValidationView):
             raise ValidationError({'detail': 'Analog voting does not support votes.'})
 
         # Only allow votecollector requests if the type is right and the other way around
-        if votecollector and av.type not in ('votecollector', 'votecollector_anonym'):
+        if votecollector and not av.type.startswith('votecollector'):
             raise ValidationError({'detail': 'The type is not votecollector!'})
-        if not votecollector and av.type in ('votecollector', 'votecollector_anonym'):
+        if not votecollector and av.type.startswith('votecollector'):
             raise ValidationError({'detail': 'Non votecollector requests are permitted!'})
 
         # check for valid poll_id
@@ -407,11 +407,11 @@ class SubmitCandidates(ValidationView):
                 result_token = ballot.get_next_result_token()
                 result_vote = vote['value']
             vc.votes_received += ballot.register_vote(vote['value'], voter=user, result_token=result_token)
-        else:  # votecollector or votecollector_anonym
+        else:  # a votecollector type
             for vote in votes:
                 keypad = vote['keypad']
                 user = None
-                if av.type == 'votecollector':  # vc with user
+                if av.type in ('votecollector', 'votecollector_secret', 'votecollector_pseudo_secret'):  # vc with user
                     # Get delegate the keypad is assigned to.
                     if keypad:
                         user = keypad.user

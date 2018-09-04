@@ -85,7 +85,10 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 }, function () {
                     var pollTypes = MotionPollType.filter({poll_id: scope.poll.id});
                     scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
-                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                    scope.showSingleVotes = pollTypes.length >= 1 &&
+                        pollTypes[0].type !== 'analog' &&
+                        pollTypes[0].type !== 'votecollector_secret' &&
+                        pollTypes[0].type !== 'votecollector_pseudo_secret';
                 });
             },
         });
@@ -166,7 +169,10 @@ angular.module('OpenSlidesApp.openslides_voting.templatehooks', [
                 }, function () {
                     var pollTypes = AssignmentPollType.filter({poll_id: scope.poll.id});
                     scope.pollType = pollTypes.length >= 1 ? pollTypes[0].displayName : 'Analog voting';
-                    scope.isAnalogPoll = (pollTypes.length === 0 || pollTypes[0].type === 'analog');
+                    scope.showSingleVotes = pollTypes.length >= 1 &&
+                        pollTypes[0].type !== 'analog' &&
+                        pollTypes[0].type !== 'votecollector_secret' &&
+                        pollTypes[0].type !== 'votecollector_pseudo_secret';
                 });
             },
         });

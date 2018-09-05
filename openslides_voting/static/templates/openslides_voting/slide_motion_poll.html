@@ -1,4 +1,5 @@
 <div ng-controller="SlideMotionPollCtrl" class="content scrollcontent">
+  <ng-include src="'static/templates/openslides_voting/submit-buttons-css.html'"></ng-include>
 
   <style type="text/css">
     #resultTable {
@@ -21,9 +22,7 @@
     #resultTable td.vote {
       min-width: 30px;
     }
-    #resultTable td.percentage {
-      font-weight: normal;
-      font-size: 70%;
+    #resultTable td.chart {
       min-width: 200px;
     }
 
@@ -68,43 +67,64 @@
   </div>
 
   <!-- Result table -->
-  <table ng-if="poll.has_votes"
-      class="well pull-left" id="resultTable">
+  <table ng-if="poll.has_votes" class="well pull-left" id="resultTable">
     <!-- yes -->
     <tr>
-      <td><img src='/static/img/button-yes.png'>
+      <td>
+        <button type="button" class="btn btn-default btn-voting-md btn-yes">
+          <i class="fa fa-thumbs-o-up fa-2x"></i>
+        </button>
+        <translate>Yes</translate>
       <td class="bold">{{ poll.yes | number:votesPrecision }}
-      <td class="percentage">
+      <td class="bold nobr">
         <div ng-if="poll.getVote(poll.yes, 'yes').percentNumber">
           {{ poll.getVote(poll.yes, 'yes').percentStr || '&nbsp;' }}
+        </div>
+      <td class="chart">
+        <div ng-if="poll.getVote(poll.yes, 'yes').percentNumber">
           <uib-progressbar value="poll.getVote(poll.yes, 'yes').percentNumber" type="success"></uib-progressbar>
         </div>
 
     <!-- no -->
     <tr>
-      <td><img src='/static/img/button-no.png'>
+      <td>
+        <button type="button" class="btn btn-default btn-voting-md btn-no">
+          <i class="fa fa-thumbs-o-down fa-2x"></i>
+        </button>
+        <translate>No</translate>
       <td class="bold">{{ poll.no | number:votesPrecision }}
-      <td class="percentage">
+      <td class="bold nobr">
         <div ng-if="poll.getVote(poll.no, 'no').percentNumber">
           {{ poll.getVote(poll.no, 'no').percentStr || '&nbsp;' }}
+        </div>
+      <td class="chart">
+        <div ng-if="poll.getVote(poll.no, 'no').percentNumber">
           <uib-progressbar value="poll.getVote(poll.no, 'no').percentNumber" type="danger"></uib-progressbar>
         </div>
 
     <!-- abstain -->
     <tr>
-      <td><img src='/static/img/button-abstain.png'>
+      <td>
+        <button type="button" class="btn btn-default btn-voting-md btn-abstain">
+          <i class="fa fa-circle-o fa-2x"></i>
+        </button>
+        <translate>Abstain</translate>
       <td class="bold">{{ poll.abstain | number:votesPrecision }}
-      <td class="percentage">
+      <td class="bold">
         <div ng-if="poll.getVote(poll.abstain, 'abstain').percentNumber">
           {{ poll.getVote(poll.abstain, 'abstain').percentStr || '&nbsp;'}}
+        </div>
+      <td class="chart">
+        <div ng-if="poll.getVote(poll.abstain, 'abstain').percentNumber">
           <uib-progressbar value="poll.getVote(poll.abstain, 'abstain').percentNumber" type="warning"></uib-progressbar>
         </div>
 
     <!-- valid votes -->
     <tr class="total">
-      <td>
+      <td><translate>Valid votes</translate>
       <td class="bold">{{ poll.votesvalid | number:votesPrecision }}
       <td> {{ poll.getVote(poll.votesvalid, 'votesvalid').percentStr }}
+      <td>
   </table>
 
   <!-- Delegate board -->

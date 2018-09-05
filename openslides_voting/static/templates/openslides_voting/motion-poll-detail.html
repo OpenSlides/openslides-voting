@@ -1,15 +1,4 @@
-<style type="text/css">
-  #resultTable {
-    width: auto;
-  }
-  #resultTable img {
-    width: 30px;
-  }
-  #resultTable td.bold{
-    font-weight: bold;
-    text-align: right;
-  }
-</style>
+<ng-include src="'static/templates/openslides_voting/submit-buttons-css.html'"></ng-include>
 
 <div class="header">
   <div class="title">
@@ -44,28 +33,40 @@
   <table class="table table-bordered" id="resultTable">
     <!-- yes -->
     <tr>
-      <td><img src='/static/img/button-yes.png'> <translate>Yes</translate>
-      <td class="bold">
+      <td>
+        <button type="button" class="btn btn-default btn-voting-xs btn-yes">
+          <i class="fa fa-thumbs-o-up fa-2x"></i>
+        </button>
+        <translate>Yes</translate>
+      <td class="bold-left">
         {{ poll.getVote(poll.yes, 'yes').value | number:votesPrecision }}
         {{ poll.getVote(poll.yes, 'yes').percentStr }}
     <!-- no -->
     <tr>
-      <td><img src='/static/img/button-no.png'> <translate>No</translate>
-      <td class="bold">
+      <td>
+        <button type="button" class="btn btn-default btn-voting-xs btn-no">
+          <i class="fa fa-thumbs-o-down fa-2x"></i>
+        </button>
+        <strong translate>No</strong>
+      <td class="bold-left">
         {{ poll.getVote(poll.no, 'no').value | number:votesPrecision }}
         {{ poll.getVote(poll.yes, 'no').percentStr }}
 
     <!-- abstain -->
     <tr>
-      <td><img src='/static/img/button-abstain.png'> <translate>Abstain</translate>
-      <td class="bold">
+      <td>
+        <button type="button" class="btn btn-default btn-voting-xs btn-abstain">
+          <i class="fa fa-circle-o fa-2x"></i>
+        </button>
+        <strong translate>Abstain</strong>
+      <td class="bold-left">
         {{ poll.getVote(poll.abstain, 'abstain').value | number:votesPrecision }}
         {{ poll.getVote(poll.abstain, 'abstain').percentStr }}
 
     <!-- valid votes -->
     <tr>
-      <td><translate>Valid votes</translate>
-      <td class="bold">
+      <td><strong translate>Valid votes</strong>
+      <td class="bold-left middle">
         {{ poll.getVote(poll.votesvalid, 'votesvalid').value | number:votesPrecision }}
         {{ poll.getVote(poll.votesvalid, 'votesvalid').percentStr }}
   </table>

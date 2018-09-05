@@ -1,4 +1,5 @@
 <div ng-controller="SlidePromptCtrl">
+  <ng-include src="'static/templates/openslides_voting/submit-buttons-css.html'"></ng-include>
 
   <style type="text/css">
     #voting_slide_message {
@@ -26,6 +27,7 @@
     #voting_slide_message .key {
       width: 45px;
       height: 45px;
+      margin-right: 12px;
       -webkit-border-radius: 7px;
       -moz-border-radius: 7px;
       border-radius: 7px;
@@ -45,5 +47,5 @@
     }
   </style>
 
-  <div id="voting_slide_message" class="well" ng-bind-html="message"></div>
+  <div id="voting_slide_message" class="well" ng-bind-html="message | trusted"></div>
 </div>

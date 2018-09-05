@@ -152,9 +152,12 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         # Get candidate name (if is an election with one candidate only)
         candidate_str = ''
         # projector message and images
-        projector_yes = '<img src="/static/img/button-yes.png">'
-        projector_no = '<img src="/static/img/button-no.png">'
-        projector_abstain = '<img src="/static/img/button-abstain.png">'
+        projector_yes = '<button type="button" class="btn btn-default btn-voting-sm btn-yes"> \
+            <i class="fa fa-thumbs-o-up fa-2x"></i></button>'
+        projector_no = '<button type="button" class="btn btn-default btn-voting-sm btn-no"> \
+            <i class="fa fa-thumbs-o-down fa-2x"></i></button>'
+        projector_abstain = '<button type="button" class="btn btn-default btn-voting-sm btn-abstain"> \
+            <i class="fa fa-circle-o fa-2x"></i></button>'
         if type(poll) == MotionPoll:
             projector_message = _(config['voting_start_prompt_motions'])
             try:
@@ -174,10 +177,10 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                     projector_yes = '1 = '
                     projector_no = '2 = '
                     projector_abstain = '3 = '
-                projector_message += '&nbsp;' + \
+                projector_message += '<br>' + \
                 '<span class="nobr">' + projector_yes + _('Yes') + '</span>&nbsp;' + \
-                '<span class="nobr">' + projector_no + _('No') + '</span>&nbsp;' + \
-                '<span class="nobr">' + projector_abstain + _('Abstain') + '</span>'
+                '<span class="nobr spacer-left">' + projector_no + _('No') + '</span>&nbsp;' + \
+                '<span class="nobr spacer-left">' + projector_abstain + _('Abstain') + '</span>'
 
             votecollector_mode = 'YesNoAbstain'
             votecollector_options = None
@@ -216,7 +219,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 # calculate the candidate string
                 if poll.pollmethod == 'yna':
                     candidate = str(options.all()[0].candidate)
-                    projector_message += '&nbsp;' + \
+                    projector_message += '<br>' + \
                         '<span class="nobr">' + projector_yes + _('Yes') + '</span>&nbsp;' + \
                         '<span class="nobr">' + projector_no + _('No') + '</span>&nbsp;' + \
                         '<span class="nobr">' + projector_abstain + _('Abstain') + '</span>' + \

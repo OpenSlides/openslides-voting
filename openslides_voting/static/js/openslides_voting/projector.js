@@ -294,6 +294,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             }
             draw = false;
         };
-    }])
+    }
+]);
 
 }());

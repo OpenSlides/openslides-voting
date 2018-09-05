@@ -149,13 +149,13 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 if (toState.name !== 'submit_votes.token_entry') {
                     event.preventDefault();
                 }
-            })
+            });
         };
 
         var notifyUser = function () {
-            var message = gettextCatalog.getString('Your group permissions are misconfigured. '
-                + 'The token voting interface group may have only 3 permissions: '
-                + '"Can see motions", "Can see elections" and "Can see the token voting interface.sions"');
+            var message = gettextCatalog.getString('Your group permissions are misconfigured. ' +
+                'The token voting interface group may have only 3 permissions: ' +
+                '"Can see motions", "Can see elections" and "Can see the token voting interface.sions"');
             Messaging.addMessage(message, 'error', {noClose: true});
         };
 
@@ -189,7 +189,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 $scope.poll = AssignmentPoll.get(pollId);
 
                 // prepare the options for the ui
-                var options = $filter('orderBy')($scope.poll.options, 'weight')
+                var options = $filter('orderBy')($scope.poll.options, 'weight');
                 _.forEach(options, function (option, index) {
                     option.index = index;
                 });
@@ -286,7 +286,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 return _.some($scope.votes, function (value) {
                     return value;
                 });
-            }
+            };
         };
         return {
             populateScope: populateScope,
@@ -648,14 +648,15 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     },
                 };
             },
-            getFormFields: function (user) {
+            getFormFields: function (excludeVoteCollector) {
+                var vc = Config.get('voting_enable_votecollector').value && !excludeVoteCollector;
                 return [
                 {
                     key: 'votingType',
                     type: 'select-single',
                     templateOptions: {
                         label: gettextCatalog.getString('Select the voting type'),
-                        options: PollType.getTypes(Config.get('voting_enable_votecollector').value),
+                        options: PollType.getTypes(vc),
                         ngOptions: 'option.key as option.displayName | translate for option in to.options',
                         required: true,
                     }
@@ -697,8 +698,8 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 return;
             }
 
-            var included = operator.user
-                && _.includes(_.keys(av.authorized_voters), operator.user.id.toString());
+            var included = operator.user &&
+                _.includes(_.keys(av.authorized_voters), operator.user.id.toString());
             // This user is not affected by the current voting.
             if (!included) {
                 Messaging.deleteMessage(messageId);
@@ -842,7 +843,30 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         $scope.model = {
             votingType: Config.get('voting_default_voting_type').value,
         };
-        $scope.formFields = PollCreateForm.getFormFields();
+
+        // Exclude the VC, if the user wants to create a poll with specific types, that
+        // are not supported by the VC.
+        var excludeVoteCollector = false;
+        if (resourceName === 'assignments/assignment') {
+            if ($scope.obj.open_posts > 1) {
+                excludeVoteCollector = true;
+            } else if ((Config.get('assignments_poll_vote_values').value === 'yesnoabstain' ||
+                Config.get('assignments_poll_vote_values').value === 'yesno') &&
+                $scope.obj.assignment_related_users.length !== 1) {
+                // See matching code in assignments/model.py::Assignment.create_poll
+                excludeVoteCollector = true;
+            } else if (Config.get('assignments_poll_vote_values') === 'auto') {
+                var candidatesNotElected = _.filter($scope.obj.assignment_related_users, function (user) {
+                    return !user.elected;
+                }).length;
+                if ($scope.obj.assignment_related_users.length <= candidatesNotElected &&
+                    $scope.obj.assignment_related_users.length !== 1) {
+                    excludeVoteCollector = true;
+                }
+            }
+        }
+
+        $scope.formFields = PollCreateForm.getFormFields(excludeVoteCollector);
 
         $scope.select = function (model) {
             if (resourceName === 'motions/motion') {

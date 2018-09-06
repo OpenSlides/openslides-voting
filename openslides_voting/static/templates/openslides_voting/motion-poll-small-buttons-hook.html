@@ -2,7 +2,7 @@
   <small>{{ pollType | translate }}</small>
 </div>
 <div os-perms="openslides_voting.can_manage">
-  <div ng-if="poll.has_votes && !isAnalogPoll">
+  <div ng-if="poll.has_votes && showSingleVotes">
     <div class="spacer" ng-if="config('voting_enable_principles')">
       <button type="button" ng-click="countVotes()"
         class="btn btn-xs btn-default">

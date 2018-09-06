@@ -5,7 +5,8 @@
 angular.module('OpenSlidesApp.openslides_voting', [
     'OpenSlidesApp.openslides_voting.templates',
     'OpenSlidesApp.users',
-    'OpenSlidesApp.motions'
+    'OpenSlidesApp.motions',
+    'OpenSlidesApp.assignments'
 ])
 
 .factory('AuthorizedVoters', [
@@ -468,7 +469,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         return {key: key, displayName: value};
                     })
                     .filter(function (item) {
-                        var isVc = (item.key === 'votecollector' || item.key === 'votecollector_anonym');
+                        var isVc = item.key.indexOf('votecollector') === 0;
                         return !isVc || includeVoteCollector;
                     })
                     .value();
@@ -542,22 +543,24 @@ angular.module('OpenSlidesApp.openslides_voting', [
             '$delegate',
             '$q',
             'VotingPrinciple',
-            function ($delegate, $q, VotingPrinciple) {
+            'Config',
+            function ($delegate, $q, VotingPrinciple, Config) {
                 return {
                     getPlaces: function (poll, find) {
                         var getPlaces = function (poll) {
-                            var principles = VotingPrinciple.filter({
-                                where: {
-                                    motions_id: {
-                                        contains: poll.motion.id
+                            if (Config.get('voting_enable_principles').value) {
+                                var principles = VotingPrinciple.filter({
+                                    where: {
+                                        motions_id: {
+                                            contains: poll.motion.id
+                                        }
                                     }
+                                });
+                                if (principles.length > 0) {
+                                    return principles[0].decimal_places;
                                 }
-                            });
-                            if (principles.length > 0) {
-                                return principles[0].decimal_places;
-                            } else {
-                                return 0;
                             }
+                            return 0;
                         };
                         if (find) {
                             return $q(function (resolve) {
@@ -576,22 +579,24 @@ angular.module('OpenSlidesApp.openslides_voting', [
             '$delegate',
             '$q',
             'VotingPrinciple',
-            function ($delegate, $q, VotingPrinciple) {
+            'Config',
+            function ($delegate, $q, VotingPrinciple, Config) {
                 return {
                     getPlaces: function (poll, find) {
                         var getPlaces = function (poll) {
-                            var principles = VotingPrinciple.filter({
-                                where: {
-                                    assignments_id: {
-                                        contains: poll.assignment.id
+                            if (Config.get('voting_enable_principles').value) {
+                                var principles = VotingPrinciple.filter({
+                                    where: {
+                                        assignments_id: {
+                                            contains: poll.assignment.id
+                                        }
                                     }
+                                });
+                                if (principles.length > 0) {
+                                    return principles[0].decimal_places;
                                 }
-                            });
-                            if (principles.length > 0) {
-                                return principles[0].decimal_places;
-                            } else {
-                                return 0;
                             }
+                            return 0
                         };
                         if (find) {
                             return $q(function (resolve) {

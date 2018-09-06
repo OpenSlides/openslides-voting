@@ -2,9 +2,7 @@ import random
 
 from decimal import Decimal
 
-from django.db.models import Prefetch
 from django.http.response import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
 from django.views import View
@@ -170,7 +168,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             except MotionPollType.DoesNotExist:
                 voting_type = config['voting_default_voting_type']
 
-            if voting_type in ('votecollector', 'votecollector_anonym'):
+            if voting_type.startswith('votecollector'):
                 if 'Interact' in vc.device_status:
                     projector_abstain = '2 = '
                 elif 'Reply' in vc.device_status:
@@ -202,7 +200,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             options = AssignmentOption.objects.filter(poll=poll).order_by('weight')
             # check, if the pollmethod is supported by the votecollector
             # If so, calculate the projector message for the voting prompt
-            if voting_type in ('votecollector', 'votecollector_anonym'):
+            if voting_type.startswith('votecollector'):
                 if poll.pollmethod == 'yn' or (poll.pollmethod == 'yna' and options.count() is not 1):
                     raise ValidationError({'detail':
                         'The votecollector does not support the pollmethod {} (with {} candidates).'.format(
@@ -255,7 +253,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         if config['voting_enable_proxies']:
             absentee_ballots_created = ballot.create_absentee_ballots()
 
-        if voting_type in ('votecollector', 'votecollector_anonym'):
+        if voting_type.startswith('votecollector'):
             if not config['voting_enable_votecollector']:
                 raise ValidationError({'detail': 'The VoteCollector is not enabled'})
 
@@ -271,7 +269,9 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                 raise ValidationError({'detail': e.value})
 
             # Limit voters count to length of admitted delegates list.
-            vc.votes_count, admitted_delegates = get_admitted_delegates(principle, keypad=True)
+            admitted_count, admitted_delegates = get_admitted_delegates(principle, keypad=True)
+            if not voting_type == 'votecollector_anonymous':
+                vc.votes_count = admitted_count
 
         elif voting_type == 'named_electronic':
             # Limit voters count to length of admitted delegates list.
@@ -367,27 +367,30 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         """
         Get results from a motion poll: {poll_id: <poll_id>}.
         """
-        return self.results_votes(request, MotionPoll)
+        return self.results_votes(request, MotionPoll, MotionBallot, 'motionpolltype')
 
     @detail_route(['post'])
     def results_assignment_votes(self, request, **kwargs):
         """
         Get results from a given assignment poll: {poll_id: <poll_id>}.
         """
-        return self.results_votes(request, AssignmentPoll)
+        return self.results_votes(request, AssignmentPoll, AssignmentBallot, 'assignmentpolltype')
 
-    def results_votes(self, request, model):
-        poll, poll_id = self.get_request_object(request, model)
+    def results_votes(self, request, poll_model, ballot_model, poll_type_str):
+        poll, poll_id = self.get_request_object(request, poll_model)
         vc = self.get_object()
 
-        if vc.voting_mode != model.__name__ or vc.voting_target != poll_id:
+        if vc.voting_mode != poll_model.__name__ or vc.voting_target != poll_id:
             raise ValidationError({'detail': _('Another voting is active.')})
 
-        if vc.voting_mode == 'MotionPoll':
-            ballot = MotionBallot(poll, vc.principle)
-        else:
-            ballot = AssignmentBallot(poll)
+        # Count the votes of the ballot.
+        ballot = ballot_model(poll, vc.principle)
         result = ballot.count_votes()
+
+        # Destroy the ballots for secret voting types.
+        voting_type = getattr(poll, poll_type_str).type
+        if voting_type in ('votecollector_secret', 'votecollector_pseudo_secret'):
+            ballot.delete_ballots()
 
         return Response(result)
 

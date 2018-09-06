@@ -46,11 +46,11 @@ class OneToManyField(models.ManyToManyField):
         if not self.remote_field.through and not cls._meta.abstract and not cls._meta.swapped:
             auto_intermediate = True
 
-        #One call super contribute_to_class and have django create the intermediate model.
+        # One call super contribute_to_class and have django create the intermediate model.
         super(OneToManyField, self).contribute_to_class(cls, name)
 
         if auto_intermediate == True:
-            #Set unique_together to the 'to' relationship, this ensures a OneToMany relationship.
+            # Set unique_together to the 'to' relationship, this ensures a OneToMany relationship.
             self.remote_field.through._meta.unique_together = ((self.remote_field.through._meta.unique_together[0][1],),)
 
 
@@ -271,7 +271,9 @@ POLLTYPES = [
     ('named_electronic', 'Named electronic voting'),
     ('token_based_electronic', 'Token-based electronic voting'),
     ('votecollector', 'VoteCollector'),
-    ('votecollector_anonymous', 'VoteCollector anonymous')
+    ('votecollector_anonymous', 'VoteCollector anonymous'),
+    ('votecollector_secret', 'VoteCollector secret voting'),
+    ('votecollector_pseudo_secret', 'VoteCollector pseudo-secret voting')
 ]
 
 

@@ -183,7 +183,7 @@ class BaseBallot:
         self._create_ballot(vote, voter, device, result_token, is_authorized_voter)
         if voter and config['voting_enable_proxies']:
             for proxy in voter.mandates.all():
-                self._register_vote_and_proxy_votes(vote, proxy.delegate, result_token)
+                self._register_vote_and_proxy_votes(vote, proxy.delegate, device, result_token)
 
     def _create_ballot(self, vote, delegate=None, device=None, result_token=0, is_authorized_voter=False):
         """

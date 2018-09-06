@@ -252,8 +252,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getTitle: function () {
-                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', '
-                        + this.getVote();
+                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', ' +
+                        this.getVote();
                 },
                 getObjectTitle: function () {
                     if (this.motion) {
@@ -308,8 +308,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getTitle: function () {
-                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', '
-                        + this.getVote();
+                    return this.delegate.full_name + ', ' + this.getObjectTitle() + ', ' +
+                        this.getVote();
                 },
                 getObjectTitle: function () {
                     if (this.assignment) {
@@ -408,13 +408,14 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return name;
                 },
                 getVote: function () {
+                    var poll;
                     if (this.poll.pollmethod === 'yna' || this.poll.pollmethod === 'yn') {
                         if (this.poll.options.length === 1) {
                             var cid = this.poll.options[0].candidate_id;
                             return voteOption[this.vote[cid]];
                         } else {
                             var textParts = [];
-                            var poll = this.poll;
+                            poll = this.poll;
                             _.forEach(this.vote, function (vote, candidateId) {
                                 candidateId = parseInt(candidateId);
                                 var option = _.find(poll.options, function (option) {
@@ -430,7 +431,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                             return voteOption[this.vote];
                         }
                         var candidates = [];
-                        var poll = this.poll;
+                        poll = this.poll;
                         _.forEach(this.vote, function (candidateId) {
                             candidateId = parseInt(candidateId);
                             var option = _.find(poll.options, function (option) {

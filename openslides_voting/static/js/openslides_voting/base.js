@@ -549,28 +549,34 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 return {
                     getPlaces: function (poll, find) {
                         var getPlaces = function (poll) {
-                            if (Config.get('voting_enable_principles').value) {
-                                var principles = VotingPrinciple.filter({
-                                    where: {
-                                        motions_id: {
-                                            contains: poll.motion.id
-                                        }
+                            var principles = VotingPrinciple.filter({
+                                where: {
+                                    motions_id: {
+                                        contains: poll.motion.id
                                     }
-                                });
-                                if (principles.length > 0) {
-                                    return principles[0].decimal_places;
                                 }
+                            });
+                            if (principles.length > 0) {
+                                return principles[0].decimal_places;
                             }
                             return 0;
                         };
                         if (find) {
                             return $q(function (resolve) {
-                                VotingPrinciple.findAll().then(function (s) {
-                                    resolve(getPlaces(poll));
-                                });
+                                if (Config.get('voting_enable_principles').value) {
+                                    VotingPrinciple.findAll().then(function (s) {
+                                        resolve(getPlaces(poll));
+                                    });
+                                } else {
+                                    resolve(0);
+                                }
                             });
                         } else {
-                            return getPlaces(poll);
+                            if (Config.get('voting_enable_principles').value) {
+                                return getPlaces(poll);
+                            } else {
+                                return 0;
+                            }
                         }
                     },
                 };
@@ -585,28 +591,34 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 return {
                     getPlaces: function (poll, find) {
                         var getPlaces = function (poll) {
-                            if (Config.get('voting_enable_principles').value) {
-                                var principles = VotingPrinciple.filter({
-                                    where: {
-                                        assignments_id: {
-                                            contains: poll.assignment.id
-                                        }
+                            var principles = VotingPrinciple.filter({
+                                where: {
+                                    assignments_id: {
+                                        contains: poll.assignment.id
                                     }
-                                });
-                                if (principles.length > 0) {
-                                    return principles[0].decimal_places;
                                 }
+                            });
+                            if (principles.length > 0) {
+                                return principles[0].decimal_places;
                             }
-                            return 0
+                            return 0;
                         };
                         if (find) {
                             return $q(function (resolve) {
-                                VotingPrinciple.findAll().then(function (s) {
-                                    resolve(getPlaces(poll));
-                                });
+                                if (Config.get('voting_enable_principles').value) {
+                                    VotingPrinciple.findAll().then(function (s) {
+                                        resolve(getPlaces(poll));
+                                    });
+                                } else {
+                                    resolve(0);
+                                }
                             });
                         } else {
-                            return getPlaces(poll);
+                            if (Config.get('voting_enable_principles').value) {
+                                return getPlaces(poll);
+                            } else {
+                                return 0;
+                            }
                         }
                     },
                 };

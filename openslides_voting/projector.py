@@ -36,7 +36,7 @@ class MotionPollSlide(ProjectorElement):
             yield motionpoll.motion
             yield motionpoll.motion.agenda_item
             yield AuthorizedVoters.objects.get()
-            yield from User.objects.filter(groups__permissions__codename='can_vote')
+            yield from User.objects.all()
             yield from Keypad.objects.all()
             yield from MotionPollBallot.objects.filter(poll=motionpoll)
             if config['voting_enable_principles']:
@@ -47,6 +47,12 @@ class MotionPollSlide(ProjectorElement):
         if collection_element.collection_string == MotionPollBallot.get_collection_string():
             output = [collection_element]
         elif collection_element.collection_string == VotingController.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == AuthorizedVoters.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == Keypad.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == User.get_collection_string():
             output = [collection_element]
         elif collection_element.information.get('voting_prompt'):
             output = []
@@ -77,7 +83,7 @@ class AssignmentPollSlide(ProjectorElement):
             yield AuthorizedVoters.objects.get()
             for option in assignmentpoll.options.all():
                 yield option.candidate
-            yield from User.objects.filter(groups__permissions__codename='can_vote')
+            yield from User.objects.all()
             yield from Keypad.objects.all()
             yield from AssignmentPollBallot.objects.filter(poll=assignmentpoll)
             yield from AssignmentPollType.objects.filter(poll=assignmentpoll)
@@ -89,6 +95,12 @@ class AssignmentPollSlide(ProjectorElement):
         if collection_element.collection_string == AssignmentPollBallot.get_collection_string():
             output = [collection_element]
         elif collection_element.collection_string == VotingController.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == AuthorizedVoters.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == Keypad.get_collection_string():
+            output = [collection_element]
+        elif collection_element.collection_string == User.get_collection_string():
             output = [collection_element]
         elif collection_element.information.get('voting_prompt'):
             output = []

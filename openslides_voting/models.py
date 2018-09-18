@@ -66,6 +66,29 @@ class VotingPrinciple(RESTModelMixin, models.Model):
     class Meta:
         default_permissions = ()
 
+    @staticmethod
+    def get(motion=None, assignment=None):
+        """
+        Gets a voting principle for a motion or assignment.
+        If one and only one voting principle exists without any motion or assignment relationships
+        that principle is returned as the principle to be used for all motions and assignments.
+        """
+        principle = None
+        try:
+            if motion:
+                principle = VotingPrinciple.objects.get(motions=motion)
+            elif assignment:
+                principle = VotingPrinciple.objects.get(assignments=assignment)
+        except VotingPrinciple.DoesNotExist:
+            if VotingPrinciple.objects.count() == 1:
+                try:
+                    principle = VotingPrinciple.objects.get(motions=None, assignments=None)
+                except VotingPrinciple.DoesNotExist:
+                    pass
+        except VotingPrinciple.MultipleObjectsReturned:
+            pass
+        return principle
+
 
 class VotingShare(RESTModelMixin, models.Model):
     access_permissions = VotingShareAccessPermissions()

@@ -40,12 +40,18 @@
     </tr>
   </tbody>
 </table>
-  <div class="spacer-top-lg bold">
-    <translate>Your current choice:</translate>
-    <span ng-if="candidatesSelected().length > 0 && !votes.no">
-      {{ candidatesSelected().length }} / {{ poll.assignment.open_posts }} <translate>candidates</translate>
-    </span>
-  </div>
+<div class="spacer-top-lg bold" ng-if="poll.options.length === 1">
+  <translate>Your current choice:</translate>
+  <span ng-if="votes[candidatesSelected()[0]] === 'Y'" translate>
+    Yes
+  </span>
+  <span ng-if="votes[candidatesSelected()[0]] === 'N'" translate>
+    No
+  </span>
+  <span ng-if="votes[candidatesSelected()[0]] === 'A'" translate>
+    Abstain
+  </span>
+</div>
 </div>
 
 <!-- Y election -->

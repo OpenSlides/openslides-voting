@@ -775,113 +775,123 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 }
             },
             updateProxy: function (user, proxyId) {
-                if (proxyId) {
-                    if (user.proxy) {
-                        // Update vp. Must get vp from the store!
-                        var vp = VotingProxy.get(user.proxy.id);
-                        vp.proxy_id = user.proxy_id;
-                        return VotingProxy.save(vp);
+                if (Config.get('voting_enable_proxies').value) {
+                    if (proxyId) {
+                        if (user.proxy) {
+                            // Update vp. Must get vp from the store!
+                            var vp = VotingProxy.get(user.proxy.id);
+                            vp.proxy_id = user.proxy_id;
+                            return VotingProxy.save(vp);
+                        }
+                        else {
+                            // Create vp.
+                            return VotingProxy.create({
+                                delegate_id: user.id,
+                                proxy_id: proxyId
+                            });
+                        }
                     }
-                    else {
-                        // Create vp.
-                        return VotingProxy.create({
-                            delegate_id: user.id,
-                            proxy_id: proxyId
-                        });
+                    else if (user.proxy) {
+                        // Destroy vp.
+                        return VotingProxy.destroy(user.proxy);
                     }
                 }
-                else if (user.proxy) {
-                    // Destroy vp.
-                    return VotingProxy.destroy(user.proxy);
-                }
+                return null;
             },
             // returns an array of promises
             updateMandates: function (user) {
                 // Update mandates to user.mandates_id list.
                 // Re-use existing mandates.
-                var promises = [],
-                    m = 0,
-                    mandates = VotingProxy.filter({
-                        where: {
-                            delegate_id: {
-                                'notIn': user.mandates_id
-                            },
-                            proxy_id: {
-                                '==': user.id
+                var promises = [];
+                if (Config.get('voting_enable_proxies').value) {
+                    var m = 0,
+                        mandates = VotingProxy.filter({
+                            where: {
+                                delegate_id: {
+                                    'notIn': user.mandates_id
+                                },
+                                proxy_id: {
+                                    '==': user.id
+                                }
                             }
+                        });
+                    _.forEach(user.mandates_id, function (id) {
+                        var proxies = VotingProxy.filter({delegate_id: id});
+                        if (proxies.length > 0) {
+                            // Update existing foreign mandate.
+                            proxies[0].proxy_id = user.id;
+                            promises.push(VotingProxy.save(proxies[0]));
+                        }
+                        else if (m < mandates.length) {
+                            // Update existing mandate.
+                            var proxy = mandates[m++];
+                            proxy.delegate_id = id;
+                            proxy.proxy_id = user.id;
+                            promises.push(VotingProxy.save(proxy));
+                        }
+                        else {
+                            // Create new mandate.
+                            promises.push(VotingProxy.create({
+                                delegate_id: id,
+                                proxy_id: user.id
+                            }));
+                        }
+                        // Destroy keypad of mandate.
+                        var keypads = Keypad.filter({user_id: id});
+                        if (keypads.length > 0) {
+                            promises.push(Keypad.destroy(keypads[0]));
+                        }
+                        // Set mandate not present.
+                        var mandate = User.get(id);
+                        if (mandate.is_present) {
+                            mandate.is_present = false;
+                            promises.push(User.save(mandate));
                         }
                     });
-                _.forEach(user.mandates_id, function (id) {
-                    var proxies = VotingProxy.filter({ delegate_id: id });
-                    if (proxies.length > 0) {
-                        // Update existing foreign mandate.
-                        proxies[0].proxy_id = user.id;
-                        promises.push(VotingProxy.save(proxies[0]));
-                    }
-                    else if (m < mandates.length) {
-                        // Update existing mandate.
-                        var proxy = mandates[m++];
-                        proxy.delegate_id = id;
-                        proxy.proxy_id = user.id;
-                        promises.push(VotingProxy.save(proxy));
-                    }
-                    else {
-                        // Create new mandate.
-                        promises.push(VotingProxy.create({
-                            delegate_id: id,
-                            proxy_id: user.id
-                        }));
-                    }
-                    // Destroy keypad of mandate.
-                    var keypads = Keypad.filter({user_id: id});
-                    if (keypads.length > 0) {
-                        promises.push(Keypad.destroy(keypads[0]));
-                    }
-                    // Set mandate not present.
-                    var mandate = User.get(id);
-                    if (mandate.is_present) {
-                        mandate.is_present = false;
-                        promises.push(User.save(mandate));
-                    }
-                });
 
-                // Delete left-over mandates.
-                for (; m < mandates.length; m++) {
-                    promises.push(VotingProxy.destroy(mandates[m].id));
+                    // Delete left-over mandates.
+                    for (; m < mandates.length; m++) {
+                        promises.push(VotingProxy.destroy(mandates[m].id));
+                    }
                 }
-
                 return promises;
             },
             // returns a list of promises
             updateShares: function (delegate) {
-                var self = this;
-                return _.filter(_.map(delegate.shares, function (value, principleId) {
-                    var shares = VotingShare.filter({
-                        delegate_id: delegate.id,
-                        principle_id: principleId,
-                    });
-                    var share = shares.length === 1 ? shares[0]: null;
-                    return self.updateShare(delegate, share, value, principleId);
-                }));
-            },
-            updateShare: function (delegate, share, newValue, principleId) {
-                if (newValue) {
-                    if (share) {
-                        // Update VotingShare.
-                        share.shares = newValue;
-                        return VotingShare.save(share);
-                    } else {
-                        // Create VotingShare.
-                        return VotingShare.create({
+                if (Config.get('voting_enable_shares').value) {
+                    var self = this;
+                    return _.filter(_.map(delegate.shares, function (value, principleId) {
+                        var shares = VotingShare.filter({
                             delegate_id: delegate.id,
                             principle_id: principleId,
-                            shares: newValue
                         });
-                    }
-                } else if (share) {
-                    // Destroy VotingShare.
-                    return VotingShare.destroy(share);
+                        var share = shares.length === 1 ? shares[0] : null;
+                        return self.updateShare(delegate, share, value, principleId);
+                    }));
                 }
+                return []
+            },
+            updateShare: function (delegate, share, newValue, principleId) {
+                if (Config.get('voting_enable_shares').value) {
+                    if (newValue) {
+                        if (share) {
+                            // Update VotingShare.
+                            share.shares = newValue;
+                            return VotingShare.save(share);
+                        } else {
+                            // Create VotingShare.
+                            return VotingShare.create({
+                                delegate_id: delegate.id,
+                                principle_id: principleId,
+                                shares: newValue
+                            });
+                        }
+                    } else if (share) {
+                        // Destroy VotingShare.
+                        return VotingShare.destroy(share);
+                    }
+                }
+                return null;
             },
         };
     }

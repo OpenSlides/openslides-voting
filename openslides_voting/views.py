@@ -158,10 +158,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             <i class="fa fa-circle-o fa-2x"></i></button>'
         if type(poll) == MotionPoll:
             projector_message = _(config['voting_start_prompt_motions'])
-            try:
-                principle = VotingPrinciple.objects.get(motions=poll.motion)
-            except VotingPrinciple.DoesNotExist:
-                pass
+            principle = VotingPrinciple.get(motion=poll.motion)
 
             try:
                 voting_type = MotionPollType.objects.get(poll=poll).type
@@ -187,10 +184,7 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             ballot = MotionBallot(poll, principle)
         elif type(poll) == AssignmentPoll:
             projector_message = _(config['voting_start_prompt_assignments'])
-            try:
-                principle = VotingPrinciple.objects.get(assignments=poll.assignment)
-            except VotingPrinciple.DoesNotExist:
-                pass
+            principle = VotingPrinciple.get(assignment=poll.assignment)
 
             try:
                 voting_type = AssignmentPollType.objects.get(poll=poll).type
@@ -665,7 +659,7 @@ class MotionPollBallotViewSet(BasePollBallotViewSet):
         poll = self.get_poll(request, MotionPoll)
 
         # Count ballot votes.
-        principle = VotingPrinciple.objects.filter(motions=poll.motion).first()
+        principle = VotingPrinciple.get(motion=poll.motion)
         ballot = MotionBallot(poll, principle)
         result = ballot.count_votes()
 
@@ -704,7 +698,7 @@ class AssignmentPollBallotViewSet(BasePollBallotViewSet):
         poll = self.get_poll(request, AssignmentPoll)
 
         # Count ballot votes.
-        principle = VotingPrinciple.objects.filter(assignments=poll.assignment).first()
+        principle = VotingPrinciple.get(assignment=poll.assignment)
         ballot = AssignmentBallot(poll, principle)
         result = ballot.count_votes()
 

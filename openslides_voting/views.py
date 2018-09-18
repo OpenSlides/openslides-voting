@@ -296,7 +296,35 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
             AuthorizedVoters.set_voting(admitted_delegates, voting_type, assignment_poll=poll)
 
         # Add projector message
-        projector = Projector.objects.get(id=1)
+        # search projector with an projected "related item". This item might be the motion/assignment
+        # itself or the voting/(motion/assignment)-poll slide. If none was found, use the default projector
+
+        if type(poll) == MotionPoll:
+            objectElementName = 'motions/motion'
+            objectElementId = poll.motion.id
+            pollElementName = 'voting/motion-poll'
+        else:
+            objectElementName = 'assignments/assignment'
+            objectElementId = poll.assignment.id
+            pollElementName = 'voting/assignment-poll'
+
+        projector = None
+        found_projector = False
+        for p in Projector.objects.all():
+            if found_projector:
+                break
+            for uuid, element in p.elements.items():
+                if found_projector:
+                    break
+                if element['name'] == objectElementName and element['id'] == objectElementId:
+                    projector = p
+                    found_projector = True
+                if element['name'] == pollElementName and element['id'] == poll_id:
+                    projector = p
+                    found_projector = True
+        if not found_projector:
+            projector = Projector.objects.get(id=1)
+
         projector.config[self.prompt_key] = {
             'name': 'voting/prompt',
             'message': projector_message,
@@ -437,26 +465,26 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         """
         vc = self.get_object()
 
-        # Remove voting prompt from projector.
-        projector = Projector.objects.get(id=1)
-        try:
-            del projector.config[self.prompt_key]
-        except KeyError:
-            pass
-
-        # Stop countdown and remove it from projector.
-        if config['voting_auto_countdown']:
+        # Remove voting prompt from all projectors.
+        for projector in Projector.objects.all():
             try:
-                countdown = Countdown.objects.get(pk=2)
-            except Countdown.DoesNotExist:
-                pass  # Do not create a new countdown on stop action
-            else:
-                countdown.control(action='stop')
+                del projector.config[self.prompt_key]
+            except KeyError:
+                pass
+
+            # Stop countdown and remove it from projector.
+            if config['voting_auto_countdown']:
                 try:
-                    del projector.config[self.countdown_key]
-                except KeyError:
-                    pass
-        projector.save(information={'voting_prompt': True})
+                    countdown = Countdown.objects.get(pk=2)
+                except Countdown.DoesNotExist:
+                    pass  # Do not create a new countdown on stop action
+                else:
+                    countdown.control(action='stop')
+                    try:
+                        del projector.config[self.countdown_key]
+                    except KeyError:
+                        pass
+            projector.save(information={'voting_prompt': True})
 
         # Attention: We purposely set is_voting to False even if stop_voting fails.
         vc.is_voting = False

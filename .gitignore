@@ -16,7 +16,6 @@ openslides_voting/static/i18n/*
 
 # Translations
 *.mo
-*.pot
 
 # Javascript tools and libraries
 node_modules/*

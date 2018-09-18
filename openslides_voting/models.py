@@ -293,10 +293,10 @@ POLLTYPES = [
     ('analog', 'Analog voting'),
     ('named_electronic', 'Named electronic voting'),
     ('token_based_electronic', 'Token-based electronic voting'),
-    ('votecollector', 'VoteCollector'),
-    ('votecollector_anonymous', 'VoteCollector anonymous'),
-    ('votecollector_secret', 'VoteCollector secret voting'),
-    ('votecollector_pseudo_secret', 'VoteCollector pseudo-secret voting')
+    ('votecollector', 'VoteCollector default (personalized and active keypads only, with single votes)'),
+    ('votecollector_secret', 'VoteCollector secret (no single votes and delegate board)'),
+    ('votecollector_pseudo_secret', 'VoteCollector grey (no single votes, only grey seats on delegate board)'),
+    ('votecollector_anonymous', 'VoteCollector anonymous (anonymous and personalized keypads, with single votes, no delegate board)')
 ]
 
 

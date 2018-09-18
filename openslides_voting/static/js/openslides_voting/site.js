@@ -2953,7 +2953,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('Analog voting');
         gettext('Named electronic voting');
         gettext('Token-based electronic voting');
-        gettext('VoteCollector anonymous');
+        gettext('VoteCollector default (personalized and active keypads only, with single votes)');
+        gettext('VoteCollector secret (no single votes and delegate board)');
+        gettext('VoteCollector grey (no single votes, only grey seats on delegate board)');
+        gettext('VoteCollector anonymous (anonymous and personalized keypads, with single votes, no delegate board)');
         gettext('Projector message for running motion voting');
         gettext('Projector message for running election');
         gettext('Please vote now!');

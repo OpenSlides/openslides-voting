@@ -858,7 +858,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
             },
             // returns a list of promises
             updateShares: function (delegate) {
-                if (Config.get('voting_enable_shares').value) {
+                if (Config.get('voting_enable_principles').value) {
                     var self = this;
                     return _.filter(_.map(delegate.shares, function (value, principleId) {
                         var shares = VotingShare.filter({
@@ -872,7 +872,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                 return []
             },
             updateShare: function (delegate, share, newValue, principleId) {
-                if (Config.get('voting_enable_shares').value) {
+                if (Config.get('voting_enable_principles').value) {
                     if (newValue) {
                         if (share) {
                             // Update VotingShare.

@@ -323,8 +323,10 @@ class SubmitCandidates(ValidationView):
                     for index in value:
                         if not isinstance(index, int):
                             raise ValidationError({'detail': 'An index has to be int.'})
-                        if index > len(options) or index <= 0:
-                            vote['value'] = 'A'  # invalid vote
+                        if index == 0:
+                            vote['value'] = 'A'  # abstain
+                        if index > len(options) or index < 0:
+                            vote['value'] = 'invalid'  # invalid vote
                             if range_exception:
                                 raise ValidationError({'detail': 'Value has to be less or equal to {}.'.format(len(options))})
                         else:

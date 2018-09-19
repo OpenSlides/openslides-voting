@@ -381,7 +381,8 @@ angular.module('OpenSlidesApp.openslides_voting', [
         var voteOption = {
             Y: gettextCatalog.getString('Yes'),
             N: gettextCatalog.getString('No'),
-            A: gettextCatalog.getString('Abstain')
+            A: gettextCatalog.getString('Abstain'),
+            invalid: gettextCatalog.getString('invalid')
         };
         var voteIcon = {
             Y: 'thumbs-up',
@@ -427,7 +428,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                             return textParts.join(', ');
                         }
                     } else if (this.poll.pollmethod === 'votes') {
-                        if (this.vote === 'N' || this.vote === 'A') {
+                        if (this.vote === 'N' || this.vote === 'A' || this.vote === 'invalid') {
                             return voteOption[this.vote];
                         }
                         var candidates = [];

@@ -254,6 +254,8 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                                         cls = 'seat-N'; break;
                                     case 'A':
                                         cls = 'seat-A'; break;
+                                    case 'invalid':
+                                        cls = 'seat-invalid'; break;
                                     default:
                                         cls = 'seat-voted'; break;
                                 }

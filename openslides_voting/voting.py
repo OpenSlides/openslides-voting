@@ -526,7 +526,7 @@ class AssignmentBallot(BaseBallot):
                     result[candidate_id][value][0] += 1
                     result[candidate_id][value][1] += delegate_share
             else:
-                if vote.vote in ('A', 'N'):
+                if vote.vote in ('A', 'N', 'invalid'):
                     result[vote.vote][0] += 1
                     result[vote.vote][1] += delegate_share
                 else:
@@ -535,7 +535,8 @@ class AssignmentBallot(BaseBallot):
                         result[candidateId][1] += delegate_share
             result['casted'][0] += 1
             result['casted'][1] += delegate_share
-        result['valid'] = result['casted']
+        result['valid'][0] = result['casted'][0] - result['invalid'][0]
+        result['valid'][1] = result['casted'][1] - result['invalid'][1]
 
         return result
 

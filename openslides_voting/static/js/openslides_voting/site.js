@@ -2998,6 +2998,9 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('Can see the token voting interface');
         gettext('Can manage voting');
         gettext('Can vote');
+
+        // misc
+        gettext('invalid');
     }
 ]);
 

@@ -739,6 +739,10 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     return proxy.delegate_id;
                 });
             },
+            reloadShares: function (delegate) {
+                VotingShare.ejectAll({where: {delegate_id: {'==': delegate.id}}});
+                return VotingShare.findAll({where: {delegate_id: {'==': delegate.id}}});
+            },
             getShares: function (delegate) {
                 var shares = {};
                 _.forEach(VotingPrinciple.getAll(), function (principle) {
@@ -765,7 +769,7 @@ angular.module('OpenSlidesApp.openslides_voting', [
                             });
                         });
                     } else {
-                        // Create item.keypad.
+                        // Create keypad.
                         return Keypad.create({
                             user_id: user.id,
                             number: newNumber,
@@ -781,8 +785,10 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         if (user.proxy) {
                             // Update vp. Must get vp from the store!
                             var vp = VotingProxy.get(user.proxy.id);
-                            vp.proxy_id = user.proxy_id;
-                            return VotingProxy.save(vp);
+                            if (vp.proxy_id !== user.proxy_id) {
+                                vp.proxy_id = user.proxy_id;
+                                return VotingProxy.save(vp);
+                            }
                         }
                         else {
                             // Create vp.
@@ -820,8 +826,10 @@ angular.module('OpenSlidesApp.openslides_voting', [
                         var proxies = VotingProxy.filter({delegate_id: id});
                         if (proxies.length > 0) {
                             // Update existing foreign mandate.
-                            proxies[0].proxy_id = user.id;
-                            promises.push(VotingProxy.save(proxies[0]));
+                            if (proxies[0].proxy_id !== user.id) {
+                                proxies[0].proxy_id = user.id;
+                                promises.push(VotingProxy.save(proxies[0]));
+                            }
                         }
                         else if (m < mandates.length) {
                             // Update existing mandate.
@@ -877,8 +885,10 @@ angular.module('OpenSlidesApp.openslides_voting', [
                     if (newValue) {
                         if (share) {
                             // Update VotingShare.
-                            share.shares = newValue;
-                            return VotingShare.save(share);
+                            if (share.shares != newValue) { // type coercion is desired!
+                                share.shares = newValue;
+                                return VotingShare.save(share);
+                            }
                         } else {
                             // Create VotingShare.
                             return VotingShare.create({

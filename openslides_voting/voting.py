@@ -6,12 +6,10 @@ from openslides.users.models import User
 from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
 
 from .models import (
-    AssignmentAbsenteeVote,
     MotionAbsenteeVote,
     AssignmentPollBallot,
     MotionPollBallot,
     VotingShare,
-    VotingPrinciple,
 )
 
 

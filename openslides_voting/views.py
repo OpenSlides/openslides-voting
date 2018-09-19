@@ -278,7 +278,6 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
         vc.voting_mode = model.__name__
         vc.voting_target = poll_id
         vc.votes_received = absentee_ballots_created
-        vc.votes_count += absentee_ballots_created
         vc.is_voting = True
         vc.principle = principle
         vc.save()

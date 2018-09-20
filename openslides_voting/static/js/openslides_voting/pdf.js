@@ -26,30 +26,54 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         text: (pollType === 'token_based_electronic' ?
                             gettextCatalog.getString('Result number') : gettextCatalog.getString('Delegate')),
                         style: 'tableHeader'
-                    },
-                    {
-                        text: gettextCatalog.getString('Vote'),
-                        style: 'tableHeader'
                     }
                 ]
             ];
+            if (!pollType.indexOf('votecollector')) {
+                tableBody[0].push(
+                    {
+                        text: gettextCatalog.getString('Keypad serial number'),
+                        style: 'tableHeader'
+                    }
+                );
+            };
+            tableBody[0].push(
+                {
+                    text: gettextCatalog.getString('Casted vote'),
+                    style: 'tableHeader'
+                }
+            );
             _.forEach(ballots, function (ballot, index) {
                 var name = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonymous');
                 tableBody.push([
                     {
                         text: (pollType === 'token_based_electronic' ? ballot.result_token : name),
                         style: PDFLayout.flipTableRowStyle(index),
-                    },
+                    }
+                ]);
+                if (!pollType.indexOf('votecollector')) {
+                    tableBody[index+1].push(
+                        {
+                            text: ballot.device,
+                            style: PDFLayout.flipTableRowStyle(index),
+                        }
+                    );
+                };
+                tableBody[index+1].push(
                     {
                         text: gettextCatalog.getString(ballot.getVote()),
                         style: PDFLayout.flipTableRowStyle(index),
                     }
-                ]);
+                );
             });
 
+            var widths = ['*', '*'];
+            if (!pollType.indexOf('votecollector')) {
+                widths.push('*');
+            };
             var pdfTable = {
                 table: {
-                    widths: ['*', '*'],
+                    widths: widths,
                     headerRows: 1,
                     body: tableBody
                 },
@@ -95,30 +119,55 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                         text: (pollType === 'token_based_electronic' ?
                             gettextCatalog.getString('Result number') : gettextCatalog.getString('Delegate')),
                         style: 'tableHeader'
-                    },
-                    {
-                        text: gettextCatalog.getString('Vote'),
-                        style: 'tableHeader'
                     }
                 ]
             ];
+            if (!pollType.indexOf('votecollector')) {
+                tableBody[0].push(
+                    {
+                        text: gettextCatalog.getString('Keypad serial number'),
+                        style: 'tableHeader'
+                    }
+                );
+            };
+            tableBody[0].push(
+                {
+                    text: gettextCatalog.getString('Casted vote'),
+                    style: 'tableHeader'
+                }
+            );
             _.forEach(ballots, function (ballot, index) {
                 var name = ballot.user ? ballot.user.full_name : gettextCatalog.getString('anonymous');
                 tableBody.push([
                     {
                         text: (pollType === 'token_based_electronic' ? ballot.result_token : name),
                         style: PDFLayout.flipTableRowStyle(index),
-                    },
+                    }
+                ]);
+                if (!pollType.indexOf('votecollector')) {
+                    tableBody[index+1].push(
+                        {
+                            text: ballot.device,
+                            style: PDFLayout.flipTableRowStyle(index),
+                        }
+                    );
+                };
+                tableBody[index+1].push(
                     {
                         text: gettextCatalog.getString(ballot.getVote()),
                         style: PDFLayout.flipTableRowStyle(index),
                     }
-                ]);
+                );
             });
+
+            var widths = ['*', '*'];
+            if (!pollType.indexOf('votecollector')) {
+                widths.push('*');
+            };
 
             var pdfTable = {
                 table: {
-                    widths: ['*', '*'],
+                    widths: widths,
                     headerRows: 1,
                     body: tableBody
                 },

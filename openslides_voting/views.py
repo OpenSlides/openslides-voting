@@ -2,6 +2,7 @@ import random
 
 from decimal import Decimal
 
+from django.db import transaction
 from django.http.response import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext as _
@@ -14,7 +15,7 @@ from openslides.core.models import Projector, Countdown
 from openslides.motions.models import Category, Motion, MotionPoll
 from openslides.users.models import User
 from openslides.utils.auth import has_perm
-from openslides.utils.autoupdate import inform_deleted_data
+from openslides.utils.autoupdate import inform_changed_data, inform_deleted_data
 from openslides.utils.rest_api import (
     detail_route,
     ModelViewSet,
@@ -613,6 +614,55 @@ class VotingPrincipleViewSet(PrinciplesPermissionMixin, ModelViewSet):
 class VotingShareViewSet(PrinciplesPermissionMixin, ModelViewSet):
     access_permissions = VotingShareAccessPermissions()
     queryset = VotingShare.objects.all()
+
+    @list_route(methods=['post'])
+    @transaction.atomic
+    def mass_import(self, request):
+        """
+        Imports a list of VotingShare objects.
+
+        Updates existing objects and creates new ones. Deletes existing objects if shares are zero.
+
+        Clients are not being updated to avoid worker being overloaded. Clients need to refresh the store:
+        >> VotingShare.ejectAll();
+        >> VotingShare.findAll();
+        :return: Number of delegates with voting shares
+        """
+        data = request.data.get('shares')
+        if not isinstance(data, list):
+            raise ValidationError({'detail': _('Shares has to be a list.')})
+
+        created_shares = []
+        deleted = []
+        for d in data:
+            vs = VotingShare(**d)
+            try:
+                # Look for an existing object and update its shares.
+                existing = VotingShare.objects.get(delegate_id=vs.delegate_id, principle_id=vs.principle_id)
+                if vs.shares == 0:
+                    deleted.append(existing.id)
+                elif vs.shares != float(existing.shares):
+                    vs.id = existing.id
+                    vs.save(skip_autoupdate=True)
+            except VotingShare.DoesNotExist:
+                # Append the data object for bulk create.
+                if vs.shares > 0:
+                    created_shares.append(vs)
+
+        # Delete shares.
+        del_shares = VotingShare.objects.filter(id__in=deleted)
+        del_shares.delete()
+
+        # Bulk create new shares.
+        VotingShare.objects.bulk_create(created_shares)
+
+        # FIXME: Delete cache keys so clients will get fresh data from db wit VotingShare.findAll().
+        # from django.core import cache
+        # cache.delete_pattern('*voting-share*')  # This works only for redis.
+        # cache.delete()
+
+        # Return number of delegates with shares.
+        return Response({'count': User.objects.exclude(shares=None).count()})
 
 
 class VotingProxyViewSet(ProxiesPermissionMixin, ModelViewSet):

@@ -1,6 +1,6 @@
 # OpenSlides Voting Plugin
 
-This plugin provices electronic votings for motions and elections in OpenSlides.
+This plugin provides electronic voting of motions and elections for OpenSlides.
 It's a further development of the outdated
 [OpenSlides VoteCollector Plugin](https://github.com/OpenSlides/openslides-votecollector>).
 

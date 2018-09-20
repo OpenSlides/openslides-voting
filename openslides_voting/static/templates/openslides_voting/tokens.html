@@ -27,8 +27,10 @@
         <label for="tokenInput" translate>Enter new voting token:</label>
         <input type="text" class="form-control" id="tokenInput"
           ng-model="tokenInput" ng-disabled="tokenInputDisabled" autofocus>
+        <p class="help-block" translate>A minimum length of 10 characters is required.</p>
       </div>
-      <button type="submit" class="btn btn-sm btn-primary" translate>
+      <button type="submit" class="btn btn-sm btn-primary"
+        ng-disabled="!tokenInput || tokenInput.length < 10" translate>
         Activate
       </button>
     </div>

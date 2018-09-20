@@ -1,5 +1,7 @@
 # CHANGELOG of OpenSlides Voting Plugin
 
+## Version 3.0.1 (unreleased)
+
 ## Version 3.0 (2018-09-20)
 * rewrite of old OpenSlides VoteCollector Plugin
   with VoteCollector votings modes

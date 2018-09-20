@@ -1,1 +1,1 @@
-openslides>=2.2
+openslides>=2.3,<3.0

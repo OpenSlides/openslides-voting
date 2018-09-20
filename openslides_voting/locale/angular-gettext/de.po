@@ -18,6 +18,10 @@ msgstr "--- Keypad-Verwendung auswählen ---"
 msgid "--- Select status ---"
 msgstr "--- Status auswählen ---"
 
+#: openslides_voting/tokens.html:30
+msgid "A minimum length of 10 characters is required."
+msgstr "Eine Mindestlänge von 10 Zeichen ist erforderlich."
+
 #: openslides_voting/site.js:2318
 msgid "A motion voting is running."
 msgstr "Eine Antragsabstimmung läuft noch."
@@ -46,11 +50,11 @@ msgstr "Weisungen"
 msgid "Abstain"
 msgstr "Enthaltung"
 
-#: openslides_voting/tokens.html:31
+#: openslides_voting/tokens.html:32
 msgid "Activate"
 msgstr "Aktivieren"
 
-#: openslides_voting/tokens.html:37
+#: openslides_voting/tokens.html:39
 msgid "Active voting tokens"
 msgstr "Aktive Stimmabgabe-Tokens"
 
@@ -116,7 +120,7 @@ msgstr "Soll dieses Stimmrechtsprinzip wirklicht gelöscht werden?"
 msgid "Attendance"
 msgstr "Anwesenheit"
 
-#: openslides_voting/pdf.js:155 openslides_voting/site.js:1100
+#: openslides_voting/pdf.js:204 openslides_voting/site.js:1100
 msgid "Attendance history"
 msgstr "Anwesenheitshistorie"
 
@@ -152,7 +156,7 @@ msgstr "Zurück zum Antrag"
 msgid "Back to overview"
 msgstr "Zurück zur Übersicht"
 
-#: openslides_voting/pdf.js:89
+#: openslides_voting/pdf.js:113
 msgid "Ballot"
 msgstr "Wahlgang"
 
@@ -189,7 +193,8 @@ msgid "Cancel"
 msgstr "Abbrechen"
 
 #: openslides_voting/assignment-poll-detail.html:96
-#: openslides_voting/motion-poll-detail.html:139
+#: openslides_voting/motion-poll-detail.html:139 openslides_voting/pdf.js:135
+#: openslides_voting/pdf.js:42
 msgid "Casted vote"
 msgstr "Abgegebene Stimme"
 
@@ -224,8 +229,8 @@ msgstr "Voreingestellter Voting-Typ"
 #: openslides_voting/absentee-vote-import.html:38
 #: openslides_voting/absentee-vote-list.html:69
 #: openslides_voting/assignment-poll-detail.html:68
-#: openslides_voting/motion-poll-detail.html:112 openslides_voting/pdf.js:27
-#: openslides_voting/pdf.js:96 openslides_voting/shares-import.html:39
+#: openslides_voting/motion-poll-detail.html:112 openslides_voting/pdf.js:120
+#: openslides_voting/pdf.js:27 openslides_voting/shares-import.html:39
 msgid "Delegate"
 msgstr "Delegierte/r"
 
@@ -362,7 +367,7 @@ msgstr "Vorname"
 
 #: openslides_voting/attendance.html:29 openslides_voting/attendance.html:80
 #: openslides_voting/delegate-attendance.html:28
-#: openslides_voting/delegate-attendance.html:66 openslides_voting/pdf.js:163
+#: openslides_voting/delegate-attendance.html:66 openslides_voting/pdf.js:212
 msgid "Heads"
 msgstr "Köpfe"
 
@@ -427,7 +432,8 @@ msgid "Keypad number"
 msgstr "Keypadnummer"
 
 #: openslides_voting/assignment-poll-detail.html:77
-#: openslides_voting/motion-poll-detail.html:121
+#: openslides_voting/motion-poll-detail.html:121 openslides_voting/pdf.js:128
+#: openslides_voting/pdf.js:35
 msgid "Keypad serial number"
 msgstr "Keypad-Seriennummer"
 
@@ -508,7 +514,7 @@ msgstr "Neues Stimmrechtsprinzip"
 msgid "No"
 msgstr "Nein"
 
-#: openslides_voting/tokens.html:41
+#: openslides_voting/tokens.html:43
 msgid "No active voting tokens"
 msgstr "Keine aktiven Stimmabgabe-Tokens"
 
@@ -640,8 +646,8 @@ msgstr ""
 " in der ersten Zeile"
 
 #: openslides_voting/assignment-poll-detail.html:87
-#: openslides_voting/motion-poll-detail.html:131 openslides_voting/pdf.js:27
-#: openslides_voting/pdf.js:96
+#: openslides_voting/motion-poll-detail.html:131 openslides_voting/pdf.js:120
+#: openslides_voting/pdf.js:27
 msgid "Result number"
 msgstr "Ergebniszahl"
 
@@ -719,7 +725,7 @@ msgstr "Stimmgewichte anzeigen"
 #: openslides_voting/motion-poll-detail.html:76
 #: openslides_voting/motion-poll-detail.html:87
 #: openslides_voting/motion-poll-small-buttons-hook.html:17
-#: openslides_voting/pdf.js:16 openslides_voting/pdf.js:85
+#: openslides_voting/pdf.js:109 openslides_voting/pdf.js:16
 #: openslides_voting/site.js:2819 openslides_voting/site.js:2929
 #: openslides_voting/site.js:2991
 msgid "Single votes"
@@ -811,7 +817,7 @@ msgid "This user is represented by"
 msgstr "Dieser Nutzer ist vertreten durch"
 
 #: openslides_voting/attendance.html:77
-#: openslides_voting/delegate-attendance.html:65 openslides_voting/pdf.js:162
+#: openslides_voting/delegate-attendance.html:65 openslides_voting/pdf.js:211
 msgid "Time"
 msgstr "Zeit"
 
@@ -839,8 +845,7 @@ msgstr "Countdown-Zeitmesser verwenden"
 msgid "Valid votes"
 msgstr "Gültige Stimmen"
 
-#: openslides_voting/pdf.js:100 openslides_voting/pdf.js:20
-#: openslides_voting/pdf.js:31 openslides_voting/submit-token.html:45
+#: openslides_voting/pdf.js:20 openslides_voting/submit-token.html:45
 msgid "Vote"
 msgstr "Abstimmung"
 
@@ -1010,8 +1015,8 @@ msgid "active"
 msgstr "aktiv"
 
 #: openslides_voting/keypad-list.html:73
-#: openslides_voting/motion-poll-detail.html:171 openslides_voting/pdf.js:106
-#: openslides_voting/pdf.js:37
+#: openslides_voting/motion-poll-detail.html:171 openslides_voting/pdf.js:140
+#: openslides_voting/pdf.js:47
 msgid "anonymous"
 msgstr "anonym"
 
@@ -1035,6 +1040,10 @@ msgstr "voll"
 #: openslides_voting/keypad-list.html:80
 msgid "inactive"
 msgstr "inaktiv"
+
+#: openslides_voting/base.js:385 openslides_voting/site.js:3003
+msgid "invalid"
+msgstr "ungültig"
 
 #: openslides_voting/keypad-list.html:106
 msgid "keypads"

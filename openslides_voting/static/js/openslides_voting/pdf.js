@@ -318,24 +318,23 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                                 }
                             ]
                         ];
-                    } else {
-                        currentTableBody.push([
-                            {
-                                text: token,
-                                fontSize: 16,
-                                margin: [50, 35, 0, 0], // left, top, right, bottom
-                            },
-                            {
-                                image: Barcode.getBase64(token, {
-                                    fontSize: 10,
-                                    height: 50,
-                                    width: 1,
-                                    text: ' ',
-                                }),
-                                margin: [0, 10, 0, 0],
-                            }
-                        ]);
                     }
+                    currentTableBody.push([
+                        {
+                            text: token,
+                            fontSize: 16,
+                            margin: [50, 35, 0, 0], // left, top, right, bottom
+                        },
+                        {
+                            image: Barcode.getBase64(token, {
+                                fontSize: 10,
+                                height: 50,
+                                width: 1,
+                                text: ' ',
+                            }),
+                            margin: [0, 10, 0, 0],
+                        }
+                    ]);
                 });
                 if (currentTableBody.length > 1) {
                     tables.push({

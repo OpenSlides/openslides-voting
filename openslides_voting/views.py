@@ -803,6 +803,18 @@ class VotingTokenViewSet(ModelViewSet):
             return has_perm(self.request.user, 'openslides_voting.can_see_token_voting')
         return False
 
+    def create(self, request, *args, **kwargs):
+        try:
+            token = request.data['token']
+        except KeyError:
+            raise ValidationError({'detail': 'You have to provide a token.'})
+        if not isinstance(token, str):
+            raise ValidationError({'detail': 'The token must be a string.'})
+        if len(token) < 10:
+            raise ValidationError({'detail': 'The token has to have at least 10 characters.'})
+
+        return super().create(request, *args, **kwargs)
+
     @list_route(methods=['post'])
     def generate(self, request):
         """

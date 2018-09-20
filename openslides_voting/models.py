@@ -242,15 +242,15 @@ class PollBallot:
         max_token_value = max(used_tokens)
         digits = len(str(max_token_value))
 
-        max_token_count = 10 ** digits - 101  # the 101 is for the first 100 and the
+        max_token_count = 10**digits - 101  # the 101 is for the first 100 and the
         # last one. So for e.g. 4 digits, the range would be from 100 to 9999,
         # so 10000-101 = 9899 possible tokens
 
         if len(used_tokens) >= max_token_count:
             # We need to have one more digit.
-            return random.randint(10 ** digits, 10 ** (digits+1) - 1)
+            return random.randint(10**digits, 10**(digits + 1) - 1)
 
-        not_used_tokens = [t for t in range(100, 10**digits) if t not in used_tokens]
+        not_used_tokens = [t for t in range(10**(digits - 1), 10**digits) if t not in used_tokens]
         return random.choice(not_used_tokens)
 
 

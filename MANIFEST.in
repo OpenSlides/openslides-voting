@@ -1,0 +1,3 @@
+include AUTHORS LICENSE README.md requirements_production.txt
+graft openslides_voting
+recursive-exclude openslides_voting *.pyc

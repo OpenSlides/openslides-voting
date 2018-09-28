@@ -7,7 +7,7 @@ It's a further development of the outdated
 
 ## Requirements
 - OpenSlides 2.3
-- [VoteCollector 1.10+](http://software.voteworks.eu/VoteCollector.zip) (for voting modes with keypads)
+- [VoteCollector 1.10.1+](http://software.voteworks.eu/VoteCollector.zip) (for voting modes with keypads)
 
 
 ## Features
@@ -47,13 +47,17 @@ this poll has. You can choose between four modes:
    supported by the VoteCollector. See below for more details.
 
 ### Token-based voting interface
-To run the token-based voting interface on voting machines you need to create an own OpenSlides login, so OpenSlides can validate that the votes comes from an authorized computer.
+To run the token-based voting interface on voting machines you need to create an own
+OpenSlides login, so OpenSlides can validate that the votes comes from an authorized
+computer.
 
 Create a new user group (e.g. 'voting') which has only three permissions:
 `Can see motions`, `Can see assignments` and `Can see the token voting interface`.
 Add this new group to a new created voting user. Now, login with this user account on voting machines.
 
-Important: Do not give any delegate the permission `Can see the token voting interface` - otherwise they can see no longer the default OpenSlides interface but see always the voting interface.
+Important: Do not give any delegate the permission `Can see the token voting interface` -
+otherwise they can see no longer the default OpenSlides interface but see always the
+voting interface.
 
 If anyone should be allowed to vote at their own computer, please make a voting
 user with a simple password and distribute that, so a user has to login
@@ -61,7 +65,10 @@ seperatly to vote. Note, that this may reveal the users vote because one can
 check from which computer came the vote and check if a user was logged in
 on the computer before.
 
-Add `VOTING_RESULT_TOKEN_TIMEOUT` to `settings.py` if you want to change the timeout in seconds until vote success view is closed during token-based voting. The timeout is important so the next one cannot get the result number if the user didn't click on continue. The result number view can be disabled by setting the timeout to 0.
+Add `VOTING_RESULT_TOKEN_TIMEOUT` to `settings.py` if you want to change the timeout in
+seconds until vote success view is closed during token-based voting. The timeout is
+important so the next one cannot get the result number if the user didn't click on
+continue. The result number view can be disabled by setting the timeout to 0.
 
 ### VoteCollector supported voting modes
 - Yes/No/Abstain for motions
@@ -72,8 +79,13 @@ Add `VOTING_RESULT_TOKEN_TIMEOUT` to `settings.py` if you want to change the tim
 
 Not supported is Yes/No(/Abstain) for multiple candidates.
 
-Note:
-The VoteCollector should send the POST requests (with the important voting results) protected to the OpenSlides server. OpenSlides and VoteCollector supports  [HMAC](https://en.wikipedia.org/wiki/HMAC) - a hashed-based message authentication code using the secret key of OpenSlides. To use this protection get the `SECRET_KEY` from OpenSlides' `settings.py` and insert it into `VoteCollector.exe.config`. By default (if no secret key is defined in VoteCollector) HMAC is _not_ used.
+### Configure SECRET_KEY in VoteCollector
+The VoteCollector sends the POST requests (with the important voting results) protected to
+the OpenSlides server. OpenSlides and VoteCollector supports [HMAC](https://en.wikipedia.org/wiki/HMAC)
+- a hashed-based message authentication code using the secret key of OpenSlides. To use
+the VoteCollector successfully with OpenSlides you have to insert the `SECRET_KEY` from
+OpenSlides' `settings.py` into `VoteCollector.exe.config`. If no secret key used in
+VoteCollector you get an error if you start a new voting.
 
 
 ## Installation

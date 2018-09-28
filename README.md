@@ -81,8 +81,8 @@ Not supported is Yes/No(/Abstain) for multiple candidates.
 
 ### Configure SECRET_KEY in VoteCollector
 The VoteCollector sends the POST requests (with the important voting results) protected to
-the OpenSlides server. OpenSlides and VoteCollector supports [HMAC](https://en.wikipedia.org/wiki/HMAC)
-- a hashed-based message authentication code using the secret key of OpenSlides. To use
+the OpenSlides server. OpenSlides and VoteCollector supports [HMAC](https://en.wikipedia.org/wiki/HMAC) - a
+hashed-based message authentication code using the secret key of OpenSlides. To use
 the VoteCollector successfully with OpenSlides you have to insert the `SECRET_KEY` from
 OpenSlides' `settings.py` into `VoteCollector.exe.config`. If no secret key used in
 VoteCollector you get an error if you start a new voting.

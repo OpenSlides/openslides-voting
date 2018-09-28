@@ -1,6 +1,9 @@
 # CHANGELOG of OpenSlides Voting Plugin
 
-## Version 3.0.1 (unreleased)
+## Version 3.0.1 (2018-09-28)
+* Used new VoteCollector 1.10.1 which checks if secret key is available on start voting.
+* Fixed sorting in poll type form.
+* Added missing translations.
 
 ## Version 3.0 (2018-09-20)
 * rewrite of old OpenSlides VoteCollector Plugin

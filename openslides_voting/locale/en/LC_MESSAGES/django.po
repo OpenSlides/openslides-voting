@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-09-28 10:26+0200\n"
+"POT-Creation-Date: 2018-09-28 11:50+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -111,14 +111,18 @@ msgstr ""
 msgid "Server not found."
 msgstr ""
 
-#: votecollector/rpc.py:69 votecollector/rpc.py:86 votecollector/rpc.py:92
-#: votecollector/rpc.py:99 votecollector/rpc.py:111 votecollector/rpc.py:123
-#: votecollector/rpc.py:135
+#: votecollector/rpc.py:69 votecollector/rpc.py:86 votecollector/rpc.py:95
+#: votecollector/rpc.py:102 votecollector/rpc.py:114 votecollector/rpc.py:126
+#: votecollector/rpc.py:138
 msgid "No connection to VoteCollector."
 msgstr ""
 
 #: votecollector/rpc.py:81
 msgid "No keypads exists for active users."
+msgstr ""
+
+#: votecollector/rpc.py:89
+msgid "VoteCollector does not use a secret key."
 msgstr ""
 
 #: votecollector/views.py:462

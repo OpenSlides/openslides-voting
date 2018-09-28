@@ -84,6 +84,9 @@ def start_voting(mode, callback_url, options=None):
         status = server.voteCollector.getDeviceStatus()
     except:
         raise VoteCollectorError(_('No connection to VoteCollector.'))
+    # VoteCollector MUST be configured with a secret key for posted votes to be accepted!
+    if "Secret Key: Yes" not in status:
+        raise VoteCollectorError(_('VoteCollector does not use a secret key.'))
 
     ext_mode = options + ';' + callback_url if options else callback_url
     try:

@@ -657,7 +657,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                     templateOptions: {
                         label: gettextCatalog.getString('Select the voting type'),
                         options: PollType.getTypes(vc),
-                        ngOptions: 'option.key as option.displayName | translate for option in to.options',
+                        ngOptions: 'option.key as option.displayName | translate for option in to.options | orderBy:"key"',
                         required: true,
                     }
                 },

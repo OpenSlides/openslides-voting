@@ -15,7 +15,7 @@ openslides_voting/static/js/openslides_voting/libs.js
 openslides_voting/static/i18n/*
 
 # Translations
-*.mo
+openslides_voting/locale/en/LC_MESSAGES/django.mo
 
 # Javascript tools and libraries
 node_modules/*

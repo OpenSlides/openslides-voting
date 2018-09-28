@@ -2,35 +2,75 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-03-08 18:39+0100\n"
+"POT-Creation-Date: 2018-09-28 10:26+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Jochen Winzer <jw@winzer-sw.de>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: de\n"
+"Last-Translator: Emanuel Schütze <emanuel.schuetze@intevation.de>, 2018\n"
+"Language-Team: German (https://www.transifex.com/openslides/teams/14270/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: config_variables.py:22
+#: config_variables.py:54 config_variables.py:62
 msgid "Please vote now!"
 msgstr "Bitte stimmen Sie jetzt ab!"
 
-#: models.py:56
+#: models.py:188
 #, python-format
 msgid "Keypad %(kp)d (%(user)s)"
-msgstr ""
+msgstr "Keypad %(kp)d (%(user)s)"
 
-#: models.py:58
+#: models.py:190
 #, python-format
 msgid "Keypad %d"
-msgstr ""
+msgstr "Keypad %d"
+
+#: views.py:177 views.py:216
+msgid "Yes"
+msgstr "Ja"
+
+#: views.py:178 views.py:217
+msgid "No"
+msgstr "Nein"
+
+#: views.py:179 views.py:218 views.py:231
+msgid "Abstain"
+msgstr "Enthaltung"
+
+#: views.py:332
+msgid "Poll is open"
+msgstr "Abstimmung läuft"
+
+#: views.py:406
+msgid "Another voting is active."
+msgstr "Eine anderes Voting ist aktiv."
+
+#: views.py:497
+msgid "The id has to be an int."
+msgstr "Die ID muss ein integer sein."
+
+#: views.py:501
+msgid "The object does not exist."
+msgstr "Das Objekt existiert nicht."
+
+#: views.py:511 views.py:535
+msgid "The VoteCollector is not enabled."
+msgstr "Der VoteCollector ist nicht aktiviert."
+
+#: views.py:633
+msgid "Shares has to be a list."
+msgstr "Stimmgewichte müssen eine Liste sein."
+
+#: views.py:915
+msgid "The votecollector is not active"
+msgstr "Der VoteCollector ist nicht aktiviert."
 
 #: votecollector/rpc.py:12
 msgid "Unknown voting mode."
@@ -46,7 +86,7 @@ msgstr "Ungültige Keypad-Liste."
 
 #: votecollector/rpc.py:15
 msgid "No keypads authorized for voting."
-msgstr "Es sind keine Keypads zur Abstimmung zugelassen."
+msgstr "Es sind keine Keypads zum Voting zugelassen."
 
 #: votecollector/rpc.py:16
 msgid "License not sufficient."
@@ -64,88 +104,56 @@ msgstr "Fehler beim Einrichten des Transponders."
 msgid "Voting device not ready."
 msgstr "Transponder nicht betriebsbereit. "
 
-#: votecollector/rpc.py:49
+#: votecollector/rpc.py:20
+msgid "Voting device not licensed."
+msgstr "Transponder nicht lizensiert."
+
+#: votecollector/rpc.py:50
 msgid "Server not found."
 msgstr "Server nicht gefunden."
 
-#: votecollector/rpc.py:60
-msgid "No keypads selected."
-msgstr "Keine Keypads ausgewählt."
-
-#: votecollector/rpc.py:70 votecollector/rpc.py:82 votecollector/rpc.py:89
-#: votecollector/rpc.py:101 votecollector/rpc.py:113 votecollector/rpc.py:125
+#: votecollector/rpc.py:69 votecollector/rpc.py:86 votecollector/rpc.py:92
+#: votecollector/rpc.py:99 votecollector/rpc.py:111 votecollector/rpc.py:123
+#: votecollector/rpc.py:135
 msgid "No connection to VoteCollector."
 msgstr "Keine Verbindung zum VoteCollector."
 
-#: votecollector/views.py:97
-msgid "Unknown id."
-msgstr "Unbekannte ID."
+#: votecollector/rpc.py:81
+msgid "No keypads exists for active users."
+msgstr "Es existieren keine Keypads für die aktiven Nutzer."
 
-#: votecollector/views.py:209
-msgid "Yes"
-msgstr "Ja"
+#: votecollector/views.py:462
+msgid "No active voting"
+msgstr "Kein aktives Voting"
 
-#: votecollector/views.py:210
-msgid "No"
-msgstr "Nein"
+#: votecollector/views.py:465
+msgid "Invalid voting  mode or target"
+msgstr "Ungültiger Voting-Modus oder Ziel."
 
-#: votecollector/views.py:211 votecollector/views.py:234
-msgid "Abstain"
-msgstr "Enthaltung"
+#: votecollector/views.py:474
+msgid "Keypad not      registered"
+msgstr "Keypad nicht registriert"
 
-#: openslides_voting/votecollector/views.py:232
-msgid "Poll is open"
-msgstr "Abstimmung läuft"
-
-#: votecollector/views.py:337
-msgid "Another voting is active."
-msgstr "Eine andere Abstimmung is aktiv."
-
-#: votecollector/views.py:419 votecollector/views.py:432
-#: votecollector/views.py:437 votecollector/views.py:499
-#: votecollector/views.py:505
-msgid "Vote rejected"
-msgstr "Stimme abgelehnt"
-
-#: votecollector/views.py:424 votecollector/views.py:511
-#: votecollector/views.py:513
-msgid "Vote invalid"
-msgstr "Stimme ungültig"
-
-#: votecollector/views.py:444 votecollector/views.py:528
-msgid "Vote submitted"
-msgstr "Stimme abgegeben"
-
-#: votecollector/views.py:536
-msgid "Keypad not registered"
-msgstr "Keypad nicht angemeldet"
-
-#: votecollector/views.py:540
+#: votecollector/views.py:483
 msgid "User unknown"
 msgstr "Nutzer unbekannt"
 
-#: votecollector/views.py:546
-msgid "No agenda item selected"
-msgstr "Kein TOP ausgewählt"
+#: votecollector/views.py:489
+msgid "Invalid agenda  item"
+msgstr "Ungültiger Tagesordnungspunkt"
 
-#: votecollector/views.py:557
-#, fuzzy
-#| msgid "Added to        list of speakers"
+#: votecollector/views.py:499
 msgid "Added to        speakers list"
 msgstr "Zur Redeliste   hinzugefügt"
 
-#: votecollector/views.py:568
-#, fuzzy
-#| msgid "Not exists on   list of speakers"
-msgid "Does not exist  on speakers list"
-msgstr "Auf Redeliste   nicht vorhanden"
-
-#: votecollector/views.py:571
-#, fuzzy
-#| msgid "Removed from    list of speakers"
+#: votecollector/views.py:505
 msgid "Removed from    speakers list"
 msgstr "Von Redeliste   entfernt"
 
-#: votecollector/views.py:573
+#: votecollector/views.py:507
+msgid "Does not exist  on speakers list"
+msgstr "Auf Redeliste   nicht vorhanden"
+
+#: votecollector/views.py:509
 msgid "Invalid entry"
 msgstr "Ungültiger Eintrag"

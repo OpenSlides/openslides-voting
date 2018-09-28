@@ -1,5 +1,5 @@
 <a ui-sref="submit_votes.motionPoll({id: getActivePoll()})"
-  ng-if="getActivePoll() && pollType === 'named_electronic'"
+  ng-if="getActivePoll()"
   class="btn btn-sm btn-sm" ng-class="getVoteForActivePoll() ? 'btn-default' : 'btn-primary'">
   <span ng-if="!getVoteForActivePoll()">
     <translate>Vote now!</translate>

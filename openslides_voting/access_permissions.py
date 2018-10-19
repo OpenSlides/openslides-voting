@@ -57,6 +57,12 @@ class VotingPrincipleAccessPermissions(BaseAccessPermissions):
         from .serializers import VotingPrincipleSerializer
         return VotingPrincipleSerializer
 
+    def check_permissions(self, user):
+        """
+        Returns True if the user has read access for motions or assignments.
+        """
+        return has_perm(user, 'motions.can_see') or has_perm(user, 'assignments.can_see')
+
 
 class VotingShareAccessPermissions(BaseAccessPermissions):
     def get_serializer_class(self, user=None):

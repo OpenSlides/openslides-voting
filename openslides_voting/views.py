@@ -577,6 +577,16 @@ class VotingPrincipleViewSet(PrinciplesPermissionMixin, ModelViewSet):
     access_permissions = VotingPrincipleAccessPermissions()
     queryset = VotingPrinciple.objects.all()
 
+    def check_view_permissions(self):
+        """
+        Returns True if the user has required permissions.
+        """
+        if self.action in ('list', 'retrieve'):
+            result = True
+        else:
+            result = has_perm(self.request.user, 'openslides_voting.can_manage')
+        return result
+
     def validate_motions_and_assignments(self, request, exclude=None):
         # Check, if motions and assignments are not used by another VotingPrinciple.
         motions_id = request.data.get('motions_id', [])

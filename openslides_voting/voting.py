@@ -241,7 +241,8 @@ class MotionBallot(BaseBallot):
     def create_absentee_ballots(self):
         """
         Creates or updates motion poll ballots all voting delegates who have an absentee vote registered.
-        Objects are only created if the authorized voter (proxy) is present with keypad.
+        Objects are only created if the authorized voter (proxy) is present. (Keypad assignment is not required to
+        allow for non-votecollector voting modes.)
 
         :return: Number of ballots created or updated.
         """
@@ -255,8 +256,11 @@ class MotionBallot(BaseBallot):
         ballots = []
         delegate_ids = []
         for absentee_vote in qs_absentee_votes:
-            auth_voter = find_authorized_voter(absentee_vote.delegate)
-            if auth_voter and auth_voter.is_present and hasattr(auth_voter, 'keypad'):     
+            allowed = True
+            if config['voting_enable_proxies']:
+                auth_voter = find_authorized_voter(absentee_vote.delegate)
+                allowed = auth_voter != absentee_vote.delegate and auth_voter.is_present
+            if allowed:
                 # Update or create ballot instance.
                 try:
                     mpb = MotionPollBallot.objects.get(poll=self.poll, delegate=absentee_vote.delegate)

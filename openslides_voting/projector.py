@@ -35,10 +35,11 @@ class MotionPollSlide(ProjectorElement):
         else:
             yield motionpoll.motion
             yield motionpoll.motion.agenda_item
-            yield AuthorizedVoters.objects.get()
-            yield from User.objects.all()
-            yield from Keypad.objects.all()
-            yield from MotionPollBallot.objects.filter(poll=motionpoll)
+            if config['voting_show_delegate_board']:
+                yield AuthorizedVoters.objects.get()
+                yield from User.objects.all()
+                yield from Keypad.objects.all()
+                yield from MotionPollBallot.objects.filter(poll=motionpoll)
             if config['voting_enable_principles']:
                 yield from VotingPrinciple.objects.filter(motions=motionpoll.motion)
             yield VotingController.objects.get()

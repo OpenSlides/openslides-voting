@@ -102,7 +102,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
             // Get authorized voters.
             var av = AuthorizedVoters.get(1);
             var voters = av.authorized_voters;
-            var showKey = av.type.indexOf('votecollector') === 0;
+            var showKey = av.type.indexOf('votecollector') === 0 && Config.get('voting_show_number').value;
             if (_.keys(voters).length > 0 &&
                 av.type !== 'votecollector_anonymous' && av.type !== 'votecollector_secret') {
                 // Create delegate board table cells.
@@ -115,10 +115,15 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         var user = User.get(id),
                             mpb = MotionPollBallot.filter({poll_id: pollId, delegate_id: id}),
                             name = Delegate.getCellName(user),
-                            label = name,
+                            label = '',
+                            number = 0,
                             cls = '';
                         if (showKey) {
-                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                            number = Delegate.getKeypad(voterId).number;
+                            label = number;
+                        }
+                        if (Config.get('voting_delegate_board_name').value !== 'no_name') {
+                            label = number !== 0 ? number  + '<br/>' + name : name;
                         }
                         if (mpb.length === 1) {
                             // Set td class based on vote.
@@ -127,20 +132,22 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         cells.push({
                             name: name,
                             label: label,
+                            number: number,
                             cls: cls,
                         });
                     });
                 });
 
-                // Build table. Cells are ordered by name.
-                var table = '<table>',
+                // Build table. Cells are ordered by number or name.
+                var table = '<table class="zoomcontent">',
+                    sortKey = (Config.get('voting_sort_by_number').value && showKey) ? 'number' : 'name',
                     i = 0;
-                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                _.forEach(_.sortBy(cells, sortKey), function (cell) {
                     if (i % colCount === 0) {
                         table += '<tr>';
                     }
                     table += '<td class="seat ' + cell.cls + '" ' +
-                        'style="width: calc(100%/' + colCount + ');">' +
+                        'style="font-size: 1.0em;width: calc(100%/' + colCount + ');">' +
                         cell.label + '</td>';
                     i++;
                 });
@@ -196,7 +203,6 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
         }, function () {
             // Get poll type for assignment.
             $scope.av = AuthorizedVoters.get(1);
-            $scope.showKey = $scope.av.type.indexOf('votecollector') === 0;
 
             // Using timeout seems to give the browser more time to update the DOM.
             draw = true;
@@ -226,6 +232,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
 
             // Get authorized voters.
             var voters = $scope.av.authorized_voters;
+            var showKey = $scope.av.type.indexOf('votecollector') === 0 && Config.get('voting_show_number').value;
             if (_.keys(voters).length > 0 &&
                 $scope.av.type !== 'votecollector_anonymous' && $scope.av.type !== 'votecollector_secret') {
                 // Create delegate board table cells.
@@ -240,11 +247,16 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         var user = User.get(id),
                             apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id}),
                             name = Delegate.getCellName(user),
-                            label = name,
-                            cls = '',
-                            key = '';
-                        if ($scope.showKey) {
-                           label = Delegate.getKeypad(voterId).number + '<br/>' + label;
+                            label = '',
+                            number = 0,
+                            key = '',
+                            cls = '';
+                        if (showKey) {
+                            number = Delegate.getKeypad(voterId).number;
+                            label = number;
+                        }
+                        if (Config.get('voting_delegate_board_name').value !== 'no_name') {
+                            label = number !== 0 ? number  + '<br/>' + name : name;
                         }
                         if (apb.length > 0) {
                             apb = apb[0];
@@ -275,21 +287,23 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         cells.push({
                             name: name,
                             label: label,
+                            number: number,
                             cls: cls,
                             key: key,
                         });
                     });
                 });
 
-                // Build table. Cells are ordered by name.
+                // Build table. Cells are ordered by number or name.
                 var table = '<table>',
+                    sortKey = (Config.get('voting_sort_by_number').value && showKey) ? 'number' : 'name',
                     i = 0;
-                _.forEach(_.sortBy(cells, 'name'), function (cell) {
+                _.forEach(_.sortBy(cells, sortKey), function (cell) {
                     if (i % colCount === 0) {
                         table += '<tr>';
                     }
                     table += '<td class="seat ' + cell.cls + '" ' +
-                        'style="width: calc(100%/' + colCount + ');">';
+                        'style="font-size: 1.0em;width: calc(100%/' + colCount + ');">';
                     if (cell.key) {
                         table +='<span class="key">' + cell.key + '</span>'
                     }

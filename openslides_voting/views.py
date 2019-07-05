@@ -64,6 +64,7 @@ from .voting import (
     MotionBallot,
     find_authorized_voter,
     get_admitted_delegates,
+    get_total_shares,
 )
 
 
@@ -928,42 +929,7 @@ class AttendanceView(View):
         if not config['voting_enable_votecollector']:
             return JsonResponse({'detail': _('The votecollector is not active')})
 
-        total_shares = {
-            'heads': [0, 0, 0, 0]  # [all, attending, in person, represented]
-        }
-        principle_ids = VotingPrinciple.objects.values_list('id', flat=True)
-        for principle_id in principle_ids:
-            total_shares[principle_id] = [Decimal(0), Decimal(0), Decimal(0), Decimal(0)]
-
-        # Query delegates.
-        delegates = User.objects.filter(groups=2).select_related('votingproxy', 'keypad').prefetch_related('shares')
-        shares_exists = VotingShare.objects.exists()
-        for delegate in delegates:
-            # Exclude delegates without shares -- who may only serve as proxies.
-            if shares_exists and delegate.shares.count() == 0:
-                continue
-
-            total_shares['heads'][0] += 1
-
-            # Find the authorized voter.
-            auth_voter = find_authorized_voter(delegate)
-
-            # If auth_voter is delegate himself set index to 2 (in person) else 3 (represented).
-            i = 2 if auth_voter == delegate else 3
-            attending = auth_voter is not None and auth_voter.is_present
-            if config['voting_enable_votecollector']:
-                attending = attending and hasattr(auth_voter, 'keypad')
-            if attending:
-                total_shares['heads'][i] += 1
-
-            # Add shares to total.
-            for share in delegate.shares.all():
-                total_shares[share.principle_id][0] += share.shares
-                if attending:
-                    total_shares[share.principle_id][i] += share.shares
-
-        for k in total_shares.keys():
-            total_shares[k][1] = total_shares[k][2] + total_shares[k][3]
+        total_shares = get_total_shares()
 
         # Add an attendance log entry if attendance has changed since last log.
         latest_head_count = -1

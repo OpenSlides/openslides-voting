@@ -16,6 +16,9 @@
     "gulp-uglify": "^2.1.2",
     "main-bower-files": "^2.13.1",
     "jshint": "~2.9.4",
+    "lodash": "^4.17.15",
+    "lodash.template": "^4.5.0",
+    "minimatch": "^3.0.2",
     "po2json": "~0.4.5"
   }
 }

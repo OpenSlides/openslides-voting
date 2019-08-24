@@ -2,6 +2,6 @@
   "name": "openslides-voting",
   "private": true,
   "dependencies": {
-      "jsbarcode": "~3.9.0"
+      "jsbarcode": "~3.11.0"
   }
 }

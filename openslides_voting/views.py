@@ -168,7 +168,9 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
 
             if voting_type.startswith('votecollector'):
                 if 'Interact' in vc.device_status:
-                    projector_abstain = '2 = '
+                    projector_yes = "<img src='/static/img/button-interact-yes.png'> "
+                    projector_no = "<img src='/static/img/button-interact-no.png'> "
+                    projector_abstain = "<img src='/static/img/button-interact-abstain.png'> "
                 elif 'Reply' in vc.device_status:
                     projector_yes = '1 = '
                     projector_no = '2 = '
@@ -203,7 +205,9 @@ class VotingControllerViewSet(PermissionMixin, ModelViewSet):
                             options.count())})
 
                 if 'Interact' in vc.device_status:
-                    projector_abstain = '2 = '
+                    projector_yes = "<img src='/static/img/button-interact-yes.png'> "
+                    projector_no = "<img src='/static/img/button-interact-no.png'> "
+                    projector_abstain = "<img src='/static/img/button-interact-abstain.png'> "
                 elif 'Reply' in vc.device_status:
                     projector_yes = '1 = '
                     projector_no = '2 = '

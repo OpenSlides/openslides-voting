@@ -157,6 +157,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
 ])
 
 .controller('SlideAssignmentPollCtrl', [
+    '$filter',
     '$scope',
     '$timeout',
     'AuthorizedVoters',
@@ -168,7 +169,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
     'User',
     'Delegate',
     'VotingController',
-    function ($scope, $timeout, AuthorizedVoters, Config, Assignment, AssignmentPoll,
+    function ($filter, $scope, $timeout, AuthorizedVoters, Config, Assignment, AssignmentPoll,
               AssignmentPollBallot, AssignmentPollDecimalPlaces, User, Delegate, VotingController) {
         // Each DS resource used here must be yielded on server side in ProjectElement.get_requirements!
         var pollId = $scope.element.id,
@@ -232,13 +233,16 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                 var colCount = Config.get('voting_delegate_board_columns').value,
                     anonymous = Config.get('voting_anonymous').value || $scope.av.type === 'votecollector_pseudo_secret',
                     cells = [];
+                var options = $filter('orderBy')($scope.poll.options, 'weight');
+
                 _.forEach(voters, function (delegates, voterId) {
                     _.forEach(delegates, function (id) {
                         var user = User.get(id),
                             apb = AssignmentPollBallot.filter({poll_id: pollId, delegate_id: id}),
                             name = Delegate.getCellName(user),
                             label = name,
-                            cls = '';
+                            cls = '',
+                            key = '';
                         if ($scope.showKey) {
                            label = Delegate.getKeypad(voterId).number + '<br/>' + label;
                         }
@@ -257,6 +261,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                                     case 'invalid':
                                         cls = 'seat-invalid'; break;
                                     default:
+                                        key = _.findIndex(options, function(o) { return o.candidate_id == apb.vote; }) + 1;
                                         cls = 'seat-voted'; break;
                                 }
                             } else { // YNA and YN
@@ -271,6 +276,7 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                             name: name,
                             label: label,
                             cls: cls,
+                            key: key,
                         });
                     });
                 });
@@ -283,8 +289,11 @@ angular.module('OpenSlidesApp.openslides_voting.projector', [
                         table += '<tr>';
                     }
                     table += '<td class="seat ' + cell.cls + '" ' +
-                        'style="width: calc(100%/' + colCount + ');">' +
-                        cell.label + '</td>';
+                        'style="width: calc(100%/' + colCount + ');">';
+                    if (cell.key) {
+                        table +='<span class="key">' + cell.key + '</span>'
+                    }
+                    table += cell.label + '</td>';
                     i++;
                 });
 

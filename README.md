@@ -7,7 +7,7 @@ It's a further development of the outdated
 
 ## Requirements
 - OpenSlides 2.3
-- [VoteCollector 1.10.1+](http://software.voteworks.eu/VoteCollector.zip) (for voting modes with keypads)
+- [VoteCollector 1.10.2+](http://software.voteworks.eu/VoteCollector.zip) (for voting modes with keypads)
 
 
 ## Features

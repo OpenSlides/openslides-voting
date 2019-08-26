@@ -1081,15 +1081,16 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         VotingPrinciple.bindAll({}, $scope, 'principles');
         AttendanceLog.bindAll({}, $scope, 'attendanceLogs');
 
-        // Update attendance view whenever attendance logs or voting principles have changed.
-        $scope.$watch(function () {
-            return AttendanceLog.lastModified() + VotingPrinciple.lastModified();
-        }, function () {
+        var getAttendance = function () {
             // Get attendance data from server.
             $http.get('/voting/attendance/shares/').then(function (success) {
                 $scope.attendance = success.data;
             });
-        });
+        };
+        
+        // Update attendance every 10 seconds.
+        var updateAttendance = $interval(getAttendance, 10000);
+        getAttendance();
 
         // Delete all attendance logs.
         $scope.deleteHistory = function () {
@@ -1105,6 +1106,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
                 PdfCreate.download(documentProvider, filename);
             });
         };
+        
+        $scope.$on('$destroy', function () {
+            $interval.cancel(updateAttendance);
+        });
     }
 ])
 
@@ -2974,6 +2979,7 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('VoteCollector secret (no single votes and delegate board)');
         gettext('VoteCollector grey (no single votes, only grey seats on delegate board)');
         gettext('VoteCollector anonymous (anonymous and personalized keypads, with single votes, no delegate board)');
+        gettext('No vote counted as abstention');
         gettext('Projector message for running motion voting');
         gettext('Projector message for running election');
         gettext('Please vote now!');
@@ -2994,6 +3000,10 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
         gettext('Short name (e.g. "JoSm")');
         gettext('Last name (e.g. "Smith")');
         gettext('Full name (e.g. "John Smith")');
+        gettext('Name is not displayed.');
+        gettext('Show keypad number');
+        gettext('Sort by keypad number');
+        gettext('Sort delegates by keypad number. If not set delegates are sorted by name.');
         gettext('Vote anonymously');
         gettext('Keep individual voting behaviour secret on delegate board by using a single colour.');
 

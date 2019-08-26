@@ -94,11 +94,11 @@
         border-radius: 5px;
         background-color: #100A4A;
         color: white;
-        font-size: 160%;
+        font-size: 140%;
         float: right;
         text-align: center;
         padding: 5px;
-        margin: 12px 0 0 2px;
+        margin-top: 1px;
     }
   </style>
 
@@ -244,7 +244,7 @@
     <table class="well table-striped width100" id="resultTable">
       <tr ng-repeat="option in poll.options" ng-init="votes = option.getVotes()">
 
-        <!--candidate name -->
+        <!-- candidate name -->
         <td>
           <!-- keypad key -->
           <span ng-if="showKey" class="key">{{ $index + 1 }} </span>

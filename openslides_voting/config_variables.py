@@ -144,7 +144,7 @@ def get_config_variables():
         name='voting_sort_by_number',
         default_value=False,
         input_type='boolean',
-        label='Sort by keypad number'',
+        label='Sort by keypad number',
         help_text='Sort delegates by keypad number. If not set delegates are sorted by name.',
         weight=685,
         group='OpenSlides-Voting',

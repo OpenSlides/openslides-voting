@@ -292,7 +292,7 @@ angular.module('OpenSlidesApp.openslides_voting.pdf', ['OpenSlidesApp.core.pdf']
                 var tables = [];
                 var currentTableBody;
                 _.forEach(tokens, function (token, index) {
-                    if ((index % (tokensPerPage+1)) === 0) {
+                    if ((index % (tokensPerPage)) === 0) {
                         if (currentTableBody) {
                             tables.push({
                                 table: {

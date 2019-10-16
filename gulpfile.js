@@ -36,7 +36,8 @@ gulp.task('templates', function () {
             moduleSystem: 'IIFE',
             transformUrl: function (url) {
                 var pathList = url.split(path.sep);
-                pathList.shift();
+                pathList.shift(); // First one is a ""
+                pathList.shift(); // remove second "openslides_voting"
                 return pathList.join(path.sep);
             },
         }))
@@ -64,14 +65,14 @@ gulp.task('translations', function () {
 });
 
 // Gulp default task. Runs all other tasks before.
-gulp.task('default', ['translations', 'templates', 'js-libs'], function () {});
+gulp.task('default', gulp.series('translations', 'templates', 'js-libs', function (done) {done()}));
 
 // Watches changes in JavaScript and templates.
-gulp.task('watch', ['templates'], function   () {
+gulp.task('watch', gulp.series('templates', function   () {
     gulp.watch([
         path.join('**', 'static', 'templates', '**', '*.html')
-    ], ['templates']);
-});
+    ], gulp.series('templates'));
+}));
 
 
 /**

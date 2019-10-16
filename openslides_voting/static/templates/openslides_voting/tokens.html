@@ -5,9 +5,7 @@
         <i class="fa fa-angle-double-left fa-lg"></i>
         <translate>Back to overview</translate>
       </a>
-      <a class="btn btn-default btn-sm"
-         ng-bootbox-prompt="{{ 'How much voting tokens should be generated?' | translate }}"
-         ng-bootbox-prompt-action="generate(result)">
+      <a class="btn btn-default btn-sm" ng-click="openGenerateDialog()">
         <i class="fa fa-magic fa-lg"></i>
         <translate>Generate</translate>
       </a>

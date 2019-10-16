@@ -883,7 +883,9 @@ class VotingTokenViewSet(ModelViewSet):
     @list_route(methods=['post'])
     def generate(self, request):
         """
-        Generate n tokens. Provide N (1<=N<=4096) as the only argument: {N: <n>}
+        Generate n tokens. Provide N (1<=N<=4096) for the amount and enable_tokens
+        to enable all generated tokens. Request data:
+        {N: <n>, enable_tokens: Optional<boolean>}
         """
         if not isinstance(request.data, dict):
             raise ValidationError({'detail': 'The data has to be a dict.'})
@@ -892,10 +894,19 @@ class VotingTokenViewSet(ModelViewSet):
             raise ValidationError({'detail': 'N has to be an int.'})
         if n < 1 or n > 4096:
             raise ValidationError({'detail': 'N has to be between 1 and 4096.'})
+        enable_tokens = bool(request.data.get("enable_tokens"))
 
         # no I,O,i,l,o,0
         choices = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrsuvwxyz123456789'
         tokens = [(''.join(random.choice(choices) for _ in range(12))) for _ in range(n)]
+
+        if enable_tokens:
+            existing_token_ids = list(VotingToken.objects.values_list('id', flat=True))  # Evaluate queryset now.
+            VotingToken.objects.bulk_create([
+                VotingToken(token=token) for token in tokens
+            ])
+            inform_changed_data(VotingToken.objects.exclude(id__in=existing_token_ids))
+
         return Response(tokens)
 
     @list_route(methods=['post'])

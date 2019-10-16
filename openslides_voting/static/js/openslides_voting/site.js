@@ -1016,14 +1016,12 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
 .controller('TokensCtrl', [
     '$scope',
     '$http',
+    'ngDialog',
     'VotingToken',
-    'TokenContentProvider',
-    'TokenDocumentProvider',
-    'PdfCreate',
+    'TokenGenerateForm',
     'gettextCatalog',
     'ErrorMessage',
-    function ($scope, $http, VotingToken, TokenContentProvider, TokenDocumentProvider, PdfCreate,
-              gettextCatalog, ErrorMessage) {
+    function ($scope, $http, ngDialog, VotingToken, TokenGenerateForm, gettextCatalog, ErrorMessage) {
         VotingToken.bindAll({}, $scope, 'tokens');
 
         $scope.scan = function () {
@@ -1045,24 +1043,83 @@ angular.module('OpenSlidesApp.openslides_voting.site', [
             $scope.tokenInputDisabled = false;
         };
 
-        $scope.generate = function (n) {
-            n = parseInt(n);
-            if (isNaN(n)) {
-                return;
+        $scope.openGenerateDialog = function (keypad) {
+            ngDialog.open(TokenGenerateForm.getDialog());
+        };
+
+    }
+])
+
+.factory('TokenGenerateForm', [
+    'gettextCatalog',
+    function (gettextCatalog) {
+        return {
+            getDialog: function () {
+                return {
+                    template: 'static/templates/openslides_voting/token-generate-form.html',
+                    controller: 'TokenGenerateCtrl',
+                    className: 'ngdialog-theme-default',
+                    closeByEscape: false,
+                    closeByDocument: false,
+                };
+            },
+            getFormFields: function () {
+                return [
+                {
+                    key: 'N',
+                    type: 'input',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Amount of Tokens'),
+                        type: 'number',
+                        required: true,
+                        min: 1,
+                        max: 4096,
+                    },
+                },
+                {
+                    key: 'enable_tokens',
+                    type: 'checkbox',
+                    templateOptions: {
+                        label: gettextCatalog.getString('Enable Tokens')
+                    }
+                }
+                ];
             }
-            if (n < 1) {
-                n = 1;
-            } else if (n > 4096) {
-                n = 4096;
-            }
-            $http.post('/rest/openslides_voting/voting-token/generate/', {N: n}).then(function (success) {
+        };
+    }
+])
+
+.controller('TokenGenerateCtrl', [
+    '$scope',
+    '$http',
+    'TokenGenerateForm',
+    'TokenContentProvider',
+    'TokenDocumentProvider',
+    'PdfCreate',
+    'gettextCatalog',
+    'ErrorMessage',
+    function ($scope, $http, TokenGenerateForm, TokenContentProvider, TokenDocumentProvider, PdfCreate,
+              gettextCatalog, ErrorMessage) {
+        $scope.alert = {};
+        $scope.model = {
+            N: 1,
+            enable_tokens: false
+        };
+        $scope.formFields = TokenGenerateForm.getFormFields();
+
+        $scope.generate = function (model) {
+            $http.post('/rest/openslides_voting/voting-token/generate/', model).then(function (success) {
                 var filename = gettextCatalog.getString('Tokens') + '.pdf';
                 filename = filename.replace(/\s/g,'');
                 var contentProvider = TokenContentProvider.createInstance(success.data);
                 var documentProvider = TokenDocumentProvider.createInstance(contentProvider);
                 PdfCreate.download(documentProvider, filename);
+                $scope.closeThisDialog();
+            }, function (error) {
+                $scope.alert = ErrorMessage.forAlert(error);
             });
         };
+
     }
 ])
 
